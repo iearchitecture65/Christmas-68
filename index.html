@@ -47,6 +47,10 @@
         @keyframes snow { 100% { background-position: 550px 1000px, 400px 400px, 300px 300px; } }
 
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .receipt-card { background: #fff; background-image: radial-gradient(#e5e7eb 1px, transparent 1px); background-size: 20px 20px; border-top: 8px solid #ef4444; position: relative; }
+        .receipt-card::before { content: ''; position: absolute; top: -15px; left: 0; right: 0; height: 15px; background: radial-gradient(circle, transparent 70%, #fff 70%); background-size: 20px 20px; background-position: bottom center; transform: rotate(180deg); display: none; }
+        .receipt-card::after { content: ''; position: absolute; bottom: -10px; left: 0; right: 0; height: 10px; background: linear-gradient(45deg, transparent 33.333%, #fff 33.333%, #fff 66.667%, transparent 66.667%), linear-gradient(-45deg, transparent 33.333%, #fff 33.333%, #fff 66.667%, transparent 66.667%); background-size: 20px 20px; background-position: 0 0; }
+        
         .modal-enter { animation: modalIn 0.2s ease-out forwards; }
         @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
@@ -134,7 +138,7 @@
             <header class="pt-8 pb-4 text-center px-4" id="main-header">
                 <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce"><i class="fa-solid fa-tree text-green-400 text-2xl"></i></div>
                 <h1 class="text-3xl font-extrabold text-white drop-shadow-md">Christmas <span class="text-red-500">2025</span></h1>
-                <p class="text-slate-300 text-xs mt-1 font-light tracking-wide">ระบบลงทะเบียนและโหวต (ใช้รหัสนักศึกษา)</p>
+                <p class="text-slate-300 text-xs mt-1 font-light tracking-wide">ระบบลงทะเบียนและโหวต</p>
             </header>
 
             <main class="flex-1 px-4 relative">
@@ -142,8 +146,8 @@
                 <!-- 1. VIEW: VOTE LIST -->
                 <div id="view-vote" class="view-section hidden space-y-4">
                     <div class="text-center mb-4">
-                        <div class="bg-red-500/20 text-red-100 px-4 py-2 rounded-xl text-sm font-bold border border-red-500/50 inline-block">
-                            <i class="fa-solid fa-check-to-slot"></i> <span id="vote-header-category">เปิดโหวตลงคะแนน</span>
+                        <div class="bg-red-500/20 text-red-100 px-4 py-2 rounded-xl text-sm font-bold border border-red-500/50 inline-block shadow-lg backdrop-blur-md">
+                            <i class="fa-solid fa-award text-yellow-400"></i> หัวข้อ: <span id="vote-header-category" class="text-white underline decoration-wavy decoration-red-400">...</span>
                         </div>
                     </div>
                     <div id="loading-vote" class="text-center py-10 text-white/60"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...</div>
@@ -151,8 +155,8 @@
                     <!-- Candidates Grid -->
                     <div id="candidates-list" class="grid grid-cols-2 gap-3 pb-24"></div>
 
-                    <!-- Voted State Card (Hidden by default) -->
-                    <div id="voted-card-container" class="hidden"></div>
+                    <!-- Voted State Card (Receipt) -->
+                    <div id="voted-card-container" class="hidden pb-20"></div>
                 </div>
 
                 <!-- 2. VIEW: REGISTER MENU -->
@@ -181,6 +185,13 @@
                     <div class="glass-panel p-6 rounded-3xl shadow-2xl relative overflow-hidden">
                         <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
                         <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="fa-solid fa-ticket text-blue-500"></i> ลงทะเบียนเข้างาน</h2>
+                        
+                        <!-- Alert for auto-redirect -->
+                        <div id="attend-redirect-alert" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 mb-4 rounded text-xs">
+                            <p class="font-bold">⚠️ ยังไม่ได้ลงทะเบียน</p>
+                            <p>กรุณาลงทะเบียนก่อน แล้วระบบจะพาคุณกลับไปโหวตอัตโนมัติ</p>
+                        </div>
+
                         <div id="form-attend" class="space-y-4">
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label><input type="tel" id="attend-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX"></div>
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">ชื่อ-นามสกุล</label><input type="text" id="attend-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none" placeholder="ระบุชื่อของคุณ..."></div>
@@ -302,7 +313,6 @@
                                 </div>
                             </div>
 
-                            <!-- FIX: เพิ่ม pointer-events-auto ให้กับ container ของปุ่มเพื่อแก้ปัญหาคลิกไม่ได้ -->
                             <div class="relative pointer-events-auto">
                                 <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">เลือกสถานะระบบ</h3>
                                 <div class="grid grid-cols-2 gap-3 relative z-10">
@@ -346,7 +356,6 @@
                             </div>
                             <div>
                                 <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> รายการหัวข้อรางวัล (คลิกเพื่อดูสรุป)</h3>
-                                <!-- Updated: List of categories instead of table -->
                                 <div id="admin-category-list" class="grid gap-2">
                                     <!-- Categories injected here -->
                                 </div>
@@ -368,7 +377,6 @@
 
             <footer class="mt-auto py-6 text-center" id="site-footer">
                 <p class="text-slate-400/30 text-xs">© 2025 Christmas Event 
-                    <!-- FIX: Using onclick to force navigation -->
                     <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a>
                 </p>
             </footer>
@@ -445,7 +453,7 @@
         let adminMarker = null;
         let isLocationValid = true;
         let isMapLocked = true;
-        let selectedResultCategory = 'current'; // For user result page
+        let selectedResultCategory = 'current';
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -481,6 +489,16 @@
             } else if (hash === 'register-attend') {
                 currentSubView = 'register-attend';
                 updateUIBasedOnConfig();
+                
+                // Check if redirected from vote
+                const pendingId = sessionStorage.getItem('pendingVoteId');
+                if (pendingId) {
+                    const input = document.getElementById('attend-id');
+                    if (input) input.value = pendingId;
+                    document.getElementById('attend-redirect-alert').classList.remove('hidden');
+                } else {
+                    document.getElementById('attend-redirect-alert').classList.add('hidden');
+                }
             } else if (hash === 'register-contest') {
                 currentSubView = 'register-contest';
                 updateUIBasedOnConfig();
@@ -491,8 +509,10 @@
         }
 
         function navigateBackFromRegister() {
-            if (sessionStorage.getItem('autoRedirectFromVote')) {
-                sessionStorage.removeItem('autoRedirectFromVote');
+            // Check pending vote logic
+            if (sessionStorage.getItem('pendingVoteId')) {
+                // If they cancelled, we remove the pending state
+                sessionStorage.removeItem('pendingVoteId');
                 window.location.hash = '';
             } else {
                 window.location.hash = '';
@@ -617,9 +637,25 @@
             if (!db) return;
             getConfigRef().onSnapshot(doc => {
                 if (doc.exists) {
-                    systemConfig = doc.data();
+                    const newData = doc.data();
+                    const prevAward = systemConfig.awardName;
+                    systemConfig = newData;
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
                     if (!systemConfig.awardName) systemConfig.awardName = 'Popular Vote';
+
+                    // --- REALTIME AWARD CHANGE LOGIC ---
+                    const lastKnownAward = safeGetStorage(`last_award_viewed_${appId}`);
+                    if (lastKnownAward && lastKnownAward !== systemConfig.awardName) {
+                         // Award changed by admin!
+                         // Reset local view state to ensure they can vote for the new award
+                         // But we DO NOT clear the actual stored vote data (localStorage) because that's handled by ID check
+                         
+                         if (systemConfig.activePhase === 'vote') {
+                             showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${systemConfig.awardName}`, 'info');
+                             renderCandidates(); // This will re-check storage for the NEW award name
+                         }
+                    }
+                    safeSetStorage(`last_award_viewed_${appId}`, systemConfig.awardName);
 
                     // --- INTELLIGENT RESET LOGIC ---
                     const serverVoteVer = systemConfig.voteResetVersion;
@@ -636,31 +672,12 @@
                     const serverAttVer = systemConfig.attendeeResetVersion;
                     const localAttVer = safeGetStorage(`att_ver_${appId}`);
                     if (serverAttVer && localAttVer != serverAttVer) {
-                        console.log("Global Attendee Reset Detected");
                         localStorage.removeItem(`reg_attend_${appId}`);
                         localStorage.removeItem(`reg_contest_${appId}`);
                         safeSetStorage(`att_ver_${appId}`, serverAttVer);
                         updateRegisterMenuState();
                     }
                     // ---------------------------------
-                    
-                    // --- INTELLIGENT CATEGORY CHANGE LOGIC ---
-                    // If awardName changes, user should see the new category.
-                    // The view will automatically re-render because listenToConfig calls updateUIBasedOnConfig.
-                    // But we can check if category changed to trigger toast or specific refresh logic.
-                    const currentAward = systemConfig.awardName;
-                    const lastAward = safeGetStorage(`last_award_${appId}`);
-                    
-                    if (lastAward && lastAward !== currentAward) {
-                        // Category changed!
-                        // Force back to vote view if currently on vote page to show new list
-                         if (systemConfig.activePhase === 'vote') {
-                             renderCandidates(); // Re-render to show list instead of "Voted" card if not voted for new cat
-                             showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${currentAward}`, 'info');
-                         }
-                    }
-                    safeSetStorage(`last_award_${appId}`, currentAward);
-
                 } else {
                     systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
                     getConfigRef().set(systemConfig).catch(e=>console.error(e));
@@ -738,35 +755,12 @@
             showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
         }
 
-        async function resetAll() {
-            if (prompt('พิมพ์ "RESET" เพื่อยืนยันการล้างข้อมูลทั้งหมด') !== 'RESET') return;
-            if (!db) return;
-            showToast('กำลังรีเซ็ตระบบ...', 'success');
-            const batch = db.batch();
-
-            const collections = ['votes', 'attendees', 'candidates'];
-            for(const col of collections) {
-                const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col);
-                const snap = await ref.get();
-                snap.forEach(doc => batch.delete(doc.ref));
-            }
-
-            const configRef = getConfigRef();
-            batch.set(configRef, { 
-                voteResetVersion: Date.now(), 
-                attendeeResetVersion: Date.now(),
-                awardName: 'Popular Vote' 
-            }, { merge: true });
-
-            await batch.commit();
-            showToast('รีเซ็ตระบบเรียบร้อยแล้ว', 'success');
-        }
-
         async function saveAwardConfig() {
             if(!db) return;
             const name = document.getElementById('input-award-name').value.trim();
             if(!name) return showToast("กรุณาใส่ชื่อรางวัล", "error");
             await getConfigRef().set({ awardName: name }, { merge: true });
+            // The change will be detected by listener, UI updates automatically
             showToast(`เปลี่ยนหัวข้อเป็น: ${name}`, 'success');
         }
 
@@ -836,14 +830,12 @@
             const phase = systemConfig.activePhase || 'closed';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             
-            // Fix: Check for element existence
             const voteHeader = document.getElementById('vote-header-category');
-            if(voteHeader) voteHeader.innerText = `โหวต: ${currentAward}`;
+            if(voteHeader) voteHeader.innerText = `${currentAward}`;
 
             if (phase === 'register') {
                 if (currentSubView === 'register-attend') {
                     document.getElementById('view-register-attend').classList.remove('hidden');
-                    document.getElementById('btn-back-attend').classList.toggle('hidden', sessionStorage.getItem('autoRedirectFromVote'));
                 } else if (currentSubView === 'register-contest') { document.getElementById('view-register-contest').classList.remove('hidden'); } 
                 else { document.getElementById('view-register-menu').classList.remove('hidden'); updateRegisterMenuState(); }
             } else if (phase === 'vote') { document.getElementById('view-vote').classList.remove('hidden'); } 
@@ -870,6 +862,7 @@
                 } else {
                     btnAttend.classList.remove('disabled-link');
                     btnAttend.href = "#register-attend";
+                    btnAttend.querySelector('.title-text').innerText = "ลงทะเบียนเข้างาน";
                 }
             }
             if (btnContest) {
@@ -882,6 +875,7 @@
                 } else {
                     btnContest.classList.remove('disabled-link');
                     btnContest.href = "#register-contest";
+                    btnContest.querySelector('.title-text').innerText = "ลงทะเบียนประกวด";
                 }
             }
         }
@@ -947,7 +941,10 @@
 
         async function handleAttendSubmit() {
             if (!db) return;
-            if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            // Always allow submit if redirected from vote, even if phase is 'vote'
+            const isRedirected = sessionStorage.getItem('pendingVoteId');
+            if (systemConfig.activePhase !== 'register' && !isRedirected) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            
             if (!enforceLocationCheck()) return;
             const id = document.getElementById('attend-id').value.trim();
             const name = document.getElementById('attend-name').value.trim();
@@ -963,7 +960,14 @@
                 safeSetStorage(`reg_attend_${appId}`, 'true');
                 showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
                 document.getElementById('attend-id').value = ''; document.getElementById('attend-name').value = '';
-                navigateBackFromRegister();
+                
+                // AUTO BOUNCE BACK TO VOTE
+                if (isRedirected) {
+                    sessionStorage.removeItem('pendingVoteId'); // Clear pending flag
+                    window.location.hash = ''; // Back to vote
+                } else {
+                    navigateBackFromRegister();
+                }
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาด', 'error'); } 
             finally { btn.disabled = false; btn.innerHTML = 'ยืนยันการลงชื่อ'; }
         }
@@ -1017,19 +1021,25 @@
             btn.disabled = true; btn.innerHTML = 'กำลังตรวจสอบ...';
 
             try {
+                // 1. Check if Registered
                 const attendeeRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(voterId);
                 const attendeeDoc = await attendeeRef.get();
+                
                 if (!attendeeDoc.exists) {
-                    showToast('ไม่พบรหัสนักศึกษานี้ในระบบลงทะเบียน', 'error');
+                    // ** LOGIC: NOT REGISTERED -> REDIRECT **
+                    showToast('คุณยังไม่ได้ลงทะเบียนเข้างาน', 'error');
+                    
+                    // Set flag for auto-return
+                    sessionStorage.setItem('pendingVoteId', voterId);
+                    
                     setTimeout(() => {
                         closeVoteModal();
-                        sessionStorage.setItem('autoRedirectFromVote', 'true');
-                        forceNavigate('register-attend');
-                        document.getElementById('attend-id').value = voterId;
-                    }, 1500);
-                    return;
+                        window.location.hash = 'register-attend'; // Redirect
+                    }, 1000);
+                    return; // Stop execution
                 }
 
+                // 2. Voting Transaction
                 const voteDocId = `${voterId}_${scoreField}`; 
                 const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voteDocId);
                 const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
@@ -1037,8 +1047,13 @@
                 await db.runTransaction(async (transaction) => {
                     const voteDoc = await transaction.get(voteRef);
                     if (voteDoc.exists) throw "ALREADY_VOTED";
+                    
                     transaction.set(voteRef, {
-                        voterId: voterId, voterName: attendeeDoc.data().name || 'Unknown', candidateId: candidateId, awardCategory: currentAward, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        voterId: voterId, 
+                        voterName: attendeeDoc.data().name || 'Unknown', 
+                        candidateId: candidateId, 
+                        awardCategory: currentAward, 
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     transaction.update(candidateRef, { [scoreField]: firebase.firestore.FieldValue.increment(1) });
                 });
@@ -1046,21 +1061,30 @@
                 showToast('โหวตสำเร็จ!', 'success');
                 closeVoteModal();
                 
-                // Store Timestamp
+                // Store Vote Data Locally
                 const now = new Date();
                 const timeString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
-                safeSetStorage(`voted_timestamp_${appId}_${currentAward}`, timeString);
                 
                 safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
-                renderCandidates();
+                safeSetStorage(`voted_time_${appId}_${currentAward}`, timeString);
+                safeSetStorage(`voted_award_${appId}_${currentAward}`, currentAward);
+                
+                renderCandidates(); // This will trigger receipt view
+                
             } catch (error) {
                 if (error === "ALREADY_VOTED") {
                     showToast('คุณได้โหวตในหัวข้อนี้ไปแล้ว', 'error');
+                    // Ensure local state matches reality
                     safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
                     closeVoteModal();
                     renderCandidates(); 
-                } else showToast('เกิดข้อผิดพลาด', 'error');
-            } finally { btn.disabled = false; btn.innerHTML = 'ยืนยันคะแนน'; }
+                } else {
+                    console.error(error);
+                    showToast('เกิดข้อผิดพลาดในการโหวต', 'error');
+                }
+            } finally { 
+                if(btn) { btn.disabled = false; btn.innerHTML = 'ยืนยันคะแนน'; }
+            }
         }
 
         // --- RENDER ---
@@ -1072,39 +1096,48 @@
             const currentAward = systemConfig.awardName || 'Popular Vote';
             const votedCandidateId = safeGetStorage(`voted_candidate_${appId}_${currentAward}`);
             
+            // If already voted for THIS category
             if (votedCandidateId) {
                 const votedCandidate = candidates.find(c => c.id === votedCandidateId);
-                const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ผู้สมัคร";
+                const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ไม่พบข้อมูล";
                 const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
-                
-                // Get stored timestamp or default
-                const timestamp = safeGetStorage(`voted_timestamp_${appId}_${currentAward}`) || '-';
+                const votedTime = safeGetStorage(`voted_time_${appId}_${currentAward}`) || '-';
                 
                 listContainer.classList.add('hidden');
                 votedContainer.classList.remove('hidden');
+                
+                // ** NEW RECEIPT UI **
                 votedContainer.innerHTML = `
-                    <div class="text-center py-6 animate-fade-in">
-                        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg border-4 border-white"><i class="fa-solid fa-check"></i></div>
-                        <h3 class="text-xl font-bold text-white mb-1">คุณโหวตเรียบร้อยแล้ว</h3>
-                        <p class="text-green-300 text-sm mb-6 font-bold bg-green-900/30 py-1 px-3 rounded-full inline-block">หัวข้อ: ${currentAward}</p>
-                        <div class="glass-panel p-6 rounded-2xl shadow-xl max-w-xs mx-auto border-2 border-green-400/50">
-                            <div class="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2">คุณเลือกโหวตให้กับ</div>
-                            <h2 class="text-2xl font-bold text-slate-800 mb-1">${cName}</h2>
-                            <p class="text-green-600 font-medium mb-4">${cCostume}</p>
+                    <div class="px-6 py-4 animate-fade-in">
+                        <div class="receipt-card p-6 rounded-lg shadow-2xl mx-auto max-w-xs text-center">
+                            <div class="mb-4">
+                                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-check"></i></div>
+                            </div>
+                            <h2 class="text-xl font-bold text-slate-800 tracking-tight">บัตรบันทึกคะแนน</h2>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6">OFFICIAL VOTE RECORD</p>
                             
-                            <div class="border-t border-dashed border-slate-300 my-4 pt-4 text-left space-y-2">
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-slate-500">สถานะ:</span>
-                                    <span class="text-green-600 font-bold">บันทึกคะแนนแล้ว</span>
+                            <div class="space-y-4 mb-6">
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <div class="text-[10px] text-slate-400 mb-1">ผู้ที่ได้รับคะแนน</div>
+                                    <div class="font-bold text-lg text-slate-800">${cName}</div>
+                                    <div class="text-xs text-indigo-600 font-medium">${cCostume}</div>
                                 </div>
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-slate-500">เวลาที่โหวต:</span>
-                                    <span class="text-slate-700">${timestamp}</span>
+
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">หัวข้อรางวัล</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${currentAward}</span>
+                                </div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">วันที่ / เวลา</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${votedTime}</span>
                                 </div>
                             </div>
-                            
-                            <div class="mt-4 pt-4 border-t border-slate-200">
-                                <button onclick="recheckVoteStatus()" class="text-[10px] text-slate-400 hover:text-red-500 underline"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบสถานะใหม่</button>
+
+                            <div class="text-[10px] text-slate-400">
+                                ขอบคุณที่ร่วมกิจกรรม<br>Christmas 2025
+                            </div>
+                            <div class="mt-4">
+                                <button onclick="recheckVoteStatus()" class="text-[10px] text-red-400 hover:text-red-600 underline">โหลดหน้าโหวตใหม่</button>
                             </div>
                         </div>
                     </div>`;
@@ -1128,7 +1161,7 @@
         
         function recheckVoteStatus() {
             const currentAward = systemConfig.awardName || 'Popular Vote';
-            if(confirm("กดตกลงเพื่อรีเฟรชหน้าโหวตใหม่")) {
+            if(confirm("ต้องการโหลดหน้าโหวตใหม่หรือไม่?")) {
                 localStorage.removeItem(`voted_candidate_${appId}_${currentAward}`);
                 renderCandidates();
             }
@@ -1149,10 +1182,6 @@
                 label = selectedResultCategory.replace('votes_', '').replace(/_/g, ' ');
             }
             
-            // Fix: Add check if element exists before setting innerText
-            const resultHeader = document.getElementById('result-header-category');
-            if (resultHeader) resultHeader.innerText = label;
-
             const container = document.getElementById('leaderboard-list');
             if(!container) return;
 
@@ -1287,7 +1316,7 @@
         function showToast(msg, type = 'success') {
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+            document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : (type === 'info' ? '<i class="fa-solid fa-circle-info text-blue-400"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-400"></i>');
             toast.classList.remove('opacity-0', '-translate-y-10');
             setTimeout(() => toast.classList.add('opacity-0', '-translate-y-10'), 3000);
         }
