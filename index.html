@@ -83,6 +83,13 @@
         .map-locked { pointer-events: none; opacity: 0.8; }
         .lock-btn { z-index: 1000; position: absolute; top: 10px; right: 10px; }
         .fixed.inset-0.z-50 { z-index: 99999 !important; } /* Force Modal on Top */
+
+        /* --- FIX DROPDOWN COLOR & STYLE --- */
+        #result-category-select option {
+            color: #1e293b; /* Dark Slate 800 */
+            background-color: #ffffff;
+            padding: 8px;
+        }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -226,8 +233,8 @@
                     <div class="glass-panel rounded-3xl shadow-2xl overflow-hidden">
                         <div class="bg-gradient-to-r from-yellow-500 to-amber-600 p-4 text-white text-center shadow-md">
                             <h2 class="text-xl font-bold flex justify-center items-center gap-2"><i class="fa-solid fa-crown text-yellow-200"></i> ผลคะแนน</h2>
-                            <div class="mt-2">
-                                <select id="result-category-select" onchange="renderLeaderboard()" class="bg-white/20 text-white border border-white/40 text-sm rounded-lg p-2 w-full max-w-[200px] outline-none">
+                            <div class="mt-2 w-full px-4">
+                                <select id="result-category-select" onchange="renderLeaderboard()" class="bg-white/20 text-white border border-white/40 text-sm rounded-lg p-2 w-full outline-none cursor-pointer hover:bg-white/30 transition-colors">
                                     <option value="current">รางวัลปัจจุบัน</option>
                                     <!-- Options injected via JS -->
                                 </select>
@@ -1062,12 +1069,21 @@
             const select = document.getElementById('result-category-select');
             if (!select) return;
 
-            const currentHTML = `<option value="current">รางวัลปัจจุบัน (${systemConfig.awardName})</option>`;
-            const opts = cats.map(c => `<option value="${c}">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`).join('');
+            // Use classes directly on options as a backup
+            const currentHTML = `<option value="current" class="text-slate-800 bg-white">รางวัลปัจจุบัน (${systemConfig.awardName})</option>`;
+            const opts = cats.map(c => `<option value="${c}" class="text-slate-800 bg-white">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`).join('');
             
-            if (select.innerHTML !== currentHTML + opts) {
-                select.innerHTML = currentHTML + opts;
-                select.value = selectedResultCategory;
+            // Only update if content changed to prevent loop issues
+            const newContent = currentHTML + opts;
+            if (select.innerHTML !== newContent) {
+                const currentVal = select.value;
+                select.innerHTML = newContent;
+                // Try to restore value if it still exists
+                if (currentVal === 'current' || cats.includes(currentVal)) {
+                    select.value = currentVal;
+                } else {
+                    select.value = selectedResultCategory;
+                }
             }
         }
 
