@@ -134,7 +134,7 @@
             <button onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่</button>
             <button onclick="closeLocationBlock()" class="w-full text-slate-400 text-sm hover:text-white underline">ย้อนกลับ</button>
             <div class="mt-6 pt-4 border-t border-white/10">
-                 <button onclick="window.location.hash='#admin'; closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300"><i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ</button>
+                 <button onclick="goToAdmin(); closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300"><i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ</button>
             </div>
         </div>
     </div>
@@ -377,7 +377,12 @@
             </main>
 
             <footer class="mt-auto py-6 text-center" id="site-footer">
-                <p class="text-slate-400/30 text-xs">© 2025 Christmas Event <a href="#admin" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a></p>
+                <p class="text-slate-400/30 text-xs">© 2025 Christmas Event 
+                    <!-- FIX: ใช้ onclick="goToAdmin()" เพื่อให้กดแล้วทำงานทันที ไม่ต้องรอ hash change -->
+                    <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login">
+                        <i class="fa-solid fa-lock"></i> Admin Login
+                    </a>
+                </p>
             </footer>
 
             <!-- VOTE VERIFICATION MODAL -->
@@ -523,6 +528,13 @@
                 currentSubView = 'register-menu';
                 updateUIBasedOnConfig();
             }
+        }
+
+        // FIX: เพิ่มฟังก์ชัน goToAdmin เพื่อบังคับไปหน้า Admin ทันที
+        function goToAdmin() {
+            window.location.hash = 'admin';
+            // บังคับเช็ค Routing อีกรอบเผื่อ Hash ไม่เปลี่ยน (กรณีอยู่ที่ #admin อยู่แล้ว)
+            handleRouting(); 
         }
 
         function showAdminLogin() {
@@ -840,8 +852,10 @@
             const phase = systemConfig.activePhase || 'closed';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             
+            // --- FIX START: Add check for vote-header-category existence ---
             const voteHeader = document.getElementById('vote-header-category');
             if(voteHeader) voteHeader.innerText = `โหวต: ${currentAward}`;
+            // --- FIX END ---
             
             // Note: result-header-category removed from HTML as dropdown replaces it
             // So we don't update it to avoid errors
@@ -897,6 +911,7 @@
             const phases = ['register', 'vote', 'result', 'closed'];
             phases.forEach(p => {
                 const btn = document.getElementById(`btn-phase-${p}`);
+                if (!btn) return; // FIX: Add safety check for button existence
                 const indicator = btn.querySelector('.status-indicator');
                 if (systemConfig.activePhase === p) {
                     btn.classList.remove('phase-btn-inactive'); btn.classList.add('phase-btn-active');
@@ -907,9 +922,14 @@
                 }
             });
             const locBtn = document.getElementById('btn-loc-toggle');
-            locBtn.innerText = "เปิดอยู่";
-            locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
-            if(document.getElementById('input-award-name').value === "" && systemConfig.awardName) document.getElementById('input-award-name').value = systemConfig.awardName;
+            if (locBtn) { // FIX: Add safety check
+                locBtn.innerText = "เปิดอยู่";
+                locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
+            }
+            const awardInput = document.getElementById('input-award-name');
+            if(awardInput && awardInput.value === "" && systemConfig.awardName) {
+                awardInput.value = systemConfig.awardName;
+            }
         }
 
         // --- HELPER: Get all distinct awards ---
@@ -926,6 +946,9 @@
         function updateResultDropdown() {
             const cats = getAvailableCategories();
             const select = document.getElementById('result-category-select');
+            // FIX: Safety check if select exists
+            if (!select) return;
+
             const currentHTML = `<option value="current">รางวัลปัจจุบัน (${systemConfig.awardName})</option>`;
             const opts = cats.map(c => `<option value="${c}">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`).join('');
             
@@ -1239,6 +1262,42 @@
         }
         
         function closeAdminVoteModal() { document.getElementById('admin-vote-modal').classList.add('hidden'); }
+
+        // --- ADMIN ---
+        function checkAdminPass() {
+            const input = document.getElementById('admin-pass');
+            if (input.value === 'Admin123') { 
+                isAdminAuthenticated = true; input.value = '';
+                showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success');
+                // Use hash change to trigger routing logic correctly
+                window.location.hash = '#admin'; 
+                // Directly call showAdminDashboard to be instant, but hashchange will also fire
+                // To prevent double execution, we can rely on hashchange, but for safety in case of reload:
+                if(document.getElementById('view-admin-login')) document.getElementById('view-admin-login').classList.add('hidden');
+                if(document.getElementById('view-admin-dashboard')) document.getElementById('view-admin-dashboard').classList.remove('hidden');
+                
+                // Manually trigger updates
+                showAdminDashboard();
+                checkLocationAccess();
+            } else {
+                showToast('รหัสผ่านไม่ถูกต้อง', 'error');
+                input.classList.add('border-red-500'); setTimeout(() => input.classList.remove('border-red-500'), 1000);
+            }
+        }
+        function logoutAdmin() { isAdminAuthenticated = false; window.location.hash = ''; }
+        function copyUserLink() { document.getElementById('user-link-input').select(); document.execCommand('copy'); showToast('คัดลอกลิงก์แล้ว', 'success'); }
+
+        // --- UTILS ---
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+            toast.classList.remove('opacity-0', '-translate-y-10');
+            setTimeout(() => toast.classList.add('opacity-0', '-translate-y-10'), 3000);
+        }
+
+        function safeSetStorage(key, value) { try { localStorage.setItem(key, value); } catch (e) { console.warn("LocalStorage blocked", e); } }
+        function escapeHtml(text) { return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
     </script>
 </body>
 </html>
