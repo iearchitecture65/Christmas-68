@@ -306,7 +306,7 @@
                             <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
                                 <h3 class="font-bold text-slate-700 text-sm mb-3 flex justify-between items-center">
                                     <span><i class="fa-solid fa-map-location-dot"></i> การจำกัดพื้นที่ (GPS)</span>
-                                    <button onclick="toggleLocationCheck()" id="btn-loc-toggle" class="px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500">ปิดอยู่</button>
+                                    <button onclick="toggleLocationCheck()" id="btn-loc-toggle" class="px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500 transition-colors">ปิดอยู่</button>
                                 </h3>
                                 <!-- Map Container with Lock Button -->
                                 <div class="relative w-full h-64 mb-3">
@@ -521,6 +521,7 @@
         let currentSubView = 'register-menu'; 
         let adminMap = null;
         let adminMarker = null;
+        let adminCircle = null; // New Circle Object
         let isLocationValid = true;
         let isMapLocked = true;
         let selectedResultCategory = 'current';
@@ -624,14 +625,21 @@
             if (adminMap) { adminMap.invalidateSize(); return; }
             const lat = systemConfig.targetLat || 13.7563;
             const lng = systemConfig.targetLng || 100.5018;
+            const rad = systemConfig.allowedRadius || 100;
+
             adminMap = L.map('admin-map', { 
                 dragging: !isMapLocked, touchZoom: !isMapLocked, doubleClickZoom: !isMapLocked, scrollWheelZoom: !isMapLocked, boxZoom: !isMapLocked, keyboard: !isMapLocked, zoomControl: !isMapLocked
             }).setView([lat, lng], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(adminMap);
+            
+            // Marker
             adminMarker = L.marker([lat, lng], {draggable: !isMapLocked}).addTo(adminMap);
+            // Circle
+            adminCircle = L.circle([lat, lng], { radius: rad, color: 'green', fillColor: '#4ade80', fillOpacity: 0.2 }).addTo(adminMap);
             
             adminMarker.on('dragend', function(e) { updateLocationInputs(e.target.getLatLng().lat, e.target.getLatLng().lng); });
             adminMap.on('click', function(e) { if(isMapLocked) return; adminMarker.setLatLng(e.latlng); updateLocationInputs(e.latlng.lat, e.latlng.lng); });
+            
             updateMapLockUI();
         }
 
@@ -651,13 +659,14 @@
             if (isMapLocked) {
                 btn.innerHTML = '<i class="fa-solid fa-lock"></i>'; btn.classList.add('text-red-500'); mapEl.classList.add('map-locked');
             } else {
-                btn.innerHTML = '<i class="fa-solid fa-lock-open"></i>'; btn.classList.remove('text-red-500'); btn.classList.add('text-green-500'); mapEl.classList.remove('map-locked');
+                btn.innerHTML = '<i class="fa-solid fa-lock-open"></i>'; btn.classList.remove('text-red-500'); btn.classList.remove('text-green-500'); mapEl.classList.remove('map-locked');
             }
         }
 
         function updateLocationInputs(lat, lng) {
             document.getElementById('input-lat').value = lat.toFixed(6);
             document.getElementById('input-lng').value = lng.toFixed(6);
+            if(adminCircle) adminCircle.setLatLng([lat, lng]);
         }
 
         function getLocationFromDevice() {
@@ -666,7 +675,11 @@
             navigator.geolocation.getCurrentPosition(pos => {
                 const lat = pos.coords.latitude; const lng = pos.coords.longitude;
                 updateLocationInputs(lat, lng);
-                if (adminMap && adminMarker) { adminMap.setView([lat, lng], 17); adminMarker.setLatLng([lat, lng]); }
+                if (adminMap && adminMarker) { 
+                    adminMap.setView([lat, lng], 17); 
+                    adminMarker.setLatLng([lat, lng]); 
+                    if(adminCircle) adminCircle.setLatLng([lat, lng]);
+                }
                 showToast("พบพิกัดของคุณแล้ว", "success");
             }, (err) => { console.error(err); showToast("ไม่สามารถดึงพิกัดได้", "error"); });
         }
@@ -742,6 +755,37 @@
                     
                     safeSetStorage(`last_award_viewed_${appId}`, systemConfig.awardName);
 
+                    // --- FORCE UPDATE MAP & INPUTS FOR SYNCING ---
+                    // This ensures all admins see the same map state immediately
+                    if (adminMap && systemConfig.targetLat) {
+                         // Ensure floats
+                         const lat = parseFloat(systemConfig.targetLat);
+                         const lng = parseFloat(systemConfig.targetLng);
+                         const rad = parseFloat(systemConfig.allowedRadius || 100);
+
+                         // Update Inputs
+                         const latInput = document.getElementById('input-lat');
+                         const lngInput = document.getElementById('input-lng');
+                         const radInput = document.getElementById('input-radius');
+                         
+                         if(latInput) latInput.value = lat.toFixed(6);
+                         if(lngInput) lngInput.value = lng.toFixed(6);
+                         // Don't forcefully overwrite radius if focused, but do it for sync
+                         if(radInput && document.activeElement !== radInput) radInput.value = rad;
+
+                         // Update Map Elements
+                         const newLatLng = new L.LatLng(lat, lng);
+                         adminMarker.setLatLng(newLatLng);
+                         if(adminCircle) {
+                             adminCircle.setLatLng(newLatLng);
+                             adminCircle.setRadius(rad);
+                         }
+                         
+                         // Only pan map if significant change or first load
+                         // adminMap.setView(newLatLng); // Optional: don't auto pan if user is dragging else where
+                         adminMap.invalidateSize(); // Fix rendering glitches
+                    }
+
                     // --- INTELLIGENT RESET LOGIC ---
                     const serverVoteVer = systemConfig.voteResetVersion;
                     const localVoteVer = safeGetStorage(`vote_ver_${appId}`);
@@ -775,20 +819,6 @@
                 
                 if (systemConfig.activePhase === 'vote') {
                     renderCandidates();
-                }
-
-                if (adminMap && systemConfig.targetLat) {
-                     const latInput = document.getElementById('input-lat');
-                     const lngInput = document.getElementById('input-lng');
-                     const radInput = document.getElementById('input-radius');
-                     
-                     // Force update inputs to sync with server
-                     if(latInput) latInput.value = systemConfig.targetLat;
-                     if(lngInput) lngInput.value = systemConfig.targetLng;
-                     if(radInput && systemConfig.allowedRadius) radInput.value = systemConfig.allowedRadius;
-
-                     adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15); 
-                     adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
                 }
             });
         }
@@ -1033,7 +1063,8 @@
         function deg2rad(deg) { return deg * (Math.PI/180); }
 
         function checkLocationAccess(forceShowModal = false) {
-            if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) {
+            // Check if DB explicitly says false (ensure boolean)
+            if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) {
                 document.getElementById('view-location-block').classList.add('hidden');
                 document.getElementById('location-warning-banner').style.display = 'none';
                 isLocationValid = true; return;
@@ -1043,11 +1074,15 @@
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const userLat = position.coords.latitude; const userLng = position.coords.longitude;
-                    const dist = getDistanceFromLatLonInMeters(userLat, userLng, systemConfig.targetLat, systemConfig.targetLng);
-                    document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
-                    document.getElementById('loc-allowed').innerText = systemConfig.allowedRadius + " เมตร";
+                    const targetLat = parseFloat(systemConfig.targetLat);
+                    const targetLng = parseFloat(systemConfig.targetLng);
+                    const allowedRad = parseFloat(systemConfig.allowedRadius || 100);
 
-                    if (dist > systemConfig.allowedRadius) {
+                    const dist = getDistanceFromLatLonInMeters(userLat, userLng, targetLat, targetLng);
+                    document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
+                    document.getElementById('loc-allowed').innerText = allowedRad + " เมตร";
+
+                    if (dist > allowedRad) {
                         isLocationValid = false;
                         document.getElementById('location-warning-banner').style.display = 'block';
                         if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
@@ -1062,13 +1097,18 @@
         }
 
         function enforceLocationCheck() {
-            if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) return true;
+            if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) return true;
             checkLocationAccess(false);
             if (!isLocationValid) { document.getElementById('view-location-block').classList.remove('hidden'); return false; }
             return true;
         }
         function closeLocationBlock() { document.getElementById('view-location-block').classList.add('hidden'); }
-        async function toggleLocationCheck() { if(!db) return; await getConfigRef().set({ locationCheckEnabled: !systemConfig.locationCheckEnabled }, { merge: true }); }
+        async function toggleLocationCheck() { 
+            if(!db) return; 
+            // Toggle boolean and force save
+            const newState = !systemConfig.locationCheckEnabled;
+            await getConfigRef().set({ locationCheckEnabled: newState }, { merge: true }); 
+        }
         async function saveLocationConfig() {
             if(!db) return;
             const lat = parseFloat(document.getElementById('input-lat').value);
@@ -1165,7 +1205,7 @@
             const locBtn = document.getElementById('btn-loc-toggle');
             if (locBtn) {
                 locBtn.innerText = systemConfig.locationCheckEnabled ? "เปิดอยู่" : "ปิดอยู่";
-                locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
+                locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white transition-colors" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500 transition-colors";
             }
             const awardInput = document.getElementById('input-award-name');
             if(awardInput && awardInput.value === "" && systemConfig.awardName) {
