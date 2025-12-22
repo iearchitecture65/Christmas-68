@@ -26,23 +26,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* FIX: ล็อกหน้าจอหลักไม่ให้เลื่อน */
-        html, body { 
-            height: 100%;
-            overflow: hidden; /* ห้าม scroll ที่ body */
-            font-family: 'Kanit', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-        }
+        /* CORE LAYOUT LOCK */
+        html, body { height: 100%; overflow: hidden; font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* สร้าง Container สำหรับ Scroll โดยเฉพาะ */
-        #app-scroll-wrapper {
-            height: 100%;
-            overflow-y: auto; /* ให้ scroll ได้ถ้าเนื้อหายาวเกิน */
-            overscroll-behavior-y: contain; /* ป้องกันการเด้งไปกระทบ body */
-            -webkit-overflow-scrolling: touch; /* เพื่อความลื่นบน iOS */
-            position: relative;
-        }
+        /* SCROLL CONTAINER */
+        #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; }
 
+        /* THEME & ANIMATION */
         .snow-bg {
             background-color: #0f172a;
             background-image: 
@@ -54,79 +44,49 @@
             background-attachment: fixed;
             animation: snow 20s linear infinite;
         }
-        @keyframes snow {
-            0% { background-position: 0 0, 40px 60px, 130px 270px; }
-            100% { background-position: 550px 1000px, 400px 400px, 300px 300px; }
-        }
+        @keyframes snow { 100% { background-position: 550px 1000px, 400px 400px, 300px 300px; } }
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
         .modal-enter { animation: modalIn 0.2s ease-out forwards; }
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-        .phase-btn-active {
-            background-color: #3b82f6; color: white; border-color: #2563eb;
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-        }
-        .phase-btn-inactive {
-            background-color: white; color: #64748b; border-color: #e2e8f0;
-        }
+        /* UI ELEMENTS */
+        .phase-btn-active { background-color: #3b82f6; color: white; border-color: #2563eb; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
+        .phase-btn-inactive { background-color: white; color: #64748b; border-color: #e2e8f0; }
         .phase-btn-inactive:hover { background-color: #f8fafc; }
-
         .admin-tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: bold; }
         .admin-tab-inactive { color: #64748b; border-bottom: 2px solid transparent; }
+        .disabled-link { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: default; background-color: #f1f5f9; }
         
+        /* DATA TABLE */
         .data-table th { text-align: left; padding: 0.75rem; background-color: #f1f5f9; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
         .data-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; color: #334155; }
         .data-table tr:last-child td { border-bottom: none; }
         .clickable-row:hover { background-color: #f8fafc; cursor: pointer; }
 
-        #initial-loader {
-            position: fixed; inset: 0; background: #0f172a; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; transition: opacity 0.5s ease;
-        }
-
-        #location-warning-banner {
-            background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem;
-            text-align: center; padding: 8px; backdrop-filter: blur(4px);
-            z-index: 90; display: none; animation: slideDown 0.3s ease-out;
-        }
+        /* UTILS */
+        #initial-loader { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
+        #location-warning-banner { background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; text-align: center; padding: 8px; backdrop-filter: blur(4px); z-index: 90; display: none; animation: slideDown 0.3s ease-out; }
         @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
-        
-        .disabled-link {
-            filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: default;
-            background-color: #f1f5f9;
-        }
-
-        /* Map Lock Overlay */
         .map-locked { pointer-events: none; opacity: 0.8; }
         .lock-btn { z-index: 1000; position: absolute; top: 10px; right: 10px; }
-
     </style>
 </head>
 <body class="snow-bg text-gray-800">
 
-    <!-- INITIAL LOADING SCREEN -->
+    <!-- INITIAL LOADING -->
     <div id="initial-loader">
         <div class="animate-bounce mb-4"><i class="fa-solid fa-tree text-green-400 text-4xl"></i></div>
         <div class="flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>กำลังโหลดระบบ...</span></div>
     </div>
 
-    <!-- LOCATION BLOCK SCREEN (MODAL) -->
+    <!-- LOCATION BLOCK MODAL -->
     <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center hidden">
         <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 max-w-sm w-full animate-bounce-short relative">
             <button onclick="closeLocationBlock()" class="absolute top-4 right-4 text-white/50 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
             <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-location-dot text-4xl text-red-500"></i></div>
             <h2 class="text-2xl font-bold text-white mb-2">อยู่นอกพื้นที่จัดงาน</h2>
-            <p class="text-slate-300 text-sm mb-6">กรุณาอยู่ในบริเวณงานเพื่อทำการโหวตหรือลงทะเบียน</p>
+            <p class="text-slate-300 text-sm mb-6">คุณต้องอยู่ในบริเวณงานเพื่อใช้งานระบบ</p>
             <div class="bg-black/20 rounded-xl p-4 mb-6 text-left">
                 <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
                 <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
@@ -139,11 +99,12 @@
         </div>
     </div>
 
-    <!-- WRAPPER FOR SCROLLING -->
+    <!-- MAIN SCROLL WRAPPER -->
     <div id="app-scroll-wrapper">
         <div class="max-w-md mx-auto min-h-full flex flex-col relative pb-20">
             <div id="location-warning-banner" class="sticky top-0 shadow-md"><i class="fa-solid fa-circle-exclamation mr-1"></i> อยู่นอกพื้นที่จัดงาน (ดูข้อมูลได้อย่างเดียว)</div>
 
+            <!-- HEADER -->
             <header class="pt-8 pb-4 text-center px-4" id="main-header">
                 <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce"><i class="fa-solid fa-tree text-green-400 text-2xl"></i></div>
                 <h1 class="text-3xl font-extrabold text-white drop-shadow-md">Christmas <span class="text-red-500">2025</span></h1>
@@ -160,10 +121,12 @@
                         </div>
                     </div>
                     <div id="loading-vote" class="text-center py-10 text-white/60"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...</div>
-                    <!-- 2-Column Grid -->
-                    <div id="candidates-list" class="grid grid-cols-2 gap-3 pb-24">
-                        <!-- Candidates injected here -->
-                    </div>
+                    
+                    <!-- Candidates Grid -->
+                    <div id="candidates-list" class="grid grid-cols-2 gap-3 pb-24"></div>
+
+                    <!-- Voted State Card (Hidden by default) -->
+                    <div id="voted-card-container" class="hidden"></div>
                 </div>
 
                 <!-- 2. VIEW: REGISTER MENU -->
@@ -378,10 +341,8 @@
 
             <footer class="mt-auto py-6 text-center" id="site-footer">
                 <p class="text-slate-400/30 text-xs">© 2025 Christmas Event 
-                    <!-- FIX: ใช้ onclick="goToAdmin()" เพื่อให้กดแล้วทำงานทันที ไม่ต้องรอ hash change -->
-                    <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login">
-                        <i class="fa-solid fa-lock"></i> Admin Login
-                    </a>
+                    <!-- FIX: Using onclick to force navigation -->
+                    <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a>
                 </p>
             </footer>
 
@@ -530,10 +491,8 @@
             }
         }
 
-        // FIX: เพิ่มฟังก์ชัน goToAdmin เพื่อบังคับไปหน้า Admin ทันที
         function goToAdmin() {
             window.location.hash = 'admin';
-            // บังคับเช็ค Routing อีกรอบเผื่อ Hash ไม่เปลี่ยน (กรณีอยู่ที่ #admin อยู่แล้ว)
             handleRouting(); 
         }
 
@@ -657,7 +616,6 @@
                     const localVoteVer = safeGetStorage(`vote_ver_${appId}`);
                     if (serverVoteVer && localVoteVer != serverVoteVer) {
                         console.log("Global Vote Reset Detected");
-                        // Clear ALL vote flags
                         Object.keys(localStorage).forEach(key => {
                             if (key.startsWith(`voted_candidate_${appId}`)) localStorage.removeItem(key);
                         });
@@ -674,8 +632,6 @@
                         safeSetStorage(`att_ver_${appId}`, serverAttVer);
                         updateRegisterMenuState();
                     }
-                    // ---------------------------------
-
                 } else {
                     systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
                     getConfigRef().set(systemConfig).catch(e=>console.error(e));
@@ -746,7 +702,6 @@
             const snap = await attendeesRef.get();
             snap.forEach(doc => batch.delete(doc.ref));
 
-            // Important: trigger attendee reset for clients
             const configRef = getConfigRef();
             batch.set(configRef, { attendeeResetVersion: Date.now() }, { merge: true });
 
@@ -852,13 +807,9 @@
             const phase = systemConfig.activePhase || 'closed';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             
-            // --- FIX START: Add check for vote-header-category existence ---
+            // Fix: Check for element existence
             const voteHeader = document.getElementById('vote-header-category');
             if(voteHeader) voteHeader.innerText = `โหวต: ${currentAward}`;
-            // --- FIX END ---
-            
-            // Note: result-header-category removed from HTML as dropdown replaces it
-            // So we don't update it to avoid errors
 
             if (phase === 'register') {
                 if (currentSubView === 'register-attend') {
@@ -907,11 +858,10 @@
         }
 
         function updateAdminUIState() {
-            // ... (Same phase button logic)
             const phases = ['register', 'vote', 'result', 'closed'];
             phases.forEach(p => {
                 const btn = document.getElementById(`btn-phase-${p}`);
-                if (!btn) return; // FIX: Add safety check for button existence
+                if (!btn) return;
                 const indicator = btn.querySelector('.status-indicator');
                 if (systemConfig.activePhase === p) {
                     btn.classList.remove('phase-btn-inactive'); btn.classList.add('phase-btn-active');
@@ -922,7 +872,7 @@
                 }
             });
             const locBtn = document.getElementById('btn-loc-toggle');
-            if (locBtn) { // FIX: Add safety check
+            if (locBtn) {
                 locBtn.innerText = "เปิดอยู่";
                 locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
             }
@@ -946,13 +896,11 @@
         function updateResultDropdown() {
             const cats = getAvailableCategories();
             const select = document.getElementById('result-category-select');
-            // FIX: Safety check if select exists
             if (!select) return;
 
             const currentHTML = `<option value="current">รางวัลปัจจุบัน (${systemConfig.awardName})</option>`;
             const opts = cats.map(c => `<option value="${c}">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`).join('');
             
-            // Only update if options changed to prevent jump
             if (select.innerHTML !== currentHTML + opts) {
                 select.innerHTML = currentHTML + opts;
                 select.value = selectedResultCategory;
@@ -960,7 +908,6 @@
         }
 
         // --- ACTION HANDLERS ---
-        // ... (Same as before, using Versioning logic for reset) ...
         async function handleAttendSubmit() {
             if (!db) return;
             if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
@@ -1075,51 +1022,50 @@
 
         // --- RENDER ---
         function renderCandidates() {
-            const container = document.getElementById('candidates-list');
-            if(!container) return; // Not in vote view
+            const listContainer = document.getElementById('candidates-list');
+            const votedContainer = document.getElementById('voted-card-container');
+            if(!listContainer || !votedContainer) return;
+
             const currentAward = systemConfig.awardName || 'Popular Vote';
             const votedCandidateId = safeGetStorage(`voted_candidate_${appId}_${currentAward}`);
             
             if (votedCandidateId) {
                 const votedCandidate = candidates.find(c => c.id === votedCandidateId);
                 const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ผู้สมัคร";
-                container.parentElement.innerHTML = `
+                const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
+                
+                listContainer.classList.add('hidden');
+                votedContainer.classList.remove('hidden');
+                votedContainer.innerHTML = `
                     <div class="text-center py-6 animate-fade-in">
                         <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg border-4 border-white"><i class="fa-solid fa-check"></i></div>
                         <h3 class="text-xl font-bold text-white mb-1">คุณโหวตเรียบร้อยแล้ว</h3>
                         <p class="text-green-300 text-sm mb-6 font-bold bg-green-900/30 py-1 px-3 rounded-full inline-block">หัวข้อ: ${currentAward}</p>
                         <div class="glass-panel p-6 rounded-2xl shadow-xl max-w-xs mx-auto border-2 border-green-400/50">
                             <h2 class="text-2xl font-bold text-slate-800 mb-1">${cName}</h2>
-                            <div class="bg-slate-100 rounded-lg py-2 text-xs text-slate-500 mt-2">บันทึกคะแนนแล้ว</div>
+                            <p class="text-green-600 font-medium mb-4">${cCostume}</p>
+                            <div class="bg-slate-100 rounded-lg py-2 text-xs text-slate-500">บันทึกคะแนนแล้ว</div>
                             <div class="mt-4 pt-4 border-t border-slate-200">
                                 <button onclick="recheckVoteStatus()" class="text-[10px] text-slate-400 hover:text-red-500 underline"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบสถานะใหม่</button>
                             </div>
                         </div>
                     </div>`;
-                return;
+            } else {
+                listContainer.classList.remove('hidden');
+                votedContainer.classList.add('hidden');
+                
+                if (candidates.length === 0) { listContainer.innerHTML = `<div class="col-span-2 text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`; return; }
+                
+                const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+                listContainer.innerHTML = sortedCandidates.map(c => `
+                    <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
+                        <div class="flex justify-between items-start mb-1"><span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
+                        <h3 class="text-sm font-bold text-slate-800 leading-tight mb-0.5 line-clamp-1">${escapeHtml(c.name)}</h3>
+                        <p class="text-[10px] text-slate-500 mb-2 line-clamp-1">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
+                        <button onclick="openVoteModal('${c.id}')" class="w-full py-1.5 rounded-lg font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95"><i class="fa-regular fa-heart"></i> โหวต</button>
+                    </div>
+                `).join('');
             }
-
-            if(!document.getElementById('candidates-list')) {
-                // Restore grid layout if returning from single card view
-                document.getElementById('view-vote').innerHTML = `
-                    <div class="text-center mb-4"><div class="bg-red-500/20 text-red-100 px-4 py-2 rounded-xl text-sm font-bold border border-red-500/50 inline-block"><i class="fa-solid fa-check-to-slot"></i> <span id="vote-header-category">เปิดโหวต: ${currentAward}</span></div></div>
-                    <div id="candidates-list" class="grid grid-cols-2 gap-3 pb-24"></div>
-                `;
-            }
-            
-            const grid = document.getElementById('candidates-list');
-            if (!grid) return;
-            if (candidates.length === 0) { grid.innerHTML = `<div class="col-span-2 text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`; return; }
-            
-            const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
-            grid.innerHTML = sortedCandidates.map(c => `
-                <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
-                    <div class="flex justify-between items-start mb-1"><span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
-                    <h3 class="text-sm font-bold text-slate-800 leading-tight mb-0.5 line-clamp-1">${escapeHtml(c.name)}</h3>
-                    <p class="text-[10px] text-slate-500 mb-2 line-clamp-1">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
-                    <button onclick="openVoteModal('${c.id}')" class="w-full py-1.5 rounded-lg font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95"><i class="fa-regular fa-heart"></i> โหวต</button>
-                </div>
-            `).join('');
         }
         
         function recheckVoteStatus() {
@@ -1131,7 +1077,6 @@
         }
 
         function renderLeaderboard() {
-            // Check Dropdown value
             const select = document.getElementById('result-category-select');
             selectedResultCategory = select ? select.value : 'current';
             
@@ -1145,7 +1090,6 @@
                 label = selectedResultCategory.replace('votes_', '').replace(/_/g, ' ');
             }
             
-            // Fix: Add check if element exists before setting innerText
             const resultHeader = document.getElementById('result-header-category');
             if (resultHeader) resultHeader.innerText = label;
 
@@ -1199,7 +1143,6 @@
                     }).join('');
                 }
             }
-            // Attendee table logic remains same...
             const attendBody = document.getElementById('table-attendees-body');
             if (attendBody) {
                 if (attendees.length === 0) attendBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
@@ -1269,15 +1212,8 @@
             if (input.value === 'Admin123') { 
                 isAdminAuthenticated = true; input.value = '';
                 showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success');
-                // Use hash change to trigger routing logic correctly
                 window.location.hash = '#admin'; 
-                // Directly call showAdminDashboard to be instant, but hashchange will also fire
-                // To prevent double execution, we can rely on hashchange, but for safety in case of reload:
-                if(document.getElementById('view-admin-login')) document.getElementById('view-admin-login').classList.add('hidden');
-                if(document.getElementById('view-admin-dashboard')) document.getElementById('view-admin-dashboard').classList.remove('hidden');
-                
-                // Manually trigger updates
-                showAdminDashboard();
+                handleRouting(); 
                 checkLocationAccess();
             } else {
                 showToast('รหัสผ่านไม่ถูกต้อง', 'error');
