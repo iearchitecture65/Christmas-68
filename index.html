@@ -98,8 +98,8 @@
             <p class="text-slate-300 text-xs mt-1 font-light tracking-wide">ระบบลงทะเบียนและโหวต (ใช้รหัสนักศึกษา)</p>
         </header>
 
-        <!-- Navigation Bar -->
-        <nav class="px-4 mb-6 sticky top-2 z-40">
+        <!-- Navigation Bar (Hidden in Admin Mode) -->
+        <nav id="main-nav" class="px-4 mb-6 sticky top-2 z-40 transition-all duration-300">
             <div class="bg-slate-800/80 backdrop-blur-md p-1.5 rounded-2xl flex shadow-xl border border-white/5">
                 <a href="#vote" id="link-vote" class="nav-link flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-check-to-slot"></i> โหวต
@@ -251,27 +251,54 @@
                     <h2 class="text-xl font-bold text-slate-800 mb-6">ผู้ดูแลระบบ</h2>
                     <input type="password" id="admin-pass" class="w-full p-3 rounded-lg border border-slate-300 mb-4 text-center font-mono placeholder:font-sans" placeholder="กรอกรหัสผ่าน">
                     <button onclick="checkAdminPass()" class="w-full bg-slate-800 text-white py-3 rounded-lg font-bold">เข้าสู่ระบบ</button>
-                    <a href="#vote" class="block mt-4 text-xs text-slate-400">กลับหน้าหลัก</a>
+                    
+                    <!-- NEW: Back to User Mode link -->
+                    <div class="mt-6 pt-4 border-t border-slate-200">
+                        <a href="#vote" class="text-slate-400 text-xs hover:text-slate-600 underline">
+                            กลับไปหน้าโหวต (สำหรับผู้ใช้)
+                        </a>
+                    </div>
                 </div>
             </div>
 
             <!-- 7. VIEW: ADMIN DASHBOARD (New UI - Buttons & Link) -->
             <div id="view-admin-dashboard" class="view-section hidden">
                 <div class="glass-panel p-6 rounded-3xl shadow-2xl border-t-4 border-slate-600">
-                    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                        <i class="fa-solid fa-sliders text-slate-600"></i> แผงควบคุม
-                    </h2>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                            <i class="fa-solid fa-sliders text-slate-600"></i> แผงควบคุม
+                        </h2>
+                        <a href="#vote" class="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 hover:bg-slate-200" title="ออกจากระบบ / กลับหน้าหลัก">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> ออก
+                        </a>
+                    </div>
                     
+                    <!-- NEW: Quick Navigation for Admin -->
+                    <div class="grid grid-cols-3 gap-2 mb-6">
+                        <a href="#vote" class="bg-white border border-slate-200 p-3 rounded-xl text-center hover:bg-slate-50 transition shadow-sm group">
+                            <i class="fa-solid fa-check-to-slot text-red-500 text-xl mb-1 group-hover:scale-110 transition-transform"></i>
+                            <div class="text-[10px] font-bold text-slate-600">ไปหน้าโหวต</div>
+                        </a>
+                        <a href="#register-menu" class="bg-white border border-slate-200 p-3 rounded-xl text-center hover:bg-slate-50 transition shadow-sm group">
+                            <i class="fa-solid fa-clipboard-list text-green-500 text-xl mb-1 group-hover:scale-110 transition-transform"></i>
+                            <div class="text-[10px] font-bold text-slate-600">ไปหน้าลงทะเบียน</div>
+                        </a>
+                        <a href="#result" class="bg-white border border-slate-200 p-3 rounded-xl text-center hover:bg-slate-50 transition shadow-sm group">
+                            <i class="fa-solid fa-trophy text-yellow-500 text-xl mb-1 group-hover:scale-110 transition-transform"></i>
+                            <div class="text-[10px] font-bold text-slate-600">ไปหน้าผลคะแนน</div>
+                        </a>
+                    </div>
+
                     <!-- Link for Users -->
                     <div class="mb-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                        <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์สำหรับผู้ใช้งาน</h3>
+                        <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์สำหรับผู้ใช้งาน (User Link)</h3>
                         <div class="flex gap-2">
                             <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
                             <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
                                 คัดลอก
                             </button>
                         </div>
-                        <p class="text-[10px] text-yellow-600 mt-1">*ส่งลิงก์นี้ให้ผู้เข้าร่วมงานเพื่อโหวต</p>
+                        <p class="text-[10px] text-yellow-600 mt-1">*ส่งลิงก์นี้ให้ผู้เข้าร่วมงาน (จะเข้าหน้าโหวตโดยตรง)</p>
                     </div>
 
                     <div class="space-y-4">
@@ -310,11 +337,6 @@
                                 <button onclick="updateSystemConfig('isVoteOpen', false)" id="btn-vote-off" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">ปิด</button>
                             </div>
                         </div>
-                        
-                        <div class="pt-4 border-t border-slate-100 text-center">
-                            <p class="text-xs text-slate-400 mb-2">สถานะ: <span class="text-green-600 font-bold">เชื่อมต่อแล้ว</span></p>
-                            <a href="#vote" class="text-slate-500 text-sm underline hover:text-red-500">ออกจากหน้าแอดมิน</a>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -322,7 +344,7 @@
         </main>
 
         <!-- FOOTER (Added for easier Admin Access) -->
-        <footer class="mt-auto py-6 text-center">
+        <footer class="mt-auto py-6 text-center" id="site-footer">
             <p class="text-slate-400/30 text-xs">
                 © 2024 Christmas Event 
                 <a href="#admin" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login">
@@ -434,11 +456,22 @@
 
         function handleRouting() {
             let hash = window.location.hash.substring(1);
-            if (!hash) hash = 'vote'; // Default
+            if (!hash) hash = 'admin'; // Changed Default to 'admin'
 
             // Hide all views
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             
+            // Handle Nav Bar Visibility (Hide in Admin)
+            const navBar = document.getElementById('main-nav');
+            const footer = document.getElementById('site-footer');
+            if (hash === 'admin') {
+                navBar.classList.add('opacity-0', 'pointer-events-none', 'hidden'); // Hide nav
+                if(footer) footer.classList.add('hidden'); // Hide footer in admin mode to keep it clean
+            } else {
+                navBar.classList.remove('opacity-0', 'pointer-events-none', 'hidden'); // Show nav
+                if(footer) footer.classList.remove('hidden');
+            }
+
             // Nav Active State
             document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
             
@@ -466,9 +499,9 @@
             else if (hash === 'admin') {
                 if (isAdminAuthenticated) {
                     document.getElementById('view-admin-dashboard').classList.remove('hidden');
-                    // Setup User Link
+                    // Setup User Link (Correctly adds #vote)
                     const baseUrl = window.location.href.split('#')[0];
-                    document.getElementById('user-link-input').value = baseUrl;
+                    document.getElementById('user-link-input').value = baseUrl + '#vote';
                 } else {
                     document.getElementById('view-admin-login').classList.remove('hidden');
                 }
@@ -668,7 +701,7 @@
         // --- ACTION: ADMIN ---
         function checkAdminPass() {
             const input = document.getElementById('admin-pass');
-            if (input.value === 'Admin 123') {
+            if (input.value === 'Admin123') { // Updated Password
                 isAdminAuthenticated = true;
                 input.value = '';
                 showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success');
