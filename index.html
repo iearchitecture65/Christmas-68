@@ -144,6 +144,11 @@
                 <div id="confirm-icon-container" class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md animate-bounce-short"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <h3 class="text-lg font-bold text-slate-800" id="confirm-title">ยืนยันการทำรายการ</h3>
                 <p class="text-sm text-slate-500 mt-2 leading-relaxed" id="confirm-message">...</p>
+                <!-- STRICT INPUT FIELD -->
+                <div id="confirm-input-container" class="mt-4 hidden">
+                    <p class="text-xs text-red-500 mb-1 font-bold">พิมพ์คำว่า "CONFIRM" เพื่อยืนยัน:</p>
+                    <input type="text" id="confirm-input-text" class="w-full p-2 border border-slate-300 rounded text-center font-bold uppercase" placeholder="">
+                </div>
             </div>
             <div class="flex gap-3">
                 <button id="btn-confirm-cancel" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-sm">ยกเลิก</button>
@@ -288,7 +293,7 @@
 
                         <div class="flex border-b border-slate-200 mb-6">
                             <button id="tab-control" onclick="switchAdminTab('control')" class="flex-1 py-2 text-sm font-medium admin-tab-active transition-all">ควบคุมระบบ</button>
-                            <button id="tab-data" onclick="switchAdminTab('data')" class="flex-1 py-2 text-sm font-medium admin-tab-inactive transition-all">ดูข้อมูล / สรุปผล</button>
+                            <button id="tab-data" onclick="switchAdminTab('data')" class="flex-1 py-2 text-sm font-medium admin-tab-inactive transition-all">ข้อมูล / ลบข้อมูล</button>
                         </div>
                         
                         <!-- TAB CONTENT: CONTROL -->
@@ -398,29 +403,33 @@
                                     <p class="text-[10px] text-purple-400 text-center mt-1">* ระบบจะเปลี่ยนสถานะให้อัตโนมัติเมื่อถึงเวลา<br>(แนะนำให้ Admin เปิดหน้าจอนี้ทิ้งไว้)</p>
                                 </div>
                             </div>
-
-                            <div class="p-4 bg-red-50 rounded-xl border border-red-200 mt-6">
-                                <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (Danger Zone)</h3>
-                                <div class="grid grid-cols-1 gap-2">
-                                    <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (เฉพาะรางวัลปัจจุบัน)</button>
-                                    <button onclick="resetAttendees()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-user-xmark mr-1"></i> ล้างรายชื่อผู้ลงทะเบียน (Reset Attendees)</button>
-                                    <button onclick="resetAllSystem()" class="w-full py-3 bg-red-600 border border-red-700 text-white rounded-lg hover:bg-red-700 transition text-xs font-bold shadow-sm"><i class="fa-solid fa-bomb mr-1"></i> ล้างข้อมูลทั้งระบบ (Factory Reset)</button>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- TAB CONTENT: DATA -->
                         <div id="admin-content-data" class="hidden space-y-8">
                             <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100"><h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4><div id="stat-attendee-count" class="text-3xl font-bold text-blue-800">0</div></div>
-                                <div class="bg-red-50 p-4 rounded-xl text-center border border-red-100"><h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4><div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div></div>
+                                <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100 relative overflow-hidden group">
+                                    <h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4>
+                                    <div id="stat-attendee-count" class="text-3xl font-bold text-blue-800">0</div>
+                                    <button onclick="resetAttendees()" class="mt-2 w-full py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200"><i class="fa-solid fa-trash-can"></i> ลบผู้ลงทะเบียน</button>
+                                </div>
+                                <div class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group">
+                                    <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
+                                    <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
+                                    <button onclick="resetCandidates()" class="mt-2 w-full py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200"><i class="fa-solid fa-trash-can"></i> ลบผู้สมัคร</button>
+                                </div>
                             </div>
+                            
                             <div>
-                                <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> รายการหัวข้อรางวัล (คลิกเพื่อดูสรุป)</h3>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2"><span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> รายการหัวข้อรางวัล</h3>
+                                    <button onclick="resetAllVotes()" class="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200 font-bold"><i class="fa-solid fa-trash-can"></i> ลบคะแนนทั้งหมด</button>
+                                </div>
                                 <div id="admin-category-list" class="grid gap-2">
                                     <!-- Categories injected here -->
                                 </div>
                             </div>
+
                             <div class="mt-6">
                                 <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span> รายชื่อผู้ลงทะเบียนเข้างาน</h3>
                                 <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-60 overflow-y-auto">
@@ -429,6 +438,12 @@
                                         <tbody id="table-attendees-body" class="bg-white"><tr><td colspan="3" class="text-center p-4 text-slate-400">กำลังโหลด...</td></tr></tbody>
                                     </table>
                                 </div>
+                            </div>
+                            
+                            <!-- Factory Reset at Bottom -->
+                             <div class="pt-6 border-t border-slate-200">
+                                <button onclick="resetAllSystem()" class="w-full py-3 bg-red-600 border border-red-700 text-white rounded-lg hover:bg-red-700 transition text-sm font-bold shadow-sm"><i class="fa-solid fa-bomb mr-1"></i> ล้างข้อมูลทั้งระบบ (Factory Reset)</button>
+                                <p class="text-center text-[10px] text-red-400 mt-2">คำเตือน: ข้อมูลทั้งหมดจะหายถาวร</p>
                             </div>
                         </div>
                     </div>
@@ -756,6 +771,12 @@
                     safeSetStorage(`last_award_viewed_${appId}`, systemConfig.awardName);
 
                     // --- [FIX] SEPARATE INPUT SYNC FROM MAP SYNC ---
+                    // Sync Award Name Input
+                    const awardInput = document.getElementById('input-award-name');
+                    if(awardInput && document.activeElement !== awardInput && systemConfig.awardName) {
+                        awardInput.value = systemConfig.awardName;
+                    }
+
                     if (systemConfig.targetLat) {
                          // Parse values
                          const lat = parseFloat(systemConfig.targetLat);
@@ -780,10 +801,6 @@
                                  adminCircle.setLatLng(newLatLng); // Move circle center
                                  adminCircle.setRadius(rad); // Resize circle
                              }
-                             
-                             // Optional: Pan map to new location if it changed significantly? 
-                             // Better not to force pan to avoid disrupting user interaction unless it's a big jump?
-                             // Let's rely on marker movement which is visible.
                          }
                     }
                     // ---------------------------------------------
@@ -854,8 +871,8 @@
             });
         }
 
-        // --- CUSTOM CONFIRM MODAL LOGIC ---
-        function showConfirmModal(title, message, isDanger = false) {
+        // --- CUSTOM CONFIRM MODAL LOGIC (IMPROVED) ---
+        function showConfirmModal(title, message, isDanger = false, strictText = null) {
             return new Promise((resolve) => {
                 const modal = document.getElementById('custom-confirm-modal');
                 const titleEl = document.getElementById('confirm-title');
@@ -863,19 +880,38 @@
                 const btnOk = document.getElementById('btn-confirm-ok');
                 const btnCancel = document.getElementById('btn-confirm-cancel');
                 const iconContainer = document.getElementById('confirm-icon-container');
+                const inputContainer = document.getElementById('confirm-input-container');
+                const inputField = document.getElementById('confirm-input-text');
 
                 titleEl.innerText = title;
                 msgEl.innerText = message;
+                inputField.value = '';
 
                 // Style for Danger
                 if(isDanger) {
-                    btnOk.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-200 transition text-sm";
+                    btnOk.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-200 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed";
                     iconContainer.className = "w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md animate-bounce-short";
                     iconContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
                 } else {
                     btnOk.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-200 transition text-sm";
                     iconContainer.className = "w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md";
                     iconContainer.innerHTML = '<i class="fa-solid fa-circle-question"></i>';
+                }
+
+                // Strict Mode Handling
+                if (strictText) {
+                    inputContainer.classList.remove('hidden');
+                    btnOk.disabled = true;
+                    inputField.onkeyup = (e) => {
+                        if (e.target.value.toUpperCase() === strictText) {
+                            btnOk.disabled = false;
+                        } else {
+                            btnOk.disabled = true;
+                        }
+                    };
+                } else {
+                    inputContainer.classList.add('hidden');
+                    btnOk.disabled = false;
                 }
 
                 // Show Modal
@@ -904,6 +940,7 @@
                         modal.classList.add('hidden');
                         btnOk.removeEventListener('click', handleOk);
                         btnCancel.removeEventListener('click', handleCancel);
+                        inputField.onkeyup = null; // Clear listener
                     }, 300);
                 };
 
@@ -914,29 +951,73 @@
 
         // --- DATA MANAGEMENT FUNCTIONS ---
         async function resetVotes() {
-            const currentAward = systemConfig.awardName || 'Popular Vote';
-            const confirm1 = await showConfirmModal('ยืนยันการล้างคะแนน', `ต้องการล้างคะแนนโหวตสำหรับรางวัล "${currentAward}" ใช่หรือไม่?`, true);
+            // Unused directly now, replaced by specific functions but kept for safety logic if needed
+            resetVotesForCategory(systemConfig.awardName || 'Popular Vote');
+        }
+
+        async function resetVotesForCategory(categoryName) {
+            const confirm1 = await showConfirmModal('ยืนยันลบคะแนน', `ต้องการล้างคะแนนของหัวข้อ "${categoryName}" ใช่หรือไม่?`, true);
             if (!confirm1) return;
             
             if (!db) return;
             
             showToast('กำลังล้างคะแนน...', 'success');
             const batch = db.batch();
-            const scoreField = getScoreField(currentAward);
+            const scoreField = getScoreField(categoryName);
             
+            // Reset Candidate Scores
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
             candSnap.forEach(doc => batch.update(doc.ref, { [scoreField]: 0 }));
+
+            // Delete Vote History for this category
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.where('awardCategory', '==', categoryName).get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
 
             const configRef = getConfigRef();
             batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
 
             await batch.commit();
-            showToast('ล้างคะแนนเรียบร้อยแล้ว', 'success');
+            showToast(`ล้างคะแนน "${categoryName}" เรียบร้อย`, 'success');
+        }
+
+        async function resetAllVotes() {
+            const confirm1 = await showConfirmModal('ยืนยันลบคะแนนทั้งหมด', 'ต้องการลบ "คะแนนโหวตทุกหัวข้อ" ใช่หรือไม่?', true);
+            if (!confirm1) return;
+
+            if (!db) return;
+            showToast('กำลังล้างคะแนนทั้งหมด...', 'success');
+            
+            const batch = db.batch();
+            
+            // 1. Reset all candidates fields starting with votes_
+            const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const candSnap = await candidatesRef.get();
+            
+            candSnap.forEach(doc => {
+                const data = doc.data();
+                const updates = { votes: 0 };
+                Object.keys(data).forEach(key => {
+                    if (key.startsWith('votes_')) updates[key] = 0;
+                });
+                batch.update(doc.ref, updates);
+            });
+
+            // 2. Delete ALL votes collection
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            const configRef = getConfigRef();
+            batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
+
+            await batch.commit();
+            showToast('ล้างคะแนนทั้งหมดเรียบร้อยแล้ว', 'success');
         }
 
         async function resetAttendees() {
-            const confirm1 = await showConfirmModal('ยืนยันลบรายชื่อ', 'ต้องการลบรายชื่อผู้ลงทะเบียนทั้งหมดใช่หรือไม่?', true);
+            const confirm1 = await showConfirmModal('ยืนยันลบผู้ลงทะเบียน', 'ต้องการลบรายชื่อผู้ลงทะเบียนเข้างานทั้งหมดใช่หรือไม่?', true);
             if (!confirm1) return;
 
             if (!db) return;
@@ -954,44 +1035,68 @@
             showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
         }
 
-        async function resetAllSystem() {
-            const confirm1 = await showConfirmModal('⚠️ คำเตือนรุนแรง! ⚠️', 'คุณกำลังจะ "ล้างข้อมูลทั้งระบบ" ประกอบด้วย:\n1. รายชื่อผู้ลงทะเบียนเข้างานทั้งหมด\n2. รายชื่อผู้เข้าประกวดทั้งหมด\n3. คะแนนโหวตและประวัติการโหวตทั้งหมด\n\nข้อมูลจะหายถาวร กู้คืนไม่ได้! ยืนยันหรือไม่?', true);
+        async function resetCandidates() {
+            const confirm1 = await showConfirmModal('ยืนยันลบผู้สมัคร', 'ต้องการลบรายชื่อ "ผู้เข้าประกวดทั้งหมด" ใช่หรือไม่?', true);
             if (!confirm1) return;
 
-            const confirm2 = await showConfirmModal('ยืนยันครั้งสุดท้าย', 'ต้องการล้างข้อมูลทั้งหมดจริงๆ ใช่ไหม? (ไม่สามารถย้อนกลับได้)', true);
-            if (!confirm2) return;
+            if (!db) return;
+
+            showToast('กำลังล้างผู้สมัคร...', 'success');
+            const batch = db.batch();
+            const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const snap = await candRef.get();
+            snap.forEach(doc => batch.delete(doc.ref));
+
+            // Also clear votes history since candidates are gone? Better safe than sorry.
+            // Actually, keep votes history but they will point to orphan candidates. 
+            // Usually reseting candidates implies resetting contest. Let's strictly reset candidates only as requested.
+            
+            const configRef = getConfigRef();
+            batch.set(configRef, { attendeeResetVersion: Date.now() }, { merge: true }); // Use same version trigger to clear local storage flags
+
+            await batch.commit();
+            showToast('ลบผู้เข้าประกวดเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetAllSystem() {
+            const confirm1 = await showConfirmModal(
+                '⚠️ ล้างข้อมูลทั้งระบบ (Factory Reset)', 
+                'คุณกำลังจะลบข้อมูลทั้งหมด: รายชื่อผู้ลงทะเบียน, ผู้สมัครประกวด, และคะแนนโหวตทั้งหมด ข้อมูลจะกู้คืนไม่ได้!', 
+                true,
+                'CONFIRM'
+            );
+            if (!confirm1) return;
             
             if (!db) return;
             showToast('กำลังล้างข้อมูลทั้งระบบ...', 'info');
             
             try {
+                const batch = db.batch();
+
                 // 1. Delete Attendees
                 const attRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
                 const attSnap = await attRef.get();
-                const batch1 = db.batch();
-                attSnap.forEach(doc => batch1.delete(doc.ref));
-                await batch1.commit();
+                attSnap.forEach(doc => batch.delete(doc.ref));
                 
                 // 2. Delete Candidates
                 const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
                 const candSnap = await candRef.get();
-                const batch2 = db.batch();
-                candSnap.forEach(doc => batch2.delete(doc.ref));
-                await batch2.commit();
+                candSnap.forEach(doc => batch.delete(doc.ref));
                 
                 // 3. Delete Votes (History)
                 const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
                 const voteSnap = await voteRef.get();
-                const batch3 = db.batch();
-                voteSnap.forEach(doc => batch3.delete(doc.ref));
-                await batch3.commit();
+                voteSnap.forEach(doc => batch.delete(doc.ref));
 
-                // 4. Update Config to reset local storage on clients
-                await getConfigRef().set({ 
+                // 4. Update Config
+                const configRef = getConfigRef();
+                batch.set(configRef, { 
                     voteResetVersion: Date.now(),
-                    attendeeResetVersion: Date.now()
+                    attendeeResetVersion: Date.now(),
+                    awardName: 'Popular Vote' // Reset default award name too? Maybe keep it.
                 }, { merge: true });
 
+                await batch.commit();
                 showToast('ล้างข้อมูลระบบทั้งหมดเรียบร้อยแล้ว', 'success');
             } catch(e) {
                 console.error(e);
@@ -1607,12 +1712,15 @@
                     listContainer.innerHTML = cats.map(cat => {
                         const name = cat.replace('votes_', '').replace(/_/g, ' ');
                         return `
-                        <div onclick="openAdminSummaryModal('${cat}', '${name}')" class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 transition">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"><i class="fa-solid fa-award"></i></div>
-                                <span class="font-bold text-slate-700 text-sm">${name}</span>
+                        <div class="flex gap-2 items-center mb-2">
+                            <div onclick="openAdminSummaryModal('${cat}', '${name}')" class="flex-1 p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 transition">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"><i class="fa-solid fa-award"></i></div>
+                                    <span class="font-bold text-slate-700 text-sm">${name}</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
                             </div>
-                            <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                            <button onclick="resetVotesForCategory('${name}')" class="bg-red-100 text-red-500 hover:bg-red-200 w-10 h-full rounded-xl flex items-center justify-center shadow-sm" title="ลบคะแนนหัวข้อนี้"><i class="fa-solid fa-trash-can"></i></button>
                         </div>`;
                     }).join('');
                 }
