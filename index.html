@@ -408,15 +408,17 @@
                         <!-- TAB CONTENT: DATA -->
                         <div id="admin-content-data" class="hidden space-y-8">
                             <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100 relative overflow-hidden group">
-                                    <h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4>
+                                <div onclick="openAdminListModal('attendees')" class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100 relative overflow-hidden group cursor-pointer hover:bg-blue-100 transition shadow-sm">
+                                    <h4 class="text-blue-600 font-bold text-xs uppercase mb-1">ผู้เข้าร่วมงาน</h4>
                                     <div id="stat-attendee-count" class="text-3xl font-bold text-blue-800">0</div>
-                                    <button onclick="resetAttendees()" class="mt-2 w-full py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200"><i class="fa-solid fa-trash-can"></i> ลบผู้ลงทะเบียน</button>
+                                    <p class="text-[10px] text-blue-400 mt-1">(คลิกเพื่อดูรายชื่อ)</p>
+                                    <button onclick="event.stopPropagation(); resetAttendees()" class="mt-2 w-full py-1 bg-white border border-blue-200 text-red-500 rounded text-[10px] font-bold hover:bg-red-50 z-10 relative"><i class="fa-solid fa-trash-can"></i> ลบทั้งหมด</button>
                                 </div>
-                                <div class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group">
-                                    <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
+                                <div onclick="openAdminListModal('candidates')" class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group cursor-pointer hover:bg-red-100 transition shadow-sm">
+                                    <h4 class="text-red-600 font-bold text-xs uppercase mb-1">ผู้เข้าประกวด</h4>
                                     <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
-                                    <button onclick="resetCandidates()" class="mt-2 w-full py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200"><i class="fa-solid fa-trash-can"></i> ลบผู้สมัคร</button>
+                                    <p class="text-[10px] text-red-400 mt-1">(คลิกเพื่อดูรายชื่อ)</p>
+                                    <button onclick="event.stopPropagation(); resetCandidates()" class="mt-2 w-full py-1 bg-white border border-red-200 text-red-500 rounded text-[10px] font-bold hover:bg-red-50 z-10 relative"><i class="fa-solid fa-trash-can"></i> ลบทั้งหมด</button>
                                 </div>
                             </div>
                             
@@ -427,16 +429,6 @@
                                 </div>
                                 <div id="admin-category-list" class="grid gap-2">
                                     <!-- Categories injected here -->
-                                </div>
-                            </div>
-
-                            <div class="mt-6">
-                                <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span> รายชื่อผู้ลงทะเบียนเข้างาน</h3>
-                                <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-60 overflow-y-auto">
-                                    <table class="w-full data-table">
-                                        <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr></thead>
-                                        <tbody id="table-attendees-body" class="bg-white"><tr><td colspan="3" class="text-center p-4 text-slate-400">กำลังโหลด...</td></tr></tbody>
-                                    </table>
                                 </div>
                             </div>
                             
@@ -467,6 +459,20 @@
                         <table class="w-full data-table">
                             <thead><tr><th class="w-12">#</th><th>ชื่อผู้เข้าประกวด</th><th class="text-right">คะแนน</th></tr></thead>
                             <tbody id="admin-summary-body" class="bg-white"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN LIST MODAL (NEW) -->
+            <div id="admin-list-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+                <div class="bg-white rounded-2xl p-6 w-[95%] max-w-md relative max-h-[85vh] flex flex-col">
+                    <button onclick="closeAdminListModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1" id="admin-list-title">รายชื่อ</h3>
+                    <div class="overflow-y-auto flex-1 rounded-xl border border-slate-200 mt-4">
+                        <table class="w-full data-table">
+                            <thead id="admin-list-head"></thead>
+                            <tbody id="admin-list-body" class="bg-white"></tbody>
                         </table>
                     </div>
                 </div>
@@ -842,6 +848,51 @@
             });
         }
 
+        // IMPORTANT: Function Declarations Hoisting
+        function renderLeaderboard() {
+            // Check Dropdown value
+            const select = document.getElementById('result-category-select');
+            selectedResultCategory = select ? select.value : 'current';
+            
+            let targetField = '';
+            let label = '';
+            if (selectedResultCategory === 'current') {
+                targetField = getScoreField(systemConfig.awardName || 'Popular Vote');
+                label = systemConfig.awardName || 'Popular Vote';
+            } else {
+                targetField = selectedResultCategory;
+                label = selectedResultCategory.replace('votes_', '').replace(/_/g, ' ');
+            }
+            
+            const container = document.getElementById('leaderboard-list');
+            if(!container) return;
+
+            const sorted = [...candidates].sort((a, b) => {
+                const scoreA = a[targetField] || 0;
+                const scoreB = b[targetField] || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+
+            if (sorted.length === 0) { container.innerHTML = '<div class="p-6 text-center text-slate-400">ยังไม่มีข้อมูล</div>'; return; }
+            
+            container.innerHTML = sorted.map((c, i) => {
+                let rankStyle = "bg-slate-100 text-slate-500"; let icon = "";
+                if (i === 0) { rankStyle = "bg-yellow-400 text-yellow-900 shadow-md"; icon = '<i class="fa-solid fa-trophy text-yellow-500 text-xs ml-1"></i>'; }
+                if (i === 1) rankStyle = "bg-slate-300 text-slate-700";
+                if (i === 2) rankStyle = "bg-amber-600 text-amber-100";
+                const score = c[targetField] || 0;
+                return `
+                <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">${i + 1}</div>
+                        <div><h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3><p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p></div>
+                    </div>
+                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
+                </div>`;
+            }).join('');
+        }
+
         function listenToCandidates() {
             if (!db) return;
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates')
@@ -1047,10 +1098,6 @@
             const snap = await candRef.get();
             snap.forEach(doc => batch.delete(doc.ref));
 
-            // Also clear votes history since candidates are gone? Better safe than sorry.
-            // Actually, keep votes history but they will point to orphan candidates. 
-            // Usually reseting candidates implies resetting contest. Let's strictly reset candidates only as requested.
-            
             const configRef = getConfigRef();
             batch.set(configRef, { attendeeResetVersion: Date.now() }, { merge: true }); // Use same version trigger to clear local storage flags
 
@@ -1730,15 +1777,6 @@
                     }).join('');
                 }
             }
-            const attendBody = document.getElementById('table-attendees-body');
-            if (attendBody) {
-                if (attendees.length === 0) attendBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
-                else attendBody.innerHTML = attendees.map(a => {
-                    let timeStr = '-';
-                    if (a.timestamp) { try { const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp); timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); } catch(e) {} }
-                    return `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td><td class="text-right text-xs text-slate-400">${timeStr}</td></tr>`
-                }).join('');
-            }
         }
 
         function openAdminSummaryModal(categoryField, categoryName) {
@@ -1761,6 +1799,47 @@
             }
         }
         function closeAdminSummaryModal() { document.getElementById('admin-summary-modal').classList.add('hidden'); }
+
+        // --- NEW: LIST MODAL LOGIC (Attendees & Candidates) ---
+        function openAdminListModal(type) {
+            const modal = document.getElementById('admin-list-modal');
+            const title = document.getElementById('admin-list-title');
+            const thead = document.getElementById('admin-list-head');
+            const tbody = document.getElementById('admin-list-body');
+            
+            modal.classList.remove('hidden');
+            
+            if (type === 'attendees') {
+                title.innerText = 'รายชื่อผู้ลงทะเบียนเข้างาน';
+                thead.innerHTML = '<tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr>';
+                
+                if (attendees.length === 0) tbody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
+                else {
+                    tbody.innerHTML = attendees.map(a => {
+                        let timeStr = '-';
+                        if (a.timestamp) { try { const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp); timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); } catch(e) {} }
+                        return `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td><td class="text-right text-xs text-slate-400">${timeStr}</td></tr>`;
+                    }).join('');
+                }
+            } else if (type === 'candidates') {
+                title.innerText = 'รายชื่อผู้เข้าประกวด';
+                thead.innerHTML = '<tr><th>รหัส</th><th>ชื่อเล่น</th><th class="text-right">ชุด</th></tr>';
+                
+                const sorted = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+                
+                if (sorted.length === 0) tbody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
+                else {
+                    tbody.innerHTML = sorted.map(c => `
+                        <tr>
+                            <td class="font-mono text-red-600 font-bold">${c.studentId || '-'}</td>
+                            <td>${escapeHtml(c.name)}</td>
+                            <td class="text-right text-xs text-slate-500">${escapeHtml(c.costumeTitle)}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+        function closeAdminListModal() { document.getElementById('admin-list-modal').classList.add('hidden'); }
 
         async function openAdminVoteDetail(candidateId, candidateName, awardName) {
             const modal = document.getElementById('admin-vote-modal');
