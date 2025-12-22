@@ -91,16 +91,18 @@
             padding: 8px;
         }
 
-        /* --- NEW PUMP & TV STYLES (ADDED) --- */
+        /* --- NEW PUMP & TV STYLES (UPDATED) --- */
         .pump-heart { position: absolute; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 50; }
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
         }
         .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; flex-direction: column; }
-        .tv-rank { font-size: 4rem; font-weight: 800; line-height: 1; }
-        .tv-name { font-size: 3rem; font-weight: 700; line-height: 1.2; }
-        .tv-points { font-size: 5rem; font-weight: 900; color: #ef4444; }
+        /* Adjusted TV sizes per request */
+        .tv-rank { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .tv-name { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+        .tv-points { font-size: 3rem; font-weight: 900; color: #ef4444; }
+        
         .countdown-text { font-size: 15rem; font-weight: 900; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         .tv-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; }
@@ -694,6 +696,8 @@
             
             // Start Timer Loop
             if (!autoFlowInterval) autoFlowInterval = setInterval(checkAutoFlow, 5000); // Check every 5s
+            // Pump Game Loop
+            setInterval(() => { if(systemConfig.activePhase === 'pump') syncPumpGame(); }, 500);
         });
 
         function forceNavigate(viewId) {
@@ -1998,6 +2002,7 @@
         let pumpPushTimer = null;
         let lastPlayedState = 'waiting'; 
         let lastCountVal = null;
+        let pumpVoterId = ''; // State for pump session
 
         // SOUND SYNTHESIZER (WEB AUDIO API)
         function playSfx(type) {
@@ -2041,7 +2046,9 @@
         async function startPumpGame() {
             if(!db) return;
             const duration = parseInt(document.getElementById('pump-duration').value) || 1;
-            const startTime = Date.now() + 5000; 
+            // Requirement: "Use single time from Firestore".
+            // We set an absolute start time (now + 5s) so everyone syncs to that specific timestamp.
+            const startTime = Date.now() + 5000;
             await getConfigRef().set({ 
                 pumpConfig: { startTime, durationMinutes: duration, isStarted: true }
             }, { merge: true });
@@ -2099,25 +2106,51 @@
                     lastPlayedState = 'active'; sayWord("Start!"); playSfx('whistle');
                 }
             } else {
+                // Game Over - Switch to Result Page immediately
                 if(userGame) userGame.classList.add('hidden');
-                if(userWaiting) {
-                    userWaiting.classList.remove('hidden');
-                    userWaiting.innerHTML = `<i class="fa-solid fa-flag-checkered text-5xl mb-4 text-green-400"></i><h3 class="text-xl font-bold">หมดเวลาแล้ว!</h3><p class="text-sm">ขอบคุณที่ร่วมสนุก</p>`;
-                }
+                if(userWaiting) userWaiting.classList.add('hidden');
                 if(tvTimerContainer) tvTimerContainer.classList.add('hidden');
                 if(tvCountdown) tvCountdown.classList.add('hidden');
 
                 if(lastPlayedState === 'active') {
                     lastPlayedState = 'finished'; sayWord("Time's up!"); playSfx('whistle'); setTimeout(() => playSfx('end'), 500);
                 }
+
+                // Force switch view locally if still on pump view
+                if (document.getElementById('view-pump') && !document.getElementById('view-pump').classList.contains('hidden')) {
+                    document.getElementById('view-pump').classList.add('hidden');
+                    document.getElementById('view-result').classList.remove('hidden');
+                    renderLeaderboard();
+                }
             }
         }
 
         function renderPumpCandidates() {
+            if (!pumpVoterId) {
+                // Show Input Gate
+                const grid = document.getElementById('pump-candidates-grid');
+                if(!grid) return;
+                grid.classList.remove('grid-cols-2');
+                grid.classList.add('grid-cols-1');
+                grid.innerHTML = `
+                    <div class="glass-panel p-6 rounded-2xl max-w-sm mx-auto text-center animate-fade-in">
+                        <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-gamepad"></i></div>
+                        <h3 class="text-xl font-bold text-slate-800">เข้าสู่โหมดกดรัวๆ</h3>
+                        <p class="text-sm text-slate-500 mb-4">กรุณาระบุรหัสนักศึกษาเพื่อเริ่มเล่น</p>
+                        <input type="tel" id="pump-id-input" class="w-full text-center text-xl p-3 border-2 border-pink-200 rounded-xl focus:border-pink-500 outline-none mb-3" placeholder="รหัสนักศึกษา">
+                        <button onclick="enterPumpMode()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-lg">พร้อมลุย!</button>
+                    </div>
+                `;
+                return;
+            }
+
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
             if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
             
+            grid.classList.remove('grid-cols-1');
+            grid.classList.add('grid-cols-2');
+
             const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
             grid.innerHTML = sortedCandidates.map(c => `
                 <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition active:scale-95 border-2 border-transparent active:border-pink-400 h-44 items-center justify-center text-center" onclick="handlePumpClick(event, '${c.id}')">
@@ -2131,7 +2164,17 @@
             `).join('');
         }
 
+        function enterPumpMode() {
+            const id = document.getElementById('pump-id-input').value.trim();
+            if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
+            pumpVoterId = id;
+            renderPumpCandidates();
+            showToast('พร้อมกดแล้ว!', 'success');
+        }
+
         function handlePumpClick(e, cid) {
+            if(!pumpVoterId) return showToast('กรุณาเข้าระบบก่อน', 'error');
+            
             const heart = document.createElement('div');
             heart.className = 'pump-heart text-pink-500 text-3xl';
             heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
@@ -2140,21 +2183,15 @@
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 1000);
 
+            // Local Feedback
             pumpSessionPoints[cid] = (pumpSessionPoints[cid] || 0) + 1;
             const badge = document.getElementById(`pump-score-${cid}`);
             if(badge) badge.innerText = `+${pumpSessionPoints[cid]}`;
 
-            if(!pumpPushTimer) {
-                pumpPushTimer = setTimeout(async () => {
-                    const batch = db.batch();
-                    const pointsToSync = {...pumpSessionPoints}; pumpSessionPoints = {}; pumpPushTimer = null;
-                    for(let id in pointsToSync) {
-                        const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(id);
-                        batch.update(ref, { cheer_points: firebase.firestore.FieldValue.increment(pointsToSync[id]) });
-                    }
-                    await batch.commit();
-                }, 1000);
-            }
+            // Immediate Send (No Batching per requirement)
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid).update({
+                cheer_points: firebase.firestore.FieldValue.increment(1)
+            }).catch(err => console.error(err));
         }
 
         function updateTVDisplay() {
@@ -2194,12 +2231,12 @@
                             ${i === 0 ? '<i class="fa-solid fa-crown"></i>' : (i + 1)}
                         </div>
                         <div>
-                            <div class="tv-name text-white text-6xl drop-shadow-sm">${escapeHtml(c.name)}</div>
+                            <div class="tv-name text-white drop-shadow-sm">${escapeHtml(c.name)}</div>
                             <div class="text-4xl text-slate-400 font-bold uppercase mt-2 tracking-widest">${escapeHtml(c.costumeTitle)}</div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="tv-points ${scoreColor} text-8xl drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]">${(c[field]||0).toLocaleString()}</div>
+                        <div class="tv-points ${scoreColor} drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]">${(c[field]||0).toLocaleString()}</div>
                         <div class="text-3xl text-slate-500 uppercase font-black tracking-[0.5rem] mt-1">${isPump?'Cheers':'Votes'}</div>
                     </div>
                 </div>`;
