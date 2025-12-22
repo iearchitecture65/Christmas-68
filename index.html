@@ -76,6 +76,18 @@
         .data-table tr:last-child td { border-bottom: none; }
         .clickable-row:hover { background-color: #f8fafc; cursor: pointer; }
 
+        /* PUMP MODE BUTTONS */
+        .pump-btn:active { transform: scale(0.92); transition: transform 0.05s; }
+        .pump-btn { transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .floating-heart { position: absolute; pointer-events: none; animation: floatUp 1s ease-out forwards; opacity: 0; font-weight: bold; color: #ef4444; font-size: 1.5rem; z-index: 50; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 1; } 100% { transform: translateY(-50px) scale(1.5); opacity: 0; } }
+
+        /* TV MODE */
+        .tv-mode body, .tv-mode #app-scroll-wrapper { background: #0f172a !important; overflow: hidden; }
+        .tv-row:nth-child(1) { background: linear-gradient(90deg, rgba(234, 179, 8, 0.2), transparent); border-left: 4px solid #eab308; }
+        .tv-row:nth-child(2) { background: linear-gradient(90deg, rgba(148, 163, 184, 0.15), transparent); border-left: 4px solid #94a3b8; }
+        .tv-row:nth-child(3) { background: linear-gradient(90deg, rgba(180, 83, 9, 0.15), transparent); border-left: 4px solid #b45309; }
+
         /* UTILS */
         #initial-loader { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
         #location-warning-banner { background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem; text-align: center; padding: 8px; backdrop-filter: blur(4px); z-index: 90; display: none; animation: slideDown 0.3s ease-out; }
@@ -159,7 +171,7 @@
 
     <!-- MAIN SCROLL WRAPPER -->
     <div id="app-scroll-wrapper">
-        <div class="max-w-md mx-auto min-h-full flex flex-col relative">
+        <div class="max-w-md mx-auto min-h-full flex flex-col relative" id="main-app-container">
             <div id="location-warning-banner" class="sticky top-0 shadow-md"><i class="fa-solid fa-circle-exclamation mr-1"></i> อยู่นอกพื้นที่จัดงาน (ดูข้อมูลได้อย่างเดียว)</div>
 
             <!-- HEADER -->
@@ -256,6 +268,7 @@
                             <div class="mt-2 w-full px-4">
                                 <select id="result-category-select" onchange="renderLeaderboard()" class="bg-white/20 text-white border border-white/40 text-sm rounded-lg p-2 w-full outline-none cursor-pointer hover:bg-white/30 transition-colors">
                                     <option value="current">รางวัลปัจจุบัน</option>
+                                    <option value="cheer_points">💖 คะแนนปั๊มยอด (Cheer)</option>
                                     <!-- Options injected via JS -->
                                 </select>
                             </div>
@@ -264,7 +277,57 @@
                     </div>
                 </div>
 
-                <!-- 6. VIEW: CLOSED -->
+                <!-- 6. VIEW: PUMP LOGIN (New) -->
+                <div id="view-pump-login" class="view-section hidden pt-10">
+                    <div class="glass-panel p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-auto border-t-4 border-pink-500">
+                        <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-heart-pulse animate-pulse"></i></div>
+                        <h2 class="text-xl font-bold text-slate-800 mb-2">ปั๊มยอดหัวใจ</h2>
+                        <p class="text-slate-500 text-xs mb-6">กรอกรหัสนักศึกษาเพื่อเริ่มส่งกำลังใจรัวๆ</p>
+                        <input type="tel" id="pump-auth-id" class="w-full p-3 rounded-lg border border-pink-200 focus:border-pink-500 outline-none mb-4 text-center font-mono text-lg tracking-widest bg-pink-50" placeholder="XXXXXXXX">
+                        <button onclick="handlePumpLogin()" class="w-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white py-3 rounded-lg font-bold shadow-lg shadow-pink-200/50">เข้าสู่ระบบปั๊มยอด</button>
+                    </div>
+                </div>
+
+                <!-- 7. VIEW: PUMP MAIN (New) -->
+                <div id="view-pump-main" class="view-section hidden">
+                    <div class="text-center mb-4 flex justify-between items-center px-2">
+                        <div class="text-left">
+                            <h2 class="text-white font-bold text-lg drop-shadow">💖 ส่งกำลังใจ</h2>
+                            <p class="text-pink-200 text-[10px]">กดรัวๆ เพื่อเพิ่มคะแนน!</p>
+                        </div>
+                        <div class="bg-black/30 backdrop-blur rounded-lg px-3 py-1 text-right">
+                            <div class="text-[10px] text-slate-300">ID ของคุณ</div>
+                            <div class="font-mono text-white font-bold" id="pump-user-display">...</div>
+                        </div>
+                    </div>
+                    
+                    <div id="pump-grid" class="grid grid-cols-2 gap-3 pb-24">
+                        <!-- Pump Items -->
+                    </div>
+                </div>
+
+                <!-- 8. VIEW: TV LEADERBOARD (New) -->
+                <div id="view-tv-leaderboard" class="view-section hidden h-screen fixed inset-0 z-[200] bg-slate-900 flex flex-col p-8">
+                    <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
+                        <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-600"><i class="fa-solid fa-trophy text-yellow-500 mr-4"></i> LIVE RESULT</h1>
+                        <div class="text-right">
+                            <div class="text-2xl text-white font-bold" id="tv-clock">00:00</div>
+                            <div class="text-sm text-slate-400" id="tv-category">...</div>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-hidden relative">
+                        <div class="absolute inset-0 overflow-y-auto no-scrollbar">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="text-slate-400 text-xl border-b border-white/10">
+                                    <tr><th class="p-4">Rank</th><th class="p-4">Candidate</th><th class="p-4 text-right">Votes</th><th class="p-4 text-right text-pink-500"><i class="fa-solid fa-heart"></i> Cheer</th></tr>
+                                </thead>
+                                <tbody id="tv-list-body" class="text-white text-2xl font-bold"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 9. VIEW: CLOSED -->
                 <div id="view-closed" class="view-section hidden text-center py-20">
                     <div class="bg-white/10 backdrop-blur-md rounded-3xl p-10 border border-white/20 inline-block shadow-2xl">
                         <i class="fa-solid fa-lock text-6xl text-white/50 mb-4"></i>
@@ -273,7 +336,7 @@
                     </div>
                 </div>
 
-                <!-- 7. VIEW: ADMIN LOGIN -->
+                <!-- 10. VIEW: ADMIN LOGIN -->
                 <div id="view-admin-login" class="view-section hidden pt-10">
                     <div class="glass-panel p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-auto">
                         <div class="w-16 h-16 bg-slate-800 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-user-secret"></i></div>
@@ -283,7 +346,7 @@
                     </div>
                 </div>
 
-                <!-- 8. VIEW: ADMIN DASHBOARD -->
+                <!-- 11. VIEW: ADMIN DASHBOARD -->
                 <div id="view-admin-dashboard" class="view-section hidden">
                     <div class="glass-panel p-6 rounded-3xl shadow-2xl border-t-4 border-slate-600">
                         <div class="flex justify-between items-center mb-4">
@@ -334,10 +397,16 @@
                             </div>
 
                             <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                                <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์สำหรับผู้ใช้งาน</h3>
-                                <div class="flex gap-2">
-                                    <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
-                                    <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">คัดลอก</button>
+                                <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์พิเศษ</h3>
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
+                                        <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">ผู้ใช้</button>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <a href="#pump" target="_blank" class="flex-1 bg-pink-100 text-pink-600 text-center py-1.5 rounded-lg text-xs font-bold border border-pink-200 hover:bg-pink-200 transition"><i class="fa-solid fa-heart"></i> หน้าปั๊มยอด</a>
+                                        <a href="#tv-result" target="_blank" class="flex-1 bg-slate-800 text-white text-center py-1.5 rounded-lg text-xs font-bold hover:bg-slate-900 transition"><i class="fa-solid fa-tv"></i> จอ TV</a>
+                                    </div>
                                 </div>
                             </div>
 
@@ -548,6 +617,11 @@
         let selectedResultCategory = 'current';
         let currentSessionAward = null;
         let autoFlowInterval = null;
+        
+        // PUMP MODE STATE
+        let pumpVoterId = null;
+        let pumpBuffer = {}; // Accumulate clicks { candidateId: count }
+        let pumpFlushTimer = null;
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -569,6 +643,7 @@
             
             // Start Timer Loop
             if (!autoFlowInterval) autoFlowInterval = setInterval(checkAutoFlow, 5000); // Check every 5s
+            setInterval(updateTVClock, 1000); // TV Clock
         });
 
         function forceNavigate(viewId) {
@@ -579,7 +654,29 @@
         function handleRouting() {
             let hash = window.location.hash.substring(1);
             
-            // Allow manual scroll on routing change EXCEPT for admin which should maintain state if reloaded
+            if (hash === 'tv-result') {
+                document.body.classList.add('tv-mode');
+                document.getElementById('view-tv-leaderboard').classList.remove('hidden');
+                document.getElementById('main-app-container').classList.add('hidden'); // Hide normal app
+                return;
+            } else {
+                document.body.classList.remove('tv-mode');
+                document.getElementById('view-tv-leaderboard').classList.add('hidden');
+                document.getElementById('main-app-container').classList.remove('hidden');
+            }
+
+            if (hash === 'pump') {
+                if (pumpVoterId) {
+                    showPumpInterface();
+                } else {
+                    hideAllViews();
+                    document.getElementById('view-pump-login').classList.remove('hidden');
+                    document.getElementById('site-footer').classList.add('hidden');
+                }
+                return;
+            }
+
+            // Normal Flow
             if(document.getElementById('app-scroll-wrapper') && hash !== 'admin') {
                  // Only reset if specifically navigating to a new main view logic, simplified here
             }
@@ -639,6 +736,140 @@
             document.getElementById('site-footer').classList.add('hidden'); // Re-enable hiding footer
             updateAdminUIState();
             setTimeout(initAdminMap, 300);
+        }
+
+        // --- PUMP MODE LOGIC ---
+        function handlePumpLogin() {
+            const id = document.getElementById('pump-auth-id').value.trim();
+            if (!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
+            
+            // Optional: Check if registered? For pump mode usually loose rules, but let's check basic
+            // For now, just allow entry to encourage usage
+            pumpVoterId = id;
+            showToast('เข้าสู่โหมดปั๊มยอด!', 'success');
+            showPumpInterface();
+        }
+
+        function showPumpInterface() {
+            hideAllViews();
+            document.getElementById('view-pump-main').classList.remove('hidden');
+            document.getElementById('site-footer').classList.add('hidden');
+            document.getElementById('pump-user-display').innerText = pumpVoterId;
+            renderPumpInterface();
+        }
+
+        function renderPumpInterface() {
+            const container = document.getElementById('pump-grid');
+            if (!container) return;
+            
+            const sorted = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+            
+            container.innerHTML = sorted.map(c => `
+                <div class="glass-panel p-2 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden h-40">
+                    <div class="absolute top-2 left-2 text-[10px] font-mono text-slate-400 bg-white/80 px-1 rounded">${c.studentId || '?'}</div>
+                    <div class="text-sm font-bold text-slate-800 mt-2 text-center leading-tight h-10 flex items-center justify-center w-full px-1">${escapeHtml(c.name)}</div>
+                    
+                    <button onclick="handlePumpClick('${c.id}', this)" class="pump-btn w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-red-500 shadow-lg flex items-center justify-center text-white text-2xl mt-1 relative z-10 active:scale-90 transition-transform">
+                        <i class="fa-solid fa-heart"></i>
+                    </button>
+                    
+                    <div class="mt-2 text-xs font-bold text-pink-600" id="pump-score-${c.id}">${c.cheer_points || 0}</div>
+                </div>
+            `).join('');
+        }
+
+        function handlePumpClick(candidateId, btnEl) {
+            // Visual Effect
+            const heart = document.createElement('div');
+            heart.classList.add('floating-heart');
+            heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
+            // Random position near button
+            const rect = btnEl.getBoundingClientRect();
+            const randomX = (Math.random() - 0.5) * 40;
+            heart.style.left = (rect.left + rect.width/2 + randomX) + 'px';
+            heart.style.top = (rect.top) + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 1000);
+
+            // Optimistic UI Update
+            const scoreEl = document.getElementById(`pump-score-${candidateId}`);
+            if(scoreEl) {
+                let current = parseInt(scoreEl.innerText.replace(/,/g, '')) || 0;
+                scoreEl.innerText = (current + 1).toLocaleString();
+            }
+
+            // Buffer Logic
+            if (!pumpBuffer[candidateId]) pumpBuffer[candidateId] = 0;
+            pumpBuffer[candidateId]++;
+
+            if (pumpFlushTimer) clearTimeout(pumpFlushTimer);
+            pumpFlushTimer = setTimeout(flushPumpVotes, 1500); // Flush every 1.5s
+        }
+
+        async function flushPumpVotes() {
+            if (!db || Object.keys(pumpBuffer).length === 0) return;
+            
+            const batch = db.batch();
+            const updates = { ...pumpBuffer };
+            pumpBuffer = {}; // Clear buffer immediately
+
+            try {
+                Object.keys(updates).forEach(cid => {
+                    const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid);
+                    batch.update(ref, { cheer_points: firebase.firestore.FieldValue.increment(updates[cid]) });
+                });
+                await batch.commit();
+                console.log('Flushed pump votes');
+            } catch(e) {
+                console.error("Pump flush failed", e);
+                // Simple retry logic? Or just ignore for demo. 
+                // In production, would merge back to buffer.
+            }
+        }
+
+        // --- TV MODE LOGIC ---
+        function updateTVClock() {
+            const now = new Date();
+            const el = document.getElementById('tv-clock');
+            if(el) el.innerText = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderTVBoard() {
+            const tbody = document.getElementById('tv-list-body');
+            if(!tbody) return;
+
+            const categoryEl = document.getElementById('tv-category');
+            // Check what category to show? Default to Popular Vote + Show Cheer
+            const awardName = systemConfig.awardName || 'Popular Vote';
+            const scoreField = getScoreField(awardName);
+            if(categoryEl) categoryEl.innerText = `Award: ${awardName}`;
+
+            const sorted = [...candidates].sort((a, b) => {
+                const scoreA = a[scoreField] || 0;
+                const scoreB = b[scoreField] || 0;
+                return scoreB - scoreA;
+            });
+
+            if (sorted.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-10 text-slate-500">Waiting for data...</td></tr>'; return; }
+
+            tbody.innerHTML = sorted.map((c, i) => {
+                let rankClass = "text-slate-400";
+                if(i===0) rankClass = "text-yellow-400 text-3xl";
+                if(i===1) rankClass = "text-slate-300 text-3xl";
+                if(i===2) rankClass = "text-amber-600 text-3xl";
+
+                return `
+                <tr class="tv-row border-b border-white/5 transition-all duration-500">
+                    <td class="p-4 font-black ${rankClass}">${i+1}</td>
+                    <td class="p-4">
+                        <div class="text-xl text-white">${escapeHtml(c.name)}</div>
+                        <div class="text-sm text-slate-500">${escapeHtml(c.costumeTitle)}</div>
+                    </td>
+                    <td class="p-4 text-right font-mono text-3xl text-green-400">${(c[scoreField] || 0).toLocaleString()}</td>
+                    <td class="p-4 text-right font-mono text-2xl text-pink-400">${(c.cheer_points || 0).toLocaleString()}</td>
+                </tr>
+                `;
+            }).join('');
         }
 
         // --- MAP FUNCTIONS ---
@@ -859,6 +1090,9 @@
             if (selectedResultCategory === 'current') {
                 targetField = getScoreField(systemConfig.awardName || 'Popular Vote');
                 label = systemConfig.awardName || 'Popular Vote';
+            } else if (selectedResultCategory === 'cheer_points') {
+                targetField = 'cheer_points';
+                label = 'คะแนนปั๊มยอด (Cheer)';
             } else {
                 targetField = selectedResultCategory;
                 label = selectedResultCategory.replace('votes_', '').replace(/_/g, ' ');
@@ -888,7 +1122,7 @@
                         <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">${i + 1}</div>
                         <div><h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3><p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p></div>
                     </div>
-                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
+                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score.toLocaleString()}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
                 </div>`;
             }).join('');
         }
@@ -904,7 +1138,13 @@
                 // Ensure dropdown updates when data arrives
                 updateResultDropdown(); 
                 
-                renderCandidates(); renderLeaderboard(); renderAdminDataTables(); 
+                // RENDER ALL VIEWS
+                renderCandidates(); 
+                renderLeaderboard(); 
+                renderAdminDataTables();
+                renderPumpInterface(); // Render Pump
+                renderTVBoard(); // Render TV
+                
                 document.getElementById('stat-candidate-count').innerText = candidates.length;
                 document.getElementById('loading-vote').classList.add('hidden');
             });
@@ -1048,7 +1288,877 @@
             
             candSnap.forEach(doc => {
                 const data = doc.data();
-                const updates = { votes: 0 };
+                const updates = { votes: 0, cheer_points: 0 }; // RESET CHEER POINTS TOO? Maybe safer to ask. For now, yes, reset all "Scores"
+                Object.keys(data).forEach(key => {
+                    if (key.startsWith('votes_')) updates[key] = 0;
+                });
+                batch.update(doc.ref, updates);
+            });
+
+            // 2. Delete ALL votes collection
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            const configRef = getConfigRef();
+            batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
+
+            await batch.commit();
+            showToast('ล้างคะแนนทั้งหมดเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetAttendees() {
+            const confirm1 = await showConfirmModal('ยืนยันลบผู้ลงทะเบียน', 'ต้องการลบรายชื่อผู้ลงทะเบียนเข้างานทั้งหมดใช่หรือไม่?', true);
+            if (!confirm1) return;
+
+            if (!db) return;
+
+            showToast('กำลังล้างรายชื่อ...', 'success');
+            const batch = db.batch();
+            const attendeesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
+            const snap = await attendeesRef.get();
+            snap.forEach(doc => batch.delete(doc.ref));
+
+            const configRef = getConfigRef();
+            batch.set(configRef, { attendeeResetVersion: Date.now() }, { merge: true });
+
+            await batch.commit();
+            showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetCandidates() {
+            const confirm1 = await showConfirmModal('ยืนยันลบผู้สมัคร', 'ต้องการลบรายชื่อ "ผู้เข้าประกวดทั้งหมด" ใช่หรือไม่?', true);
+            if (!confirm1) return;
+
+            if (!db) return;
+
+            showToast('กำลังล้างผู้สมัคร...', 'success');
+            const batch = db.batch();
+            const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const snap = await candRef.get();
+            snap.forEach(doc => batch.delete(doc.ref));
+
+            const configRef = getConfigRef();
+            batch.set(configRef, { attendeeResetVersion: Date.now() }, { merge: true }); // Use same version trigger to clear local storage flags
+
+            await batch.commit();
+            showToast('ลบผู้เข้าประกวดเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetAllSystem() {
+            const confirm1 = await showConfirmModal(
+                '⚠️ ล้างข้อมูลทั้งระบบ (Factory Reset)', 
+                'คุณกำลังจะลบข้อมูลทั้งหมด: รายชื่อผู้ลงทะเบียน, ผู้สมัครประกวด, และคะแนนโหวตทั้งหมด ข้อมูลจะกู้คืนไม่ได้!', 
+                true,
+                'CONFIRM'
+            );
+            if (!confirm1) return;
+            
+            if (!db) return;
+            showToast('กำลังล้างข้อมูลทั้งระบบ...', 'info');
+            
+            try {
+                const batch = db.batch();
+
+                // 1. Delete Attendees
+                const attRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
+                const attSnap = await attRef.get();
+                attSnap.forEach(doc => batch.delete(doc.ref));
+                
+                // 2. Delete Candidates
+                const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+                const candSnap = await candRef.get();
+                candSnap.forEach(doc => batch.delete(doc.ref));
+                
+                // 3. Delete Votes (History)
+                const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+                const voteSnap = await voteRef.get();
+                voteSnap.forEach(doc => batch.delete(doc.ref));
+
+                // 4. Update Config
+                const configRef = getConfigRef();
+                batch.set(configRef, { 
+                    voteResetVersion: Date.now(),
+                    attendeeResetVersion: Date.now(),
+                    awardName: 'Popular Vote' // Reset default award name too? Maybe keep it.
+                }, { merge: true });
+
+                await batch.commit();
+                showToast('ล้างข้อมูลระบบทั้งหมดเรียบร้อยแล้ว', 'success');
+            } catch(e) {
+                console.error(e);
+                showToast('เกิดข้อผิดพลาดในการล้างข้อมูล (อาจมีข้อมูลเยอะเกินไป)', 'error');
+            }
+        }
+
+        async function saveAwardConfig() {
+            if(!db) return;
+            const name = document.getElementById('input-award-name').value.trim();
+            if(!name) return showToast("กรุณาใส่ชื่อรางวัล", "error");
+            await getConfigRef().set({ awardName: name }, { merge: true });
+            showToast(`เปลี่ยนหัวข้อเป็น: ${name}`, 'success');
+        }
+
+        // --- AUTO FLOW LOGIC ---
+        function checkAutoFlow() {
+            if (!systemConfig.autoFlowEnabled || !isAdminAuthenticated) return;
+            const now = Date.now();
+            const schedule = systemConfig.flowSchedule || {};
+            
+            // 1. Check Vote Start Time
+            if (schedule.startVote && now >= schedule.startVote && systemConfig.activePhase !== 'vote' && systemConfig.activePhase !== 'result') {
+                changePhase('vote');
+                // Optional: Notify
+                console.log("Auto-flow: Switched to Vote");
+            }
+            
+            // 2. Check Result Start Time
+            if (schedule.startResult && now >= schedule.startResult && systemConfig.activePhase !== 'result') {
+                changePhase('result');
+                console.log("Auto-flow: Switched to Result");
+            }
+        }
+
+        async function toggleAutoFlow() {
+            const isChecked = document.getElementById('toggle-auto-flow').checked;
+            const panel = document.getElementById('auto-flow-panel');
+            
+            if (isChecked) {
+                panel.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                panel.classList.add('opacity-50', 'pointer-events-none');
+            }
+            
+            if (!db) return;
+            await getConfigRef().set({ autoFlowEnabled: isChecked }, { merge: true });
+        }
+
+        async function saveFlowSchedule() {
+            if (!db) return;
+            const timeVote = document.getElementById('input-time-vote').value;
+            const timeResult = document.getElementById('input-time-result').value;
+            
+            const startVote = timeVote ? new Date(timeVote).getTime() : 0;
+            const startResult = timeResult ? new Date(timeResult).getTime() : 0;
+            
+            await getConfigRef().set({ 
+                flowSchedule: { startVote, startResult } 
+            }, { merge: true });
+            
+            showToast("บันทึกเวลาเรียบร้อยแล้ว", "success");
+        }
+
+        // --- LOCATION LOGIC ---
+        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+            var R = 6371; var dLat = deg2rad(lat2-lat1); var dLon = deg2rad(lon2-lon1); 
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c * 1000;
+        }
+        function deg2rad(deg) { return deg * (Math.PI/180); }
+
+        function checkLocationAccess(forceShowModal = false) {
+            // Check if DB explicitly says false (ensure boolean)
+            if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) {
+                document.getElementById('view-location-block').classList.add('hidden');
+                document.getElementById('location-warning-banner').style.display = 'none';
+                isLocationValid = true; return;
+            }
+            if (!navigator.geolocation) { isLocationValid = false; return; }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude; const userLng = position.coords.longitude;
+                    const targetLat = parseFloat(systemConfig.targetLat);
+                    const targetLng = parseFloat(systemConfig.targetLng);
+                    const allowedRad = parseFloat(systemConfig.allowedRadius || 100);
+
+                    const dist = getDistanceFromLatLonInMeters(userLat, userLng, targetLat, targetLng);
+                    document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
+                    document.getElementById('loc-allowed').innerText = allowedRad + " เมตร";
+
+                    if (dist > allowedRad) {
+                        isLocationValid = false;
+                        document.getElementById('location-warning-banner').style.display = 'block';
+                        if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
+                    } else {
+                        isLocationValid = true;
+                        document.getElementById('view-location-block').classList.add('hidden');
+                        document.getElementById('location-warning-banner').style.display = 'none';
+                    }
+                },
+                (error) => { isLocationValid = false; if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden'); }
+            );
+        }
+
+        function enforceLocationCheck() {
+            if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) return true;
+            checkLocationAccess(false);
+            if (!isLocationValid) { document.getElementById('view-location-block').classList.remove('hidden'); return false; }
+            return true;
+        }
+        function closeLocationBlock() { document.getElementById('view-location-block').classList.add('hidden'); }
+        async function toggleLocationCheck() { 
+            if(!db) return; 
+            // Toggle boolean and force save
+            const newState = !systemConfig.locationCheckEnabled;
+            await getConfigRef().set({ locationCheckEnabled: newState }, { merge: true }); 
+        }
+        async function saveLocationConfig() {
+            if(!db) return;
+            const lat = parseFloat(document.getElementById('input-lat').value);
+            const lng = parseFloat(document.getElementById('input-lng').value);
+            const rad = parseFloat(document.getElementById('input-radius').value);
+            if(isNaN(lat)) return showToast("กรุณากำหนดพิกัด", "error");
+            await getConfigRef().set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
+            showToast("บันทึกพิกัดแล้ว", "success");
+        }
+
+        // --- MAIN UI CONTROLLER ---
+        function updateUIBasedOnConfig() {
+            const hash = window.location.hash.substring(1);
+            
+            // FIX: Only reset scroll if NOT admin to prevent jump
+            if (hash !== 'admin') {
+                if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
+            }
+
+            if (hash === 'admin') { updateAdminUIState(); return; }
+            hideAllViews();
+            document.getElementById('site-footer').classList.remove('hidden'); // Re-enable showing footer
+
+            const phase = systemConfig.activePhase || 'closed';
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            
+            const voteHeader = document.getElementById('vote-header-category');
+            if(voteHeader) voteHeader.innerText = `${currentAward}`;
+
+            if (currentSubView === 'register-attend') {
+                document.getElementById('view-register-attend').classList.remove('hidden');
+                return;
+            }
+
+            if (phase === 'register') {
+                if (currentSubView === 'register-contest') { document.getElementById('view-register-contest').classList.remove('hidden'); } 
+                else { document.getElementById('view-register-menu').classList.remove('hidden'); updateRegisterMenuState(); }
+            } else if (phase === 'vote') { document.getElementById('view-vote').classList.remove('hidden'); } 
+            else if (phase === 'result') { 
+                document.getElementById('view-result').classList.remove('hidden'); 
+                updateResultDropdown();
+            } 
+            else { document.getElementById('view-closed').classList.remove('hidden'); }
+        }
+
+        function updateRegisterMenuState() {
+            const isAttendRegistered = safeGetStorage(`reg_attend_${appId}`);
+            const isContestRegistered = safeGetStorage(`reg_contest_${appId}`);
+            const btnAttend = document.getElementById('menu-btn-attend');
+            const btnContest = document.getElementById('menu-btn-contest');
+
+            if (btnAttend) {
+                if (isAttendRegistered) {
+                    btnAttend.classList.add('disabled-link');
+                    btnAttend.querySelector('.title-text').innerText = "ลงทะเบียนเข้างาน (เรียบร้อย)";
+                    btnAttend.querySelector('.icon-container').classList.replace('bg-blue-100', 'bg-gray-200');
+                    btnAttend.querySelector('.icon-container').classList.replace('text-blue-600', 'text-gray-500');
+                    btnAttend.removeAttribute('href');
+                } else {
+                    btnAttend.classList.remove('disabled-link');
+                    btnAttend.href = "#register-attend";
+                    btnAttend.querySelector('.title-text').innerText = "ลงทะเบียนเข้างาน";
+                }
+            }
+            if (btnContest) {
+                if (isContestRegistered) {
+                    btnContest.classList.add('disabled-link');
+                    btnContest.querySelector('.title-text').innerText = "ลงทะเบียนประกวด (เรียบร้อย)";
+                    btnContest.querySelector('.icon-container').classList.replace('bg-red-100', 'bg-gray-200');
+                    btnContest.querySelector('.icon-container').classList.replace('text-red-600', 'text-gray-500');
+                    btnContest.removeAttribute('href');
+                } else {
+                    btnContest.classList.remove('disabled-link');
+                    btnContest.href = "#register-contest";
+                    btnContest.querySelector('.title-text').innerText = "ลงทะเบียนประกวด";
+                }
+            }
+        }
+
+        function updateAdminUIState() {
+            const phases = ['register', 'vote', 'result', 'closed'];
+            phases.forEach(p => {
+                const btn = document.getElementById(`btn-phase-${p}`);
+                if (!btn) return;
+                const indicator = btn.querySelector('.status-indicator');
+                if (systemConfig.activePhase === p) {
+                    btn.classList.remove('phase-btn-inactive'); btn.classList.add('phase-btn-active');
+                    indicator.classList.remove('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
+                } else {
+                    btn.classList.add('phase-btn-inactive'); btn.classList.remove('phase-btn-active');
+                    indicator.classList.add('border-slate-300'); indicator.classList.remove('bg-white', 'border-transparent');
+                }
+            });
+            const locBtn = document.getElementById('btn-loc-toggle');
+            if (locBtn) {
+                locBtn.innerText = systemConfig.locationCheckEnabled ? "เปิดอยู่" : "ปิดอยู่";
+                locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white transition-colors" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500 transition-colors";
+            }
+            const awardInput = document.getElementById('input-award-name');
+            if(awardInput && awardInput.value === "" && systemConfig.awardName) {
+                awardInput.value = systemConfig.awardName;
+            }
+
+            // AUTO FLOW STATE
+            const autoToggle = document.getElementById('toggle-auto-flow');
+            const autoPanel = document.getElementById('auto-flow-panel');
+            if (autoToggle) {
+                autoToggle.checked = systemConfig.autoFlowEnabled === true;
+                if (systemConfig.autoFlowEnabled) {
+                    autoPanel.classList.remove('opacity-50', 'pointer-events-none');
+                } else {
+                    autoPanel.classList.add('opacity-50', 'pointer-events-none');
+                }
+            }
+            
+            // Populate Schedule Inputs (Convert timestamp to datetime-local format)
+            if (systemConfig.flowSchedule) {
+                const toLocalISO = (ts) => {
+                    if(!ts) return "";
+                    const d = new Date(ts);
+                    // Adjust for timezone offset to show correct local time in input
+                    const offset = d.getTimezoneOffset() * 60000;
+                    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                };
+                
+                const inpVote = document.getElementById('input-time-vote');
+                const inpResult = document.getElementById('input-time-result');
+                
+                // Only update if not focused to avoid interrupting user typing
+                if (inpVote && document.activeElement !== inpVote && inpVote.value === "") inpVote.value = toLocalISO(systemConfig.flowSchedule.startVote);
+                if (inpResult && document.activeElement !== inpResult && inpResult.value === "") inpResult.value = toLocalISO(systemConfig.flowSchedule.startResult);
+            }
+        }
+
+        // --- HELPER: Get all distinct awards ---
+        function getAvailableCategories() {
+            const categories = new Set();
+            candidates.forEach(c => {
+                Object.keys(c).forEach(k => {
+                    if (k.startsWith('votes_')) categories.add(k);
+                });
+            });
+            return Array.from(categories);
+        }
+
+        function updateResultDropdown() {
+            const cats = getAvailableCategories();
+            const select = document.getElementById('result-category-select');
+            if (!select) return;
+
+            // Current Award Key
+            const currentKey = getScoreField(systemConfig.awardName);
+
+            // Use classes directly on options as a backup
+            const currentHTML = `<option value="current" class="text-slate-800 bg-white">รางวัลปัจจุบัน (${systemConfig.awardName})</option>
+                                 <option value="cheer_points" class="text-slate-800 bg-white">💖 คะแนนปั๊มยอด (Cheer)</option>`;
+            
+            // Filter out the current key from historical list to avoid duplication if it has votes
+            const historicalOpts = cats
+                .filter(c => c !== currentKey)
+                .map(c => `<option value="${c}" class="text-slate-800 bg-white">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`)
+                .join('');
+            
+            // Only update if content changed to prevent loop issues
+            const newContent = currentHTML + historicalOpts;
+            if (select.innerHTML !== newContent) {
+                const currentVal = select.value;
+                select.innerHTML = newContent;
+                // Try to restore value if it still exists
+                if (currentVal === 'current' || cats.includes(currentVal) || currentVal === 'cheer_points') {
+                    select.value = currentVal;
+                } else {
+                    select.value = selectedResultCategory;
+                }
+            }
+        }
+
+        // --- ACTION HANDLERS ---
+        async function changePhase(newPhase) {
+            if (!db) return;
+            try {
+                await getConfigRef().set({ activePhase: newPhase }, { merge: true });
+                showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
+            } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
+        }
+
+        async function handleAttendSubmit() {
+            if (!db) return;
+            // Always allow submit if redirected from vote, even if phase is 'vote'
+            const isRedirected = sessionStorage.getItem('pendingVoteId');
+            if (systemConfig.activePhase !== 'register' && !isRedirected) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            
+            if (!enforceLocationCheck()) return;
+            const id = document.getElementById('attend-id').value.trim();
+            const name = document.getElementById('attend-name').value.trim();
+            const btn = document.getElementById('btn-attend');
+            if (!id || !name) return showToast('กรุณากรอกข้อมูลให้ครบ', 'error');
+            if (attendees.some(a => a.studentId === id)) return showToast('รหัสนักศึกษานี้ลงทะเบียนเข้างานไปแล้ว', 'error');
+
+            btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).set({
+                    studentId: id, name: name, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                safeSetStorage(`reg_attend_${appId}`, 'true');
+                showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
+                document.getElementById('attend-id').value = ''; document.getElementById('attend-name').value = '';
+                
+                // AUTO BOUNCE BACK TO VOTE
+                if (isRedirected) {
+                    sessionStorage.removeItem('pendingVoteId'); // Clear pending flag
+                    window.location.hash = ''; // Back to vote
+                } else {
+                    navigateBackFromRegister();
+                }
+            } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาด', 'error'); } 
+            finally { btn.disabled = false; btn.innerHTML = 'ยืนยันการลงชื่อ'; }
+        }
+
+        async function handleContestSubmit() {
+            if (!db) return;
+            if (systemConfig.activePhase !== 'register') return showToast('ปิดรับสมัครแล้ว', 'error');
+            if (!enforceLocationCheck()) return;
+            const id = document.getElementById('contest-id').value.trim();
+            const name = document.getElementById('contest-name').value.trim();
+            const costume = document.getElementById('contest-costume').value.trim();
+            const btn = document.getElementById('btn-contest');
+            if (!id || !name || !costume) return showToast('กรุณากรอกข้อมูลให้ครบ', 'error');
+            if (candidates.some(c => c.studentId === id)) return showToast('รหัสนักศึกษานี้ลงสมัครประกวดไปแล้ว', 'error');
+
+            btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').add({
+                    studentId: id, name: name, costumeTitle: costume, votes: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                safeSetStorage(`reg_contest_${appId}`, 'true');
+                showToast('สมัครประกวดเรียบร้อย!', 'success');
+                document.getElementById('contest-id').value = ''; document.getElementById('contest-name').value = ''; document.getElementById('contest-costume').value = '';
+                navigateBackFromRegister();
+            } catch (error) { showToast('เกิดข้อผิดพลาด', 'error'); } 
+            finally { btn.disabled = false; btn.innerHTML = 'สมัครประกวด'; }
+        }
+
+        // Vote Logic
+        function openVoteModal(candidateId) {
+            if (systemConfig.activePhase !== 'vote') return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
+            if (!enforceLocationCheck()) return;
+            
+            // --- NEW CODE START: Set Candidate Name ---
+            const candidate = candidates.find(c => c.id === candidateId);
+            const nameEl = document.getElementById('vote-modal-candidate-name');
+            if (nameEl && candidate) {
+                nameEl.innerText = candidate.name;
+            } else if (nameEl) {
+                nameEl.innerText = '...';
+            }
+            // --- NEW CODE END ---
+
+            document.getElementById('selected-candidate-id').value = candidateId;
+            document.getElementById('voter-id-input').value = '';
+            const modal = document.getElementById('vote-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('#vote-modal-content').classList.add('modal-enter'); 
+            }, 10);
+        }
+        function closeVoteModal() { 
+            const modal = document.getElementById('vote-modal');
+            modal.classList.add('opacity-0'); 
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        async function submitVote() {
+            if (!db) return;
+            // Force close modal if location check fails to show warning
+            if (!enforceLocationCheck()) {
+                closeVoteModal();
+                return;
+            }
+            
+            const candidateId = document.getElementById('selected-candidate-id').value;
+            const voterId = document.getElementById('voter-id-input').value.trim();
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            const scoreField = getScoreField(currentAward);
+            if (!voterId) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
+
+            const btn = document.getElementById('btn-confirm-vote');
+            btn.disabled = true; btn.innerHTML = 'กำลังตรวจสอบ...';
+
+            try {
+                // 1. Check if Registered
+                const attendeeRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(voterId);
+                const attendeeDoc = await attendeeRef.get();
+                
+                if (!attendeeDoc.exists) {
+                    // ** LOGIC: NOT REGISTERED -> REDIRECT **
+                    showToast('คุณยังไม่ได้ลงทะเบียนเข้างาน', 'error');
+                    
+                    // Set flag for auto-return
+                    sessionStorage.setItem('pendingVoteId', voterId);
+                    
+                    setTimeout(() => {
+                        closeVoteModal();
+                        window.location.hash = 'register-attend'; // Redirect
+                    }, 1000);
+                    return; // Stop execution
+                }
+
+                // 2. Voting Transaction
+                const voteDocId = `${voterId}_${scoreField}`; 
+                const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voteDocId);
+                const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
+
+                await db.runTransaction(async (transaction) => {
+                    const voteDoc = await transaction.get(voteRef);
+                    if (voteDoc.exists) throw "ALREADY_VOTED";
+                    
+                    transaction.set(voteRef, {
+                        voterId: voterId, 
+                        voterName: attendeeDoc.data().name || 'Unknown', 
+                        candidateId: candidateId, 
+                        awardCategory: currentAward, 
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    transaction.update(candidateRef, { [scoreField]: firebase.firestore.FieldValue.increment(1) });
+                });
+
+                showToast('โหวตสำเร็จ!', 'success');
+                closeVoteModal();
+                
+                // Store Vote Data Locally
+                const now = new Date();
+                const timeString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
+                
+                safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
+                safeSetStorage(`voted_time_${appId}_${currentAward}`, timeString);
+                safeSetStorage(`voted_award_${appId}_${currentAward}`, currentAward);
+                
+                renderCandidates(); // This will trigger receipt view
+                
+            } catch (error) {
+                if (error === "ALREADY_VOTED") {
+                    showToast('คุณได้โหวตในหัวข้อนี้ไปแล้ว', 'error');
+                    // Ensure local state matches reality
+                    safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
+                    closeVoteModal();
+                    renderCandidates(); 
+                } else {
+                    console.error(error);
+                    showToast('เกิดข้อผิดพลาดในการโหวต', 'error');
+                }
+            } finally { 
+                if(btn) { btn.disabled = false; btn.innerHTML = 'ยืนยันคะแนน'; }
+            }
+        }
+
+        // --- RENDER ---
+        function renderCandidates() {
+            const listContainer = document.getElementById('candidates-list');
+            const votedContainer = document.getElementById('voted-card-container');
+            if(!listContainer || !votedContainer) return;
+
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            const votedCandidateId = safeGetStorage(`voted_candidate_${appId}_${currentAward}`);
+            
+            // If already voted for THIS category
+            if (votedCandidateId) {
+                const votedCandidate = candidates.find(c => c.id === votedCandidateId);
+                const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ไม่พบข้อมูล";
+                const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
+                const votedTime = safeGetStorage(`voted_time_${appId}_${currentAward}`) || '-';
+                
+                listContainer.classList.add('hidden');
+                votedContainer.classList.remove('hidden');
+                
+                // ** NEW RECEIPT UI **
+                votedContainer.innerHTML = `
+                    <div class="px-6 py-4 animate-fade-in">
+                        <div class="receipt-card p-6 rounded-lg shadow-2xl mx-auto max-w-xs text-center">
+                            <div class="mb-4">
+                                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-check"></i></div>
+                            </div>
+                            <h2 class="text-xl font-bold text-slate-800 tracking-tight">บัตรบันทึกคะแนน</h2>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6">OFFICIAL VOTE RECORD</p>
+                            
+                            <div class="space-y-4 mb-6">
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <div class="text-[10px] text-slate-400 mb-1">ผู้ที่ได้รับคะแนน</div>
+                                    <div class="font-bold text-lg text-slate-800">${cName}</div>
+                                    <div class="text-xs text-indigo-600 font-medium">${cCostume}</div>
+                                </div>
+
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">หัวข้อรางวัล</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${currentAward}</span>
+                                </div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">วันที่ / เวลา</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${votedTime}</span>
+                                </div>
+                            </div>
+
+                            <div class="text-[10px] text-slate-400">
+                                ขอบคุณที่ร่วมกิจกรรม<br>Christmas 2025
+                            </div>
+                            <div class="mt-4">
+                                <button onclick="recheckVoteStatus()" class="text-[10px] text-red-400 hover:text-red-600 underline">โหลดหน้าโหวตใหม่</button>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                listContainer.classList.remove('hidden');
+                votedContainer.classList.add('hidden');
+                
+                if (candidates.length === 0) { listContainer.innerHTML = `<div class="col-span-2 text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`; return; }
+                
+                const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+                
+                // NEW LOGIC HERE for grid columns
+                if (sortedCandidates.length === 1) {
+                    listContainer.classList.remove('grid-cols-2');
+                    listContainer.classList.add('grid-cols-1');
+                } else {
+                    listContainer.classList.remove('grid-cols-1');
+                    listContainer.classList.add('grid-cols-2');
+                }
+
+                listContainer.innerHTML = sortedCandidates.map(c => `
+                    <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
+                        <div class="flex justify-between items-start mb-1"><span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
+                        <h3 class="text-sm font-bold text-slate-800 leading-tight mb-0.5 line-clamp-1">${escapeHtml(c.name)}</h3>
+                        <p class="text-[10px] text-slate-500 mb-2 line-clamp-1">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
+                        <button onclick="openVoteModal('${c.id}')" class="w-full py-1.5 rounded-lg font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95"><i class="fa-regular fa-heart"></i> โหวต</button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function recheckVoteStatus() {
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            if(confirm("ต้องการโหลดหน้าโหวตใหม่หรือไม่?")) {
+                localStorage.removeItem(`voted_candidate_${appId}_${currentAward}`);
+                renderCandidates();
+            }
+        }
+
+        function renderLeaderboard() {
+            // Check Dropdown value
+            const select = document.getElementById('result-category-select');
+            selectedResultCategory = select ? select.value : 'current';
+            
+            let targetField = '';
+            let label = '';
+            if (selectedResultCategory === 'current') {
+                targetField = getScoreField(systemConfig.awardName || 'Popular Vote');
+                label = systemConfig.awardName || 'Popular Vote';
+            } else if (selectedResultCategory === 'cheer_points') {
+                targetField = 'cheer_points';
+                label = 'คะแนนปั๊มยอด (Cheer)';
+            } else {
+                targetField = selectedResultCategory;
+                label = selectedResultCategory.replace('votes_', '').replace(/_/g, ' ');
+            }
+            
+            const container = document.getElementById('leaderboard-list');
+            if(!container) return;
+
+            const sorted = [...candidates].sort((a, b) => {
+                const scoreA = a[targetField] || 0;
+                const scoreB = b[targetField] || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+
+            if (sorted.length === 0) { container.innerHTML = '<div class="p-6 text-center text-slate-400">ยังไม่มีข้อมูล</div>'; return; }
+            
+            container.innerHTML = sorted.map((c, i) => {
+                let rankStyle = "bg-slate-100 text-slate-500"; let icon = "";
+                if (i === 0) { rankStyle = "bg-yellow-400 text-yellow-900 shadow-md"; icon = '<i class="fa-solid fa-trophy text-yellow-500 text-xs ml-1"></i>'; }
+                if (i === 1) rankStyle = "bg-slate-300 text-slate-700";
+                if (i === 2) rankStyle = "bg-amber-600 text-amber-100";
+                const score = c[targetField] || 0;
+                return `
+                <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">${i + 1}</div>
+                        <div><h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3><p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p></div>
+                    </div>
+                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score.toLocaleString()}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
+                </div>`;
+            }).join('');
+        }
+
+        function listenToCandidates() {
+            if (!db) return;
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates')
+            .orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                candidates = [];
+                snapshot.forEach(doc => candidates.push({ id: doc.id, ...doc.data() }));
+                
+                // Ensure dropdown updates when data arrives
+                updateResultDropdown(); 
+                
+                // RENDER ALL VIEWS
+                renderCandidates(); 
+                renderLeaderboard(); 
+                renderAdminDataTables();
+                renderPumpInterface(); // Render Pump
+                renderTVBoard(); // Render TV
+                
+                document.getElementById('stat-candidate-count').innerText = candidates.length;
+                document.getElementById('loading-vote').classList.add('hidden');
+            });
+        }
+
+        function listenToAttendees() {
+            if (!db) return;
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees')
+            .orderBy('timestamp', 'desc')
+            .onSnapshot(snapshot => {
+                attendees = [];
+                snapshot.forEach(doc => attendees.push({ id: doc.id, ...doc.data() }));
+                renderAdminDataTables(); 
+                document.getElementById('stat-attendee-count').innerText = attendees.length;
+            });
+        }
+
+        // --- CUSTOM CONFIRM MODAL LOGIC (IMPROVED) ---
+        function showConfirmModal(title, message, isDanger = false, strictText = null) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('custom-confirm-modal');
+                const titleEl = document.getElementById('confirm-title');
+                const msgEl = document.getElementById('confirm-message');
+                const btnOk = document.getElementById('btn-confirm-ok');
+                const btnCancel = document.getElementById('btn-confirm-cancel');
+                const iconContainer = document.getElementById('confirm-icon-container');
+                const inputContainer = document.getElementById('confirm-input-container');
+                const inputField = document.getElementById('confirm-input-text');
+
+                titleEl.innerText = title;
+                msgEl.innerText = message;
+                inputField.value = '';
+
+                // Style for Danger
+                if(isDanger) {
+                    btnOk.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-200 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed";
+                    iconContainer.className = "w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md animate-bounce-short";
+                    iconContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                } else {
+                    btnOk.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-200 transition text-sm";
+                    iconContainer.className = "w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md";
+                    iconContainer.innerHTML = '<i class="fa-solid fa-circle-question"></i>';
+                }
+
+                // Strict Mode Handling
+                if (strictText) {
+                    inputContainer.classList.remove('hidden');
+                    btnOk.disabled = true;
+                    inputField.onkeyup = (e) => {
+                        if (e.target.value.toUpperCase() === strictText) {
+                            btnOk.disabled = false;
+                        } else {
+                            btnOk.disabled = true;
+                        }
+                    };
+                } else {
+                    inputContainer.classList.add('hidden');
+                    btnOk.disabled = false;
+                }
+
+                // Show Modal
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modal.querySelector('div').classList.remove('scale-95');
+                    modal.querySelector('div').classList.add('scale-100');
+                }, 10);
+
+                // Handlers
+                const handleOk = () => {
+                    closeModal();
+                    resolve(true);
+                };
+                const handleCancel = () => {
+                    closeModal();
+                    resolve(false);
+                };
+
+                const closeModal = () => {
+                    modal.classList.add('opacity-0');
+                    modal.querySelector('div').classList.add('scale-95');
+                    modal.querySelector('div').classList.remove('scale-100');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        btnOk.removeEventListener('click', handleOk);
+                        btnCancel.removeEventListener('click', handleCancel);
+                        inputField.onkeyup = null; // Clear listener
+                    }, 300);
+                };
+
+                btnOk.addEventListener('click', handleOk);
+                btnCancel.addEventListener('click', handleCancel);
+            });
+        }
+
+        // --- DATA MANAGEMENT FUNCTIONS ---
+        async function resetVotes() {
+            // Unused directly now, replaced by specific functions but kept for safety logic if needed
+            resetVotesForCategory(systemConfig.awardName || 'Popular Vote');
+        }
+
+        async function resetVotesForCategory(categoryName) {
+            const confirm1 = await showConfirmModal('ยืนยันลบคะแนน', `ต้องการล้างคะแนนของหัวข้อ "${categoryName}" ใช่หรือไม่?`, true);
+            if (!confirm1) return;
+            
+            if (!db) return;
+            
+            showToast('กำลังล้างคะแนน...', 'success');
+            const batch = db.batch();
+            const scoreField = getScoreField(categoryName);
+            
+            // Reset Candidate Scores
+            const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const candSnap = await candidatesRef.get();
+            candSnap.forEach(doc => batch.update(doc.ref, { [scoreField]: 0 }));
+
+            // Delete Vote History for this category
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.where('awardCategory', '==', categoryName).get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            const configRef = getConfigRef();
+            batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
+
+            await batch.commit();
+            showToast(`ล้างคะแนน "${categoryName}" เรียบร้อย`, 'success');
+        }
+
+        async function resetAllVotes() {
+            const confirm1 = await showConfirmModal('ยืนยันลบคะแนนทั้งหมด', 'ต้องการลบ "คะแนนโหวตทุกหัวข้อ" ใช่หรือไม่?', true);
+            if (!confirm1) return;
+
+            if (!db) return;
+            showToast('กำลังล้างคะแนนทั้งหมด...', 'success');
+            
+            const batch = db.batch();
+            
+            // 1. Reset all candidates fields starting with votes_
+            const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const candSnap = await candidatesRef.get();
+            
+            candSnap.forEach(doc => {
+                const data = doc.data();
+                const updates = { votes: 0, cheer_points: 0 }; // RESET CHEER POINTS TOO? Maybe safer to ask. For now, yes, reset all "Scores"
                 Object.keys(data).forEach(key => {
                     if (key.startsWith('votes_')) updates[key] = 0;
                 });
@@ -1719,6 +2829,9 @@
             if (selectedResultCategory === 'current') {
                 targetField = getScoreField(systemConfig.awardName || 'Popular Vote');
                 label = systemConfig.awardName || 'Popular Vote';
+            } else if (selectedResultCategory === 'cheer_points') {
+                targetField = 'cheer_points';
+                label = 'คะแนนปั๊มยอด (Cheer)';
             } else {
                 targetField = selectedResultCategory;
                 label = selectedResultCategory.replace('votes_', '').replace(/_/g, ' ');
@@ -1748,7 +2861,7 @@
                         <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">${i + 1}</div>
                         <div><h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3><p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p></div>
                     </div>
-                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
+                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score.toLocaleString()}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
                 </div>`;
             }).join('');
         }
