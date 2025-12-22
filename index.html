@@ -416,15 +416,15 @@
                         <!-- TAB CONTENT: DATA -->
                         <div id="admin-content-data" class="hidden space-y-8">
                             <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100 relative overflow-hidden group">
+                                <div onclick="openAttendeeListModal()" class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100 relative overflow-hidden group cursor-pointer hover:bg-blue-100 transition shadow-sm">
                                     <h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4>
                                     <div id="stat-attendee-count" class="text-3xl font-bold text-blue-800">0</div>
-                                    <button onclick="resetAttendees()" class="mt-2 w-full py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200"><i class="fa-solid fa-trash-can"></i> ลบผู้ลงทะเบียน</button>
+                                    <p class="text-[9px] text-blue-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
                                 </div>
-                                <div class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group">
+                                <div onclick="openCandidateListModal()" class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group cursor-pointer hover:bg-red-100 transition shadow-sm">
                                     <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
                                     <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
-                                    <button onclick="resetCandidates()" class="mt-2 w-full py-1 bg-red-100 text-red-600 rounded text-[10px] font-bold hover:bg-red-200"><i class="fa-solid fa-trash-can"></i> ลบผู้สมัคร</button>
+                                    <p class="text-[9px] text-red-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
                                 </div>
                             </div>
                             
@@ -435,16 +435,6 @@
                                 </div>
                                 <div id="admin-category-list" class="grid gap-2">
                                     <!-- Categories injected here -->
-                                </div>
-                            </div>
-
-                            <div class="mt-6">
-                                <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span> รายชื่อผู้ลงทะเบียนเข้างาน</h3>
-                                <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-60 overflow-y-auto">
-                                    <table class="w-full data-table">
-                                        <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr></thead>
-                                        <tbody id="table-attendees-body" class="bg-white"><tr><td colspan="3" class="text-center p-4 text-slate-400">กำลังโหลด...</td></tr></tbody>
-                                    </table>
                                 </div>
                             </div>
                             
@@ -486,13 +476,32 @@
             <!-- ADMIN SUMMARY MODAL -->
             <div id="admin-summary-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
                 <div class="bg-white rounded-2xl p-6 w-[95%] max-w-md relative max-h-[85vh] flex flex-col">
+                    <div class="flex justify-between items-start mb-1 pr-10">
+                        <h3 class="text-lg font-bold text-slate-800" id="admin-summary-title">สรุปคะแนน</h3>
+                        <button id="btn-clear-category-in-modal" class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-indigo-200 transition" title="ล้างคะแนนหัวข้อนี้">
+                            <i class="fa-solid fa-broom"></i>
+                        </button>
+                    </div>
                     <button onclick="closeAdminSummaryModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-                    <h3 class="text-lg font-bold text-slate-800 mb-1" id="admin-summary-title">สรุปคะแนน</h3>
                     <p class="text-xs text-slate-500 mb-4">คลิกที่แถวเพื่อดูรายชื่อผู้โหวต</p>
                     <div class="overflow-y-auto flex-1 rounded-xl border border-slate-200">
                         <table class="w-full data-table">
                             <thead><tr><th class="w-12">#</th><th>ชื่อผู้เข้าประกวด</th><th class="text-right">คะแนน</th></tr></thead>
                             <tbody id="admin-summary-body" class="bg-white"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATTENDEE/CANDIDATE LIST MODAL (NEW) -->
+            <div id="admin-data-list-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+                <div class="bg-white rounded-2xl p-6 w-[95%] max-w-md relative max-h-[85vh] flex flex-col">
+                    <button onclick="closeAdminDataListModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    <h3 class="text-lg font-bold text-slate-800 mb-4" id="admin-data-list-title">รายชื่อ</h3>
+                    <div class="overflow-y-auto flex-1 rounded-xl border border-slate-200">
+                        <table class="w-full data-table">
+                            <thead id="admin-data-list-head"></thead>
+                            <tbody id="admin-data-list-body" class="bg-white"></tbody>
                         </table>
                     </div>
                 </div>
@@ -981,9 +990,11 @@
             resetVotesForCategory(systemConfig.awardName || 'Popular Vote');
         }
 
-        async function resetVotesForCategory(categoryName) {
-            const confirm1 = await showConfirmModal('ยืนยันลบคะแนน', `ต้องการล้างคะแนนของหัวข้อ "${categoryName}" ใช่หรือไม่?`, true);
-            if (!confirm1) return;
+        async function resetVotesForCategory(categoryName, silent = false) {
+            if (!silent) {
+                const confirm1 = await showConfirmModal('ยืนยันล้างคะแนน', `ต้องการล้างคะแนนของหัวข้อ "${categoryName}" ใช่หรือไม่?`, true);
+                if (!confirm1) return;
+            }
             
             if (!db) return;
             
@@ -1006,6 +1017,36 @@
 
             await batch.commit();
             showToast(`ล้างคะแนน "${categoryName}" เรียบร้อย`, 'success');
+            
+            // Close modal if open to refresh
+            closeAdminSummaryModal();
+        }
+
+        // NEW: Delete Category Entirely
+        async function deleteCategory(categoryName) {
+            const confirm1 = await showConfirmModal('⚠️ ยืนยันลบรายการ', `ต้องการลบหัวข้อรางวัล "${categoryName}" ออกจากระบบทั้งหมดหรือไม่? (ข้อมูลคะแนนจะถูกลบถาวร)`, true, 'CONFIRM');
+            if (!confirm1) return;
+
+            if (!db) return;
+            showToast('กำลังลบหัวข้อรางวัล...', 'info');
+            
+            const batch = db.batch();
+            const scoreField = getScoreField(categoryName);
+
+            // 1. Remove score field from ALL candidates
+            const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const candSnap = await candRef.get();
+            candSnap.forEach(doc => {
+                batch.update(doc.ref, { [scoreField]: firebase.firestore.FieldValue.delete() });
+            });
+
+            // 2. Delete ALL votes records for this category
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.where('awardCategory', '==', categoryName).get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            await batch.commit();
+            showToast(`ลบหัวข้อ "${categoryName}" แล้ว`, 'success');
         }
 
         async function resetAllVotes() {
@@ -1059,6 +1100,7 @@
 
             await batch.commit();
             showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
+            closeAdminDataListModal();
         }
 
         async function resetCandidates() {
@@ -1082,6 +1124,7 @@
 
             await batch.commit();
             showToast('ลบผู้เข้าประกวดเรียบร้อยแล้ว', 'success');
+            closeAdminDataListModal();
         }
 
         async function resetAllSystem() {
@@ -1332,7 +1375,7 @@
                     indicator.classList.remove('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
                 } else {
                     btn.classList.add('phase-btn-inactive'); btn.classList.remove('phase-btn-active');
-                    indicator.classList.add('border-slate-300'); indicator.classList.remove('bg-white', 'border-transparent');
+                    indicator.classList.add('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
                 }
             });
             const locBtn = document.getElementById('btn-loc-toggle');
@@ -1751,19 +1794,10 @@
                                 </div>
                                 <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
                             </div>
-                            <button onclick="resetVotesForCategory('${name}')" class="bg-red-100 text-red-500 hover:bg-red-200 w-10 h-full rounded-xl flex items-center justify-center shadow-sm" title="ลบคะแนนหัวข้อนี้"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick="deleteCategory('${name}')" class="bg-red-100 text-red-500 hover:bg-red-200 w-10 h-full rounded-xl flex items-center justify-center shadow-sm" title="ลบรายการหัวข้อนี้"><i class="fa-solid fa-trash-can"></i></button>
                         </div>`;
                     }).join('');
                 }
-            }
-            const attendBody = document.getElementById('table-attendees-body');
-            if (attendBody) {
-                if (attendees.length === 0) attendBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
-                else attendBody.innerHTML = attendees.map(a => {
-                    let timeStr = '-';
-                    if (a.timestamp) { try { const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp); timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); } catch(e) {} }
-                    return `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td><td class="text-right text-xs text-slate-400">${timeStr}</td></tr>`
-                }).join('');
             }
 
             // NEW ADDITION: Render Manage Candidates List
@@ -1772,7 +1806,13 @@
 
         function openAdminSummaryModal(categoryField, categoryName) {
             const modal = document.getElementById('admin-summary-modal');
+            const clearBtn = document.getElementById('btn-clear-category-in-modal');
+            
             document.getElementById('admin-summary-title').innerText = `สรุปคะแนน: ${categoryName}`;
+            
+            // Re-bind clear button logic
+            clearBtn.onclick = () => resetVotesForCategory(categoryName);
+            
             modal.classList.remove('hidden');
             
             const sorted = [...candidates].sort((a, b) => (b[categoryField] || 0) - (a[categoryField] || 0));
@@ -1790,6 +1830,55 @@
             }
         }
         function closeAdminSummaryModal() { document.getElementById('admin-summary-modal').classList.add('hidden'); }
+
+        // --- DATA LIST MODAL LOGIC (ATTENDEES/CANDIDATES) ---
+        function openAttendeeListModal() {
+            const title = document.getElementById('admin-data-list-title');
+            const head = document.getElementById('admin-data-list-head');
+            const body = document.getElementById('admin-data-list-body');
+            
+            title.innerText = "ผู้ลงทะเบียนเข้างาน";
+            head.innerHTML = '<tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr>';
+            
+            if (attendees.length === 0) {
+                body.innerHTML = '<tr><td colspan="3" class="text-center p-8 text-slate-400">ไม่มีข้อมูล</td></tr>';
+            } else {
+                body.innerHTML = attendees.map(a => {
+                    let timeStr = '-';
+                    if (a.timestamp) { try { const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp); timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); } catch(e) {} }
+                    return `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td><td class="text-right text-xs text-slate-400">${timeStr}</td></tr>`
+                }).join('');
+            }
+            
+            document.getElementById('admin-data-list-modal').classList.remove('hidden');
+        }
+
+        function openCandidateListModal() {
+            const title = document.getElementById('admin-data-list-title');
+            const head = document.getElementById('admin-data-list-head');
+            const body = document.getElementById('admin-data-list-body');
+            
+            title.innerText = "ผู้เข้าประกวด";
+            head.innerHTML = '<tr><th>รหัส</th><th>ชื่อเล่น</th><th>คอนเซปต์</th></tr>';
+            
+            if (candidates.length === 0) {
+                body.innerHTML = '<tr><td colspan="3" class="text-center p-8 text-slate-400">ไม่มีข้อมูล</td></tr>';
+            } else {
+                body.innerHTML = candidates.map(c => `
+                    <tr>
+                        <td class="font-mono text-red-600 font-bold">${c.studentId || '?'}</td>
+                        <td class="font-bold">${escapeHtml(c.name)}</td>
+                        <td class="text-xs text-slate-500">${escapeHtml(c.costumeTitle)}</td>
+                    </tr>
+                `).join('');
+            }
+            
+            document.getElementById('admin-data-list-modal').classList.remove('hidden');
+        }
+
+        function closeAdminDataListModal() {
+            document.getElementById('admin-data-list-modal').classList.add('hidden');
+        }
 
         async function openAdminVoteDetail(candidateId, candidateName, awardName) {
             const modal = document.getElementById('admin-vote-modal');
