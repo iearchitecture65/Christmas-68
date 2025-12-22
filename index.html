@@ -455,6 +455,9 @@
         let isLocationValid = true;
         let isMapLocked = true;
         let selectedResultCategory = 'current';
+        
+        // NEW: Track session award to detect changes in realtime
+        let currentSessionAward = null;
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -639,23 +642,42 @@
             getConfigRef().onSnapshot(doc => {
                 if (doc.exists) {
                     const newData = doc.data();
-                    const prevAward = systemConfig.awardName;
                     systemConfig = newData;
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
                     if (!systemConfig.awardName) systemConfig.awardName = 'Popular Vote';
 
                     // --- REALTIME AWARD CHANGE LOGIC ---
-                    const lastKnownAward = safeGetStorage(`last_award_viewed_${appId}`);
-                    if (lastKnownAward && lastKnownAward !== systemConfig.awardName) {
-                         // Award changed by admin!
-                         // Reset local view state to ensure they can vote for the new award
-                         // But we DO NOT clear the actual stored vote data (localStorage) because that's handled by ID check
+                    const newAwardName = systemConfig.awardName;
+                    
+                    // Initialize on first load
+                    if (currentSessionAward === null) {
+                        currentSessionAward = newAwardName;
+                    }
+                    // Detect Change detected in this session
+                    else if (currentSessionAward !== newAwardName) {
+                         currentSessionAward = newAwardName;
                          
                          if (systemConfig.activePhase === 'vote') {
-                             showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${systemConfig.awardName}`, 'info');
-                             renderCandidates(); // This will re-check storage for the NEW award name
+                             showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${newAwardName}`, 'info');
+                             
+                             // 1. Close any open modals
+                             closeVoteModal();
+                             
+                             // 2. Reset scroll
+                             if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
+                             
+                             // 3. Reset view if they were on register page but redirected (optional, but safe)
+                             if (window.location.hash === '#register-attend' || window.location.hash === '#register-contest') {
+                                 // Only force back if not explicitly navigating? For now, let's just refresh the vote list content
+                             }
+                             
+                             // 4. Force RE-RENDER
+                             // This will cause renderCandidates to check storage for the NEW award name
+                             // Since the user hasn't voted for the new name yet, it will default to showing the list
+                             renderCandidates(); 
                          }
                     }
+                    
                     safeSetStorage(`last_award_viewed_${appId}`, systemConfig.awardName);
 
                     // --- INTELLIGENT RESET LOGIC ---
@@ -685,7 +707,15 @@
                 }
                 const loader = document.getElementById('initial-loader');
                 if(loader && loader.style.display !== 'none') { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500); }
-                updateUIBasedOnConfig(); updateAdminUIState(); 
+                
+                updateUIBasedOnConfig(); 
+                updateAdminUIState(); 
+                
+                // IMPORTANT: Ensure Candidates view is refreshed with new config if we are in vote phase
+                if (systemConfig.activePhase === 'vote') {
+                    renderCandidates();
+                }
+
                 if (adminMap && systemConfig.targetLat && document.getElementById('input-lat').value === "") {
                      document.getElementById('input-lat').value = systemConfig.targetLat; document.getElementById('input-lng').value = systemConfig.targetLng;
                      adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15); adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
