@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Christmas Vote System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" crossorigin="anonymous"></script>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Snow Background */
+        .snow-bg {
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+            background-size: 550px 550px, 350px 350px, 250px 250px;
+            background-position: 0 0, 40px 60px, 130px 270px;
+            animation: snow 20s linear infinite;
+        }
+        @keyframes snow {
+            0% { background-position: 0 0, 40px 60px, 130px 270px; }
+            100% { background-position: 550px 1000px, 400px 400px, 300px 300px; }
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Navigation State */
+        .nav-link.active {
+            background-color: white;
+            color: #dc2626; /* Red 600 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .nav-link {
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* Modal Animation */
+        .modal-enter { animation: modalIn 0.2s ease-out forwards; }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Admin Button Status Styles */
+        .btn-status-on {
+            background-color: #10B981; /* Green */
+            color: white;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+        }
+        .btn-status-off {
+            background-color: #EF4444; /* Red */
+            color: white;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        }
+        .btn-status-inactive {
+            background-color: transparent;
+            color: #94a3b8; /* Slate 400 */
+        }
+        .btn-status-inactive:hover {
+            background-color: #f1f5f9;
+        }
+
+    </style>
+</head>
+<body class="snow-bg min-h-screen text-gray-800 pb-20">
+
+    <div class="max-w-md mx-auto min-h-screen flex flex-col relative">
+        
+        <!-- Header -->
+        <header class="pt-8 pb-4 text-center px-4">
+            <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce">
+                <i class="fa-solid fa-tree text-green-400 text-2xl"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-white drop-shadow-md">
+                Christmas <span class="text-red-500">Vote</span>
+            </h1>
+            <p class="text-slate-300 text-xs mt-1 font-light tracking-wide">ระบบลงทะเบียนและโหวต (ใช้รหัสนักศึกษา)</p>
+        </header>
+
+        <!-- Navigation Bar -->
+        <nav class="px-4 mb-6 sticky top-2 z-40">
+            <div class="bg-slate-800/80 backdrop-blur-md p-1.5 rounded-2xl flex shadow-xl border border-white/5">
+                <a href="#vote" id="link-vote" class="nav-link flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check-to-slot"></i> โหวต
+                </a>
+                <a href="#register-menu" id="link-register-menu" class="nav-link flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-clipboard-list"></i> ลงทะเบียน
+                </a>
+                <a href="#result" id="link-result" class="nav-link flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trophy"></i> ผลคะแนน
+                </a>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 px-4 relative">
+            
+            <!-- 1. VIEW: VOTE LIST -->
+            <div id="view-vote" class="view-section hidden space-y-4">
+                <div id="vote-closed-banner" class="hidden text-center p-3 bg-red-500/90 text-white rounded-lg font-bold text-sm shadow-lg mb-4">
+                    <i class="fa-solid fa-lock mr-2"></i> ปิดรับการโหวตชั่วคราว
+                </div>
+                
+                <div id="loading-vote" class="text-center py-10 text-white/60">
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...
+                </div>
+                
+                <div id="candidates-list" class="grid gap-4 pb-24">
+                    <!-- Candidates will be injected here -->
+                </div>
+            </div>
+
+            <!-- 2. VIEW: REGISTER MENU (Choose Type) -->
+            <div id="view-register-menu" class="view-section hidden space-y-4 animate-fade-in">
+                <h2 class="text-white text-lg font-bold mb-2 pl-2">เลือกประเภทการลงทะเบียน</h2>
+                
+                <a href="#register-attend" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-24 h-24 bg-blue-500/20 rounded-bl-full -mr-4 -mt-4 transition group-hover:bg-blue-500/30"></div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-sm">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800">ลงทะเบียนเข้างาน</h3>
+                            <p class="text-xs text-slate-500">สำหรับผู้เข้าร่วมงานทั่วไป (Check-in)</p>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="#register-contest" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-24 h-24 bg-red-500/20 rounded-bl-full -mr-4 -mt-4 transition group-hover:bg-red-500/30"></div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shadow-sm">
+                            <i class="fa-solid fa-user-astronaut"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800">ลงทะเบียนประกวด</h3>
+                            <p class="text-xs text-slate-500">สำหรับผู้เข้าแข่งขันแต่งกายแฟนซี</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- 3. VIEW: REGISTER ATTEND (Event) -->
+            <div id="view-register-attend" class="view-section hidden">
+                <div class="glass-panel p-6 rounded-3xl shadow-2xl relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <i class="fa-solid fa-ticket text-blue-500"></i> ลงทะเบียนเข้างาน
+                    </h2>
+                    
+                    <div id="form-attend" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label>
+                            <input type="tel" id="attend-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อ-นามสกุล</label>
+                            <input type="text" id="attend-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none" placeholder="ระบุชื่อของคุณ...">
+                        </div>
+                        <button onclick="handleAttendSubmit()" id="btn-attend" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg mt-2">
+                            ยืนยันการลงชื่อ
+                        </button>
+                    </div>
+                    
+                    <div id="attend-closed-msg" class="hidden text-center py-8 text-slate-500">
+                        <i class="fa-solid fa-ban text-2xl mb-2"></i><br>ปิดรับลงทะเบียนเข้างาน
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="#register-menu" class="text-white/60 text-sm underline">ย้อนกลับ</a>
+                </div>
+            </div>
+
+            <!-- 4. VIEW: REGISTER CONTEST (Candidate) -->
+            <div id="view-register-contest" class="view-section hidden">
+                <div class="glass-panel p-6 rounded-3xl shadow-2xl relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-400 to-green-600"></div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <i class="fa-solid fa-user-astronaut text-red-500"></i> ลงทะเบียนประกวด
+                    </h2>
+                    
+                    <div id="form-contest" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label>
+                            <input type="tel" id="contest-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-red-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อผู้เข้าประกวด (เดี่ยว)</label>
+                            <input type="text" id="contest-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-red-500 outline-none" placeholder="ระบุชื่อของคุณ...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อชุด / คอนเซปต์</label>
+                            <input type="text" id="contest-costume" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-green-500 outline-none" placeholder="เช่น ซานต้าขาลุย...">
+                        </div>
+                        <button onclick="handleContestSubmit()" id="btn-contest" class="w-full bg-gradient-to-r from-red-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg mt-2">
+                            สมัครประกวด
+                        </button>
+                    </div>
+
+                    <div id="contest-closed-msg" class="hidden text-center py-8 text-slate-500">
+                        <i class="fa-solid fa-ban text-2xl mb-2"></i><br>ปิดรับสมัครประกวดแล้ว
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="#register-menu" class="text-white/60 text-sm underline">ย้อนกลับ</a>
+                </div>
+            </div>
+
+            <!-- 5. VIEW: RESULT -->
+            <div id="view-result" class="view-section hidden">
+                <div class="glass-panel rounded-3xl shadow-2xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-yellow-500 to-amber-600 p-4 text-white text-center shadow-md">
+                        <h2 class="text-xl font-bold flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-crown text-yellow-200"></i> ผลคะแนนล่าสุด
+                        </h2>
+                    </div>
+                    <div id="leaderboard-list" class="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+                        <!-- Leaderboard Items -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. VIEW: ADMIN LOGIN -->
+            <div id="view-admin-login" class="view-section hidden pt-10">
+                <div class="glass-panel p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-auto">
+                    <div class="w-16 h-16 bg-slate-800 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                        <i class="fa-solid fa-user-secret"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-6">ผู้ดูแลระบบ</h2>
+                    <input type="password" id="admin-pass" class="w-full p-3 rounded-lg border border-slate-300 mb-4 text-center font-mono placeholder:font-sans" placeholder="กรอกรหัสผ่าน">
+                    <button onclick="checkAdminPass()" class="w-full bg-slate-800 text-white py-3 rounded-lg font-bold">เข้าสู่ระบบ</button>
+                    <a href="#vote" class="block mt-4 text-xs text-slate-400">กลับหน้าหลัก</a>
+                </div>
+            </div>
+
+            <!-- 7. VIEW: ADMIN DASHBOARD (New UI - Buttons & Link) -->
+            <div id="view-admin-dashboard" class="view-section hidden">
+                <div class="glass-panel p-6 rounded-3xl shadow-2xl border-t-4 border-slate-600">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                        <i class="fa-solid fa-sliders text-slate-600"></i> แผงควบคุม
+                    </h2>
+                    
+                    <!-- Link for Users -->
+                    <div class="mb-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                        <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์สำหรับผู้ใช้งาน</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
+                            <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
+                                คัดลอก
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-yellow-600 mt-1">*ส่งลิงก์นี้ให้ผู้เข้าร่วมงานเพื่อโหวต</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Control Event Reg -->
+                        <div class="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div>
+                                <h3 class="font-bold text-slate-700 text-sm">ลงทะเบียนเข้างาน</h3>
+                                <p class="text-[10px] text-slate-500">สถานะ: <span id="text-status-attend">-</span></p>
+                            </div>
+                            <div class="flex bg-white p-1 rounded-lg border border-slate-200">
+                                <button onclick="updateSystemConfig('isAttendOpen', true)" id="btn-attend-on" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">เปิด</button>
+                                <button onclick="updateSystemConfig('isAttendOpen', false)" id="btn-attend-off" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">ปิด</button>
+                            </div>
+                        </div>
+
+                        <!-- Control Contest Reg -->
+                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
+                            <div>
+                                <h3 class="font-bold text-slate-700 text-sm">ลงทะเบียนประกวด</h3>
+                                <p class="text-[10px] text-slate-500">สถานะ: <span id="text-status-contest">-</span></p>
+                            </div>
+                            <div class="flex bg-white p-1 rounded-lg border border-slate-200">
+                                <button onclick="updateSystemConfig('isContestOpen', true)" id="btn-contest-on" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">เปิด</button>
+                                <button onclick="updateSystemConfig('isContestOpen', false)" id="btn-contest-off" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">ปิด</button>
+                            </div>
+                        </div>
+
+                        <!-- Control Voting -->
+                        <div class="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-100">
+                            <div>
+                                <h3 class="font-bold text-slate-700 text-sm">ระบบโหวต</h3>
+                                <p class="text-[10px] text-slate-500">สถานะ: <span id="text-status-vote">-</span></p>
+                            </div>
+                            <div class="flex bg-white p-1 rounded-lg border border-slate-200">
+                                <button onclick="updateSystemConfig('isVoteOpen', true)" id="btn-vote-on" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">เปิด</button>
+                                <button onclick="updateSystemConfig('isVoteOpen', false)" id="btn-vote-off" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all">ปิด</button>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-slate-100 text-center">
+                            <p class="text-xs text-slate-400 mb-2">สถานะ: <span class="text-green-600 font-bold">เชื่อมต่อแล้ว</span></p>
+                            <a href="#vote" class="text-slate-500 text-sm underline hover:text-red-500">ออกจากหน้าแอดมิน</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FOOTER (Added for easier Admin Access) -->
+        <footer class="mt-auto py-6 text-center">
+            <p class="text-slate-400/30 text-xs">
+                © 2024 Christmas Event 
+                <a href="#admin" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login">
+                    <i class="fa-solid fa-lock"></i> Admin Login
+                </a>
+            </p>
+        </footer>
+
+        <!-- VOTE VERIFICATION MODAL -->
+        <div id="vote-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+            <div class="bg-white rounded-2xl p-6 w-[90%] max-w-sm relative transform scale-95 transition-transform duration-300" id="vote-modal-content">
+                <button onclick="closeVoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+                
+                <div class="text-center mb-6">
+                    <div class="w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fa-solid fa-check-to-slot"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800">ยืนยันการโหวต</h3>
+                    <p class="text-sm text-gray-500 mt-1">กรุณาระบุรหัสนักศึกษาของคุณ<br>เพื่อใช้สิทธิ์ (1 รหัส / 1 เสียง)</p>
+                </div>
+
+                <div class="space-y-4">
+                    <input type="tel" id="voter-id-input" class="w-full text-center text-2xl font-mono tracking-widest p-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-0 outline-none" placeholder="XXXXXXXX" maxlength="20">
+                    <input type="hidden" id="selected-candidate-id">
+                    
+                    <button onclick="submitVote()" id="btn-confirm-vote" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-600/30">
+                        ยืนยันคะแนน
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[100] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
+            <div id="toast-icon"></div>
+            <span id="toast-msg" class="font-medium text-sm"></span>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- CONFIG & INIT ---
+        let app, auth, db;
+        let appId = typeof __app_id !== 'undefined' ? __app_id : 'default-christmas-app';
+        let configObj = null;
+
+        // --- ส่วนที่ 1: วางค่า Config ตรงนี้ ---
+        const yourFirebaseConfig = {
+            apiKey: "AIzaSyBF2ePattGMnMwlhKvcsDmC88FNFNhuZAc",
+            authDomain: "christmas-68.firebaseapp.com",
+            databaseURL: "https://christmas-68-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "christmas-68",
+            storageBucket: "christmas-68.firebasestorage.app",
+            messagingSenderId: "925275315166",
+            appId: "1:925275315166:web:b0418f0e40878bba6c5b4f",
+            measurementId: "G-HG5QNXMVTK"
+        };
+
+        try {
+            // 1. Try environment config (Canvas)
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                configObj = JSON.parse(__firebase_config);
+            } 
+            // 2. Try manual config (User pasted)
+            else if (yourFirebaseConfig && yourFirebaseConfig.apiKey) {
+                configObj = yourFirebaseConfig;
+            }
+
+            if (configObj) {
+                app = firebase.initializeApp(configObj);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                console.log("Firebase initialized successfully");
+            } else {
+                console.warn("Firebase config is missing. Please add your config in the code.");
+            }
+        } catch (e) { 
+            console.error("Error initializing Firebase:", e); 
+        }
+
+        // --- STATE ---
+        let systemConfig = { isAttendOpen: true, isContestOpen: true, isVoteOpen: true };
+        let candidates = [];
+        let isAdminAuthenticated = false;
+
+        // --- SAFE LOCAL STORAGE ---
+        function safeGetStorage(key) {
+            try { return localStorage.getItem(key); }
+            catch (e) { console.warn("LocalStorage blocked", e); return null; }
+        }
+        function safeSetStorage(key, value) {
+            try { localStorage.setItem(key, value); }
+            catch (e) { console.warn("LocalStorage blocked", e); }
+        }
+
+        // --- ROUTING ---
+        window.addEventListener('hashchange', handleRouting);
+        window.addEventListener('load', () => {
+            if (auth) {
+                initAuth();
+            } else {
+                 if (!configObj) showToast('ไม่พบการตั้งค่า Firebase', 'error');
+            }
+            handleRouting();
+        });
+
+        function handleRouting() {
+            let hash = window.location.hash.substring(1);
+            if (!hash) hash = 'vote'; // Default
+
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            
+            // Nav Active State
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            
+            // Route Logic
+            if (hash === 'vote') {
+                document.getElementById('view-vote').classList.remove('hidden');
+                document.getElementById('link-vote').classList.add('active');
+            } 
+            else if (hash === 'register-menu') {
+                document.getElementById('view-register-menu').classList.remove('hidden');
+                document.getElementById('link-register-menu').classList.add('active');
+            }
+            else if (hash === 'register-attend') {
+                document.getElementById('view-register-attend').classList.remove('hidden');
+                document.getElementById('link-register-menu').classList.add('active'); // Keep parent active
+            }
+            else if (hash === 'register-contest') {
+                document.getElementById('view-register-contest').classList.remove('hidden');
+                document.getElementById('link-register-menu').classList.add('active'); // Keep parent active
+            }
+            else if (hash === 'result') {
+                document.getElementById('view-result').classList.remove('hidden');
+                document.getElementById('link-result').classList.add('active');
+            }
+            else if (hash === 'admin') {
+                if (isAdminAuthenticated) {
+                    document.getElementById('view-admin-dashboard').classList.remove('hidden');
+                    // Setup User Link
+                    const baseUrl = window.location.href.split('#')[0];
+                    document.getElementById('user-link-input').value = baseUrl;
+                } else {
+                    document.getElementById('view-admin-login').classList.remove('hidden');
+                }
+            }
+        }
+
+        // --- AUTH & DATA LISTENERS ---
+        async function initAuth() {
+            if (!auth) return;
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    listenToConfig();
+                    listenToCandidates();
+                } else {
+                    const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (initialToken) auth.signInWithCustomToken(initialToken);
+                    else auth.signInAnonymously().catch(e => console.error("Auth Error:", e));
+                }
+            });
+        }
+
+        function listenToConfig() {
+            if (!db) return;
+            db.collection('artifacts').doc(appId).collection('public').doc('system_config')
+            .onSnapshot(doc => {
+                if (doc.exists) {
+                    systemConfig = doc.data();
+                } else {
+                    // Initialize if missing
+                    systemConfig = { isAttendOpen: true, isContestOpen: true, isVoteOpen: true };
+                    db.collection('artifacts').doc(appId).collection('public').doc('system_config').set(systemConfig).catch(e=>console.error(e));
+                }
+                updateUIBasedOnConfig();
+            });
+        }
+
+        function listenToCandidates() {
+            if (!db) return;
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates')
+            .orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                candidates = [];
+                snapshot.forEach(doc => candidates.push({ id: doc.id, ...doc.data() }));
+                renderCandidates();
+                renderLeaderboard();
+                document.getElementById('loading-vote').classList.add('hidden');
+            });
+        }
+
+        // --- ACTION: VOTE ---
+        function openVoteModal(candidateId) {
+            if (!systemConfig.isVoteOpen) {
+                return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
+            }
+            document.getElementById('selected-candidate-id').value = candidateId;
+            document.getElementById('voter-id-input').value = '';
+            
+            const modal = document.getElementById('vote-modal');
+            const content = document.getElementById('vote-modal-content');
+            modal.classList.remove('hidden');
+            // Small delay for transition
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.add('modal-enter');
+            }, 10);
+        }
+
+        function closeVoteModal() {
+            const modal = document.getElementById('vote-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 3000); // Only need 300ms really, but safe side
+            modal.classList.add('hidden'); // Immediate close for better feel
+        }
+
+        async function submitVote() {
+            if (!db) return;
+            const candidateId = document.getElementById('selected-candidate-id').value;
+            const voterId = document.getElementById('voter-id-input').value.trim();
+            const btn = document.getElementById('btn-confirm-vote');
+
+            if (!voterId) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังตรวจสอบ...';
+
+            const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voterId);
+            const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
+
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const voteDoc = await transaction.get(voteRef);
+                    if (voteDoc.exists) {
+                        throw "ALREADY_VOTED";
+                    }
+                    
+                    transaction.set(voteRef, {
+                        voterId: voterId,
+                        candidateId: candidateId,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    transaction.update(candidateRef, {
+                        votes: firebase.firestore.FieldValue.increment(1)
+                    });
+                });
+
+                showToast('โหวตสำเร็จ! ขอบคุณครับ ❤️', 'success');
+                closeVoteModal();
+                // Optional: Store locally just for UI hints
+                safeSetStorage(`voted_${appId}`, 'true');
+                setTimeout(() => window.location.hash = '#result', 500);
+
+            } catch (error) {
+                console.error(error);
+                if (error === "ALREADY_VOTED") {
+                    showToast('รหัสนักศึกษานี้ใช้โหวตไปแล้ว', 'error');
+                } else {
+                    showToast('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง', 'error');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'ยืนยันคะแนน';
+            }
+        }
+
+        // --- ACTION: REGISTER (ATTEND) ---
+        async function handleAttendSubmit() {
+            if (!db) return;
+            if (!systemConfig.isAttendOpen) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            
+            const id = document.getElementById('attend-id').value.trim();
+            const name = document.getElementById('attend-name').value.trim();
+            const btn = document.getElementById('btn-attend');
+
+            if (!id || !name) return showToast('กรุณากรอกข้อมูลให้ครบ', 'error');
+
+            btn.disabled = true;
+            btn.innerHTML = 'กำลังบันทึก...';
+
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').add({
+                    studentId: id,
+                    name: name,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
+                document.getElementById('attend-id').value = '';
+                document.getElementById('attend-name').value = '';
+                window.location.hash = '#register-menu';
+            } catch (error) {
+                showToast('เกิดข้อผิดพลาด', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'ยืนยันการลงชื่อ';
+            }
+        }
+
+        // --- ACTION: REGISTER (CONTEST) ---
+        async function handleContestSubmit() {
+            if (!db) return;
+            if (!systemConfig.isContestOpen) return showToast('ปิดรับสมัครแล้ว', 'error');
+
+            const id = document.getElementById('contest-id').value.trim();
+            const name = document.getElementById('contest-name').value.trim();
+            const costume = document.getElementById('contest-costume').value.trim();
+            const btn = document.getElementById('btn-contest');
+
+            if (!id || !name || !costume) return showToast('กรุณากรอกข้อมูลให้ครบ', 'error');
+
+            btn.disabled = true;
+            btn.innerHTML = 'กำลังบันทึก...';
+
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').add({
+                    studentId: id,
+                    name: name,
+                    costumeTitle: costume,
+                    votes: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showToast('สมัครประกวดเรียบร้อย!', 'success');
+                document.getElementById('contest-id').value = '';
+                document.getElementById('contest-name').value = '';
+                document.getElementById('contest-costume').value = '';
+                window.location.hash = '#vote';
+            } catch (error) {
+                showToast('เกิดข้อผิดพลาด', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'สมัครประกวด';
+            }
+        }
+
+        // --- ACTION: ADMIN ---
+        function checkAdminPass() {
+            const input = document.getElementById('admin-pass');
+            if (input.value === 'Admin 123') {
+                isAdminAuthenticated = true;
+                input.value = '';
+                showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success');
+                window.location.hash = '#admin'; // Retrigger
+                document.getElementById('view-admin-login').classList.add('hidden');
+                document.getElementById('view-admin-dashboard').classList.remove('hidden');
+                handleRouting(); // Reload view to setup link
+            } else {
+                showToast('รหัสผ่านไม่ถูกต้อง', 'error');
+                input.classList.add('border-red-500');
+                setTimeout(() => input.classList.remove('border-red-500'), 1000);
+            }
+        }
+
+        function copyUserLink() {
+            const input = document.getElementById('user-link-input');
+            input.select();
+            document.execCommand('copy');
+            showToast('คัดลอกลิงก์แล้ว', 'success');
+        }
+
+        async function updateSystemConfig(field, value) {
+            if (!db) return;
+            const configRef = db.collection('artifacts').doc(appId).collection('public').doc('system_config');
+            try {
+                await configRef.update({ [field]: value });
+                showToast('อัปเดตการตั้งค่าแล้ว', 'success');
+            } catch (error) { 
+                // If doc doesn't exist, create it
+                await configRef.set({ isAttendOpen: true, isContestOpen: true, isVoteOpen: true, [field]: value }, { merge: true });
+                showToast('อัปเดตการตั้งค่าแล้ว', 'success');
+            }
+        }
+
+        function updateUIBasedOnConfig() {
+            // Helper for Button Styles
+            const updateStatusUI = (isOpen, idOn, idOff, idText) => {
+                const btnOn = document.getElementById(idOn);
+                const btnOff = document.getElementById(idOff);
+                const statusText = document.getElementById(idText);
+
+                if (isOpen) {
+                    btnOn.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all btn-status-on";
+                    btnOff.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all btn-status-inactive";
+                    statusText.innerText = "กำลังเปิดรับ";
+                    statusText.className = "text-green-600 font-bold";
+                } else {
+                    btnOn.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all btn-status-inactive";
+                    btnOff.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all btn-status-off";
+                    statusText.innerText = "ปิดแล้ว";
+                    statusText.className = "text-red-500 font-bold";
+                }
+            };
+
+            // Apply to Admin Controls
+            updateStatusUI(systemConfig.isAttendOpen, 'btn-attend-on', 'btn-attend-off', 'text-status-attend');
+            updateStatusUI(systemConfig.isContestOpen, 'btn-contest-on', 'btn-contest-off', 'text-status-contest');
+            updateStatusUI(systemConfig.isVoteOpen, 'btn-vote-on', 'btn-vote-off', 'text-status-vote');
+
+            // UI Visibility (Client Side)
+            // Vote
+            const voteBanner = document.getElementById('vote-closed-banner');
+            systemConfig.isVoteOpen ? voteBanner.classList.add('hidden') : voteBanner.classList.remove('hidden');
+            renderVoteButtonStates();
+
+            // Attend Form
+            const attendForm = document.getElementById('form-attend');
+            const attendMsg = document.getElementById('attend-closed-msg');
+            if (systemConfig.isAttendOpen) { attendForm.classList.remove('hidden'); attendMsg.classList.add('hidden'); }
+            else { attendForm.classList.add('hidden'); attendMsg.classList.remove('hidden'); }
+
+            // Contest Form
+            const contestForm = document.getElementById('form-contest');
+            const contestMsg = document.getElementById('contest-closed-msg');
+            if (systemConfig.isContestOpen) { contestForm.classList.remove('hidden'); contestMsg.classList.add('hidden'); }
+            else { contestForm.classList.add('hidden'); contestMsg.classList.remove('hidden'); }
+        }
+
+        // --- RENDER FUNCTIONS ---
+        function renderCandidates() {
+            const container = document.getElementById('candidates-list');
+            
+            if (candidates.length === 0) {
+                container.innerHTML = `<div class="text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`;
+                return;
+            }
+
+            container.innerHTML = candidates.map(c => `
+                <div class="glass-panel p-4 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-2">
+                         <div class="flex items-center gap-2">
+                             <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-mono">${c.studentId || 'ID?'}</span>
+                         </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 leading-tight mb-1">${escapeHtml(c.name)}</h3>
+                    <p class="text-slate-500 text-sm mb-4">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
+                    
+                    <button onclick="openVoteModal('${c.id}')" id="btn-vote-${c.id}" 
+                        class="vote-btn w-full py-2 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2
+                        bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95 hover:shadow-red-500/30">
+                        <i class="fa-regular fa-heart"></i> โหวต
+                    </button>
+                </div>
+            `).join('');
+            renderVoteButtonStates();
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('leaderboard-list');
+            const sorted = [...candidates].sort((a, b) => b.votes - a.votes);
+
+            if (sorted.length === 0) {
+                container.innerHTML = '<div class="p-6 text-center text-slate-400">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            container.innerHTML = sorted.map((c, i) => {
+                let rankStyle = "bg-slate-100 text-slate-500";
+                let icon = "";
+                if (i === 0) { rankStyle = "bg-yellow-400 text-yellow-900 shadow-md"; icon = '<i class="fa-solid fa-trophy text-yellow-500 text-xs ml-1"></i>'; }
+                if (i === 1) rankStyle = "bg-slate-300 text-slate-700";
+                if (i === 2) rankStyle = "bg-amber-600 text-amber-100";
+
+                return `
+                <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">
+                            ${i + 1}
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3>
+                            <p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-lg font-bold text-red-600">${c.votes}</span>
+                        <span class="text-[10px] text-slate-400 block uppercase">Votes</span>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderVoteButtonStates() {
+            const buttons = document.querySelectorAll('.vote-btn');
+            buttons.forEach(btn => {
+                if (!systemConfig.isVoteOpen) {
+                    btn.disabled = true;
+                    btn.className = "w-full py-2 rounded-xl font-bold bg-slate-300 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2";
+                    btn.innerHTML = '<i class="fa-solid fa-lock"></i> ปิดโหวต';
+                } else {
+                    btn.disabled = false;
+                    btn.className = "w-full py-2 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95 hover:shadow-red-500/30";
+                    btn.innerHTML = '<i class="fa-regular fa-heart"></i> โหวต';
+                }
+            });
+        }
+
+        // --- UTILS ---
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+            toast.classList.remove('opacity-0', '-translate-y-10');
+            setTimeout(() => toast.classList.add('opacity-0', '-translate-y-10'), 3000);
+        }
+
+        function escapeHtml(text) { return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
+    </script>
+</body>
+</html>
