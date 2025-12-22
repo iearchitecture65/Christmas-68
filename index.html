@@ -26,9 +26,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body { font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            /* ป้องกันการเด้งของขอบจอ (Rubber-band effect) */
+            overscroll-behavior-y: none; 
+        }
         
-        /* Snow Background */
+        /* Snow Background - ปรับให้ Fixed ไม่เลื่อนตาม */
         .snow-bg {
             background-color: #0f172a;
             background-image: 
@@ -37,6 +42,7 @@
                 radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
             background-size: 550px 550px, 350px 350px, 250px 250px;
             background-position: 0 0, 40px 60px, 130px 270px;
+            background-attachment: fixed; /* Fix พื้นหลังให้อยู่กับที่ */
             animation: snow 20s linear infinite;
         }
         @keyframes snow {
@@ -91,9 +97,34 @@
         .data-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; color: #334155; }
         .data-table tr:last-child td { border-bottom: none; }
 
+        /* Loader */
+        #initial-loader {
+            position: fixed;
+            inset: 0;
+            background: #0f172a;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: opacity 0.5s ease;
+        }
+
     </style>
 </head>
 <body class="snow-bg min-h-screen text-gray-800 pb-20">
+
+    <!-- INITIAL LOADING SCREEN -->
+    <div id="initial-loader">
+        <div class="animate-bounce mb-4">
+            <i class="fa-solid fa-tree text-green-400 text-4xl"></i>
+        </div>
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <span>กำลังโหลดระบบ...</span>
+        </div>
+    </div>
 
     <!-- LOCATION BLOCK SCREEN -->
     <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 text-center hidden">
@@ -118,7 +149,7 @@
     <div class="max-w-md mx-auto min-h-screen flex flex-col relative">
         
         <!-- Header -->
-        <header class="pt-8 pb-4 text-center px-4">
+        <header class="pt-8 pb-4 text-center px-4" id="main-header">
             <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce">
                 <i class="fa-solid fa-tree text-green-400 text-2xl"></i>
             </div>
@@ -544,10 +575,15 @@
 
         function handleRouting() {
             let hash = window.location.hash.substring(1);
-            if (!hash) hash = 'admin'; 
+            
+            // FIX: ไม่บังคับเป็น Admin ถ้าไม่มี hash (ป้องกันผู้ใช้เห็นหน้า Admin)
+            // if (!hash) hash = 'admin';  <-- ลบบรรทัดนี้ออกแล้ว
 
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             
+            // Scroll to top on routing
+            window.scrollTo(0, 0);
+
             if (hash === 'admin') {
                 if (isAdminAuthenticated) showAdminDashboard();
                 else showAdminLogin();
@@ -557,6 +593,10 @@
         }
 
         function showAdminLogin() {
+            // Hide Loader if it's still there
+            const loader = document.getElementById('initial-loader');
+            if(loader) loader.style.display = 'none';
+
             document.getElementById('view-admin-login').classList.remove('hidden');
             document.getElementById('site-footer').classList.add('hidden');
         }
@@ -685,13 +725,19 @@
                     systemConfig = { activePhase: 'vote' };
                     db.collection('artifacts').doc(appId).collection('public').doc('system_config').set(systemConfig).catch(e=>console.error(e));
                 }
+                
+                // Hide Loader once config is loaded
+                const loader = document.getElementById('initial-loader');
+                if(loader && loader.style.display !== 'none') {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
+
                 updateUIBasedOnConfig();
                 updateAdminUIState(); 
                 
                 // Update map if opened
                 if (adminMap && systemConfig.targetLat) {
-                    // Only update if we haven't manually moved it? Or just update init state.
-                    // For simplicity, we assume map is for INPUT, so we set inputs.
                     if (document.getElementById('input-lat').value === "") {
                          document.getElementById('input-lat').value = systemConfig.targetLat;
                          document.getElementById('input-lng').value = systemConfig.targetLng;
@@ -865,6 +911,9 @@
 
         // --- MAIN UI CONTROLLER ---
         function updateUIBasedOnConfig() {
+            // FIX: Always scroll to top when UI updates/changes view
+            window.scrollTo(0, 0);
+
             const hash = window.location.hash.substring(1);
             if (hash === 'admin') {
                 updateAdminUIState();
