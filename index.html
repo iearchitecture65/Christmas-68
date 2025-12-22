@@ -340,6 +340,43 @@
                                 </div>
                             </div>
 
+                            <!-- AUTO FLOW SCHEDULE UI -->
+                            <div class="p-4 bg-purple-50 rounded-xl border border-purple-200 mt-4">
+                                <h3 class="font-bold text-purple-800 text-sm mb-3 flex justify-between items-center">
+                                    <span><i class="fa-solid fa-clock-rotate-left"></i> ตั้งเวลาเปลี่ยนสถานะอัตโนมัติ</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] text-purple-600">เปิดใช้งาน</span>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="toggle-auto-flow" class="sr-only peer" onchange="toggleAutoFlow()">
+                                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                        </label>
+                                    </div>
+                                </h3>
+                                
+                                <div id="auto-flow-panel" class="space-y-3 opacity-50 pointer-events-none transition-opacity">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs"><i class="fa-solid fa-1"></i></div>
+                                        <div class="flex-1">
+                                            <label class="text-[10px] text-slate-500 block">เริ่มโหวต (ปิดลงทะเบียน) เวลา:</label>
+                                            <input type="datetime-local" id="input-time-vote" class="w-full text-xs p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs"><i class="fa-solid fa-2"></i></div>
+                                        <div class="flex-1">
+                                            <label class="text-[10px] text-slate-500 block">จบโหวต & แสดงผล เวลา:</label>
+                                            <input type="datetime-local" id="input-time-result" class="w-full text-xs p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500">
+                                        </div>
+                                    </div>
+
+                                    <div class="text-right">
+                                        <button onclick="saveFlowSchedule()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm active:scale-95 transition-transform"><i class="fa-solid fa-save"></i> บันทึกเวลา</button>
+                                    </div>
+                                    <p class="text-[10px] text-purple-400 text-center mt-1">* ระบบจะเปลี่ยนสถานะให้อัตโนมัติเมื่อถึงเวลา<br>(แนะนำให้ Admin เปิดหน้าจอนี้ทิ้งไว้)</p>
+                                </div>
+                            </div>
+
                             <div class="p-4 bg-red-50 rounded-xl border border-red-200 mt-6">
                                 <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (สำหรับรางวัลปัจจุบัน)</h3>
                                 <div class="grid grid-cols-1 gap-2">
@@ -445,7 +482,16 @@
         } catch (e) { console.error("Error initializing Firebase:", e); }
 
         // --- STATE ---
-        let systemConfig = { activePhase: 'closed', locationCheckEnabled: false, targetLat: 13.7563, targetLng: 100.5018, allowedRadius: 100, awardName: 'Popular Vote' }; 
+        let systemConfig = { 
+            activePhase: 'closed', 
+            locationCheckEnabled: false, 
+            targetLat: 13.7563, 
+            targetLng: 100.5018, 
+            allowedRadius: 100, 
+            awardName: 'Popular Vote',
+            autoFlowEnabled: false,
+            flowSchedule: { startVote: 0, startResult: 0 }
+        }; 
         let candidates = [];
         let attendees = [];
         let isAdminAuthenticated = false;
@@ -455,9 +501,8 @@
         let isLocationValid = true;
         let isMapLocked = true;
         let selectedResultCategory = 'current';
-        
-        // NEW: Track session award to detect changes in realtime
         let currentSessionAward = null;
+        let autoFlowInterval = null;
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -476,6 +521,9 @@
             handleRouting();
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
+            
+            // Start Timer Loop
+            if (!autoFlowInterval) autoFlowInterval = setInterval(checkAutoFlow, 5000); // Check every 5s
         });
 
         function forceNavigate(viewId) {
@@ -494,7 +542,6 @@
                 currentSubView = 'register-attend';
                 updateUIBasedOnConfig();
                 
-                // Check if redirected from vote
                 const pendingId = sessionStorage.getItem('pendingVoteId');
                 if (pendingId) {
                     const input = document.getElementById('attend-id');
@@ -513,9 +560,7 @@
         }
 
         function navigateBackFromRegister() {
-            // Check pending vote logic
             if (sessionStorage.getItem('pendingVoteId')) {
-                // If they cancelled, we remove the pending state
                 sessionStorage.removeItem('pendingVoteId');
                 window.location.hash = '';
             } else {
@@ -649,31 +694,16 @@
                     // --- REALTIME AWARD CHANGE LOGIC ---
                     const newAwardName = systemConfig.awardName;
                     
-                    // Initialize on first load
                     if (currentSessionAward === null) {
                         currentSessionAward = newAwardName;
                     }
-                    // Detect Change detected in this session
                     else if (currentSessionAward !== newAwardName) {
                          currentSessionAward = newAwardName;
                          
                          if (systemConfig.activePhase === 'vote') {
                              showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${newAwardName}`, 'info');
-                             
-                             // 1. Close any open modals
                              closeVoteModal();
-                             
-                             // 2. Reset scroll
                              if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
-                             
-                             // 3. Reset view if they were on register page but redirected (optional, but safe)
-                             if (window.location.hash === '#register-attend' || window.location.hash === '#register-contest') {
-                                 // Only force back if not explicitly navigating? For now, let's just refresh the vote list content
-                             }
-                             
-                             // 4. Force RE-RENDER
-                             // This will cause renderCandidates to check storage for the NEW award name
-                             // Since the user hasn't voted for the new name yet, it will default to showing the list
                              renderCandidates(); 
                          }
                     }
@@ -711,7 +741,6 @@
                 updateUIBasedOnConfig(); 
                 updateAdminUIState(); 
                 
-                // IMPORTANT: Ensure Candidates view is refreshed with new config if we are in vote phase
                 if (systemConfig.activePhase === 'vote') {
                     renderCandidates();
                 }
@@ -791,8 +820,56 @@
             const name = document.getElementById('input-award-name').value.trim();
             if(!name) return showToast("กรุณาใส่ชื่อรางวัล", "error");
             await getConfigRef().set({ awardName: name }, { merge: true });
-            // The change will be detected by listener, UI updates automatically
             showToast(`เปลี่ยนหัวข้อเป็น: ${name}`, 'success');
+        }
+
+        // --- AUTO FLOW LOGIC ---
+        function checkAutoFlow() {
+            if (!systemConfig.autoFlowEnabled || !isAdminAuthenticated) return;
+            const now = Date.now();
+            const schedule = systemConfig.flowSchedule || {};
+            
+            // 1. Check Vote Start Time
+            if (schedule.startVote && now >= schedule.startVote && systemConfig.activePhase !== 'vote' && systemConfig.activePhase !== 'result') {
+                changePhase('vote');
+                // Optional: Notify
+                console.log("Auto-flow: Switched to Vote");
+            }
+            
+            // 2. Check Result Start Time
+            if (schedule.startResult && now >= schedule.startResult && systemConfig.activePhase !== 'result') {
+                changePhase('result');
+                console.log("Auto-flow: Switched to Result");
+            }
+        }
+
+        async function toggleAutoFlow() {
+            const isChecked = document.getElementById('toggle-auto-flow').checked;
+            const panel = document.getElementById('auto-flow-panel');
+            
+            if (isChecked) {
+                panel.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                panel.classList.add('opacity-50', 'pointer-events-none');
+            }
+            
+            if (!db) return;
+            await getConfigRef().set({ autoFlowEnabled: isChecked }, { merge: true });
+        }
+
+        async function saveFlowSchedule() {
+            if (!db) return;
+            const timeVote = document.getElementById('input-time-vote').value;
+            const timeResult = document.getElementById('input-time-result').value;
+            
+            const startVote = timeVote ? new Date(timeVote).getTime() : 0;
+            const startResult = timeResult ? new Date(timeResult).getTime() : 0;
+            
+            await getConfigRef().set({ 
+                flowSchedule: { startVote, startResult } 
+            }, { merge: true });
+            
+            showToast("บันทึกเวลาเรียบร้อยแล้ว", "success");
         }
 
         // --- LOCATION LOGIC ---
@@ -864,15 +941,8 @@
             const voteHeader = document.getElementById('vote-header-category');
             if(voteHeader) voteHeader.innerText = `${currentAward}`;
 
-            // *** FIX: Priority Check for Redirected/Explicit Views ***
-            // Ensure Register Attend view works even in Vote Phase if explicitly navigated to (e.g. from redirect)
             if (currentSubView === 'register-attend') {
                 document.getElementById('view-register-attend').classList.remove('hidden');
-                // Check if user is trying to register but it's not register phase AND they weren't redirected
-                const isRedirected = sessionStorage.getItem('pendingVoteId');
-                if (phase !== 'register' && !isRedirected) {
-                     // Optionally show extra warning or disable form, but handleAttendSubmit does the actual block
-                }
                 return;
             }
 
@@ -943,6 +1013,36 @@
             const awardInput = document.getElementById('input-award-name');
             if(awardInput && awardInput.value === "" && systemConfig.awardName) {
                 awardInput.value = systemConfig.awardName;
+            }
+
+            // AUTO FLOW STATE
+            const autoToggle = document.getElementById('toggle-auto-flow');
+            const autoPanel = document.getElementById('auto-flow-panel');
+            if (autoToggle) {
+                autoToggle.checked = systemConfig.autoFlowEnabled === true;
+                if (systemConfig.autoFlowEnabled) {
+                    autoPanel.classList.remove('opacity-50', 'pointer-events-none');
+                } else {
+                    autoPanel.classList.add('opacity-50', 'pointer-events-none');
+                }
+            }
+            
+            // Populate Schedule Inputs (Convert timestamp to datetime-local format)
+            if (systemConfig.flowSchedule) {
+                const toLocalISO = (ts) => {
+                    if(!ts) return "";
+                    const d = new Date(ts);
+                    // Adjust for timezone offset to show correct local time in input
+                    const offset = d.getTimezoneOffset() * 60000;
+                    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                };
+                
+                const inpVote = document.getElementById('input-time-vote');
+                const inpResult = document.getElementById('input-time-result');
+                
+                // Only update if not focused to avoid interrupting user typing
+                if (inpVote && document.activeElement !== inpVote && inpVote.value === "") inpVote.value = toLocalISO(systemConfig.flowSchedule.startVote);
+                if (inpResult && document.activeElement !== inpResult && inpResult.value === "") inpResult.value = toLocalISO(systemConfig.flowSchedule.startResult);
             }
         }
 
