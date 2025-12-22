@@ -755,36 +755,38 @@
                     
                     safeSetStorage(`last_award_viewed_${appId}`, systemConfig.awardName);
 
-                    // --- FORCE UPDATE MAP & INPUTS FOR SYNCING ---
-                    // This ensures all admins see the same map state immediately
-                    if (adminMap && systemConfig.targetLat) {
-                         // Ensure floats
+                    // --- [FIX] SEPARATE INPUT SYNC FROM MAP SYNC ---
+                    if (systemConfig.targetLat) {
+                         // Parse values
                          const lat = parseFloat(systemConfig.targetLat);
                          const lng = parseFloat(systemConfig.targetLng);
                          const rad = parseFloat(systemConfig.allowedRadius || 100);
 
-                         // Update Inputs
+                         // 1. Update Inputs (Always, if elements exist)
                          const latInput = document.getElementById('input-lat');
                          const lngInput = document.getElementById('input-lng');
                          const radInput = document.getElementById('input-radius');
                          
-                         if(latInput) latInput.value = lat.toFixed(6);
-                         if(lngInput) lngInput.value = lng.toFixed(6);
-                         // Don't forcefully overwrite radius if focused, but do it for sync
+                         // Only update if user is NOT typing in that specific field
+                         if(latInput && document.activeElement !== latInput) latInput.value = lat.toFixed(6);
+                         if(lngInput && document.activeElement !== lngInput) lngInput.value = lng.toFixed(6);
                          if(radInput && document.activeElement !== radInput) radInput.value = rad;
 
-                         // Update Map Elements
-                         const newLatLng = new L.LatLng(lat, lng);
-                         adminMarker.setLatLng(newLatLng);
-                         if(adminCircle) {
-                             adminCircle.setLatLng(newLatLng);
-                             adminCircle.setRadius(rad);
+                         // 2. Update Map (Only if map is initialized)
+                         if (adminMap && adminMarker) {
+                             const newLatLng = new L.LatLng(lat, lng);
+                             adminMarker.setLatLng(newLatLng); // Move marker
+                             if(adminCircle) {
+                                 adminCircle.setLatLng(newLatLng); // Move circle center
+                                 adminCircle.setRadius(rad); // Resize circle
+                             }
+                             
+                             // Optional: Pan map to new location if it changed significantly? 
+                             // Better not to force pan to avoid disrupting user interaction unless it's a big jump?
+                             // Let's rely on marker movement which is visible.
                          }
-                         
-                         // Only pan map if significant change or first load
-                         // adminMap.setView(newLatLng); // Optional: don't auto pan if user is dragging else where
-                         adminMap.invalidateSize(); // Fix rendering glitches
                     }
+                    // ---------------------------------------------
 
                     // --- INTELLIGENT RESET LOGIC ---
                     const serverVoteVer = systemConfig.voteResetVersion;
