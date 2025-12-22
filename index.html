@@ -29,11 +29,9 @@
         body { 
             font-family: 'Kanit', sans-serif; 
             -webkit-tap-highlight-color: transparent;
-            /* ป้องกันการเด้งของขอบจอ (Rubber-band effect) */
             overscroll-behavior-y: none; 
         }
         
-        /* Snow Background - ปรับให้ Fixed ไม่เลื่อนตาม */
         .snow-bg {
             background-color: #0f172a;
             background-image: 
@@ -42,7 +40,7 @@
                 radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
             background-size: 550px 550px, 350px 350px, 250px 250px;
             background-position: 0 0, 40px 60px, 130px 270px;
-            background-attachment: fixed; /* Fix พื้นหลังให้อยู่กับที่ */
+            background-attachment: fixed;
             animation: snow 20s linear infinite;
         }
         @keyframes snow {
@@ -62,80 +60,44 @@
             to { opacity: 1; transform: scale(1); }
         }
 
-        /* Active Phase Button Style (Admin) */
         .phase-btn-active {
-            background-color: #3b82f6; /* Blue 500 */
-            color: white;
-            border-color: #2563eb;
+            background-color: #3b82f6; color: white; border-color: #2563eb;
             box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
         }
         .phase-btn-inactive {
-            background-color: white;
-            color: #64748b; /* Slate 500 */
-            border-color: #e2e8f0;
+            background-color: white; color: #64748b; border-color: #e2e8f0;
         }
-        .phase-btn-inactive:hover {
-            background-color: #f8fafc;
-        }
+        .phase-btn-inactive:hover { background-color: #f8fafc; }
 
-        /* Admin Tabs */
-        .admin-tab-active {
-            border-bottom: 2px solid #3b82f6;
-            color: #3b82f6;
-            font-weight: bold;
-        }
-        .admin-tab-inactive {
-            color: #64748b;
-            border-bottom: 2px solid transparent;
-        }
-        .admin-tab-inactive:hover {
-            color: #334155;
-        }
-
-        /* Table Styles */
+        .admin-tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: bold; }
+        .admin-tab-inactive { color: #64748b; border-bottom: 2px solid transparent; }
+        
         .data-table th { text-align: left; padding: 0.75rem; background-color: #f1f5f9; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
         .data-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; color: #334155; }
         .data-table tr:last-child td { border-bottom: none; }
+        .clickable-row:hover { background-color: #f8fafc; cursor: pointer; }
 
-        /* Loader */
         #initial-loader {
-            position: fixed;
-            inset: 0;
-            background: #0f172a;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            transition: opacity 0.5s ease;
+            position: fixed; inset: 0; background: #0f172a; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; transition: opacity 0.5s ease;
         }
 
-        /* Top Warning Banner */
         #location-warning-banner {
-            background: rgba(220, 38, 38, 0.9);
-            color: white;
-            font-size: 0.75rem;
-            text-align: center;
-            padding: 8px;
-            backdrop-filter: blur(4px);
-            z-index: 90;
-            display: none; /* Default hidden */
-            animation: slideDown 0.3s ease-out;
+            background: rgba(220, 38, 38, 0.9); color: white; font-size: 0.75rem;
+            text-align: center; padding: 8px; backdrop-filter: blur(4px);
+            z-index: 90; display: none; animation: slideDown 0.3s ease-out;
         }
-        @keyframes slideDown {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
         
-        /* Disabled Link Style */
         .disabled-link {
-            filter: grayscale(100%);
-            opacity: 0.6;
-            pointer-events: none;
-            cursor: default;
-            background-color: #f1f5f9; /* Slate 100 */
+            filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: default;
+            background-color: #f1f5f9;
         }
+
+        /* Map Lock Overlay */
+        .map-locked { pointer-events: none; opacity: 0.8; }
+        .lock-btn { z-index: 1000; position: absolute; top: 10px; right: 10px; }
 
     </style>
 </head>
@@ -143,63 +105,38 @@
 
     <!-- INITIAL LOADING SCREEN -->
     <div id="initial-loader">
-        <div class="animate-bounce mb-4">
-            <i class="fa-solid fa-tree text-green-400 text-4xl"></i>
-        </div>
-        <div class="flex items-center gap-2">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-            <span>กำลังโหลดระบบ...</span>
-        </div>
+        <div class="animate-bounce mb-4"><i class="fa-solid fa-tree text-green-400 text-4xl"></i></div>
+        <div class="flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>กำลังโหลดระบบ...</span></div>
     </div>
 
     <!-- LOCATION BLOCK SCREEN (MODAL) -->
     <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center hidden">
         <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 max-w-sm w-full animate-bounce-short relative">
-            <button onclick="closeLocationBlock()" class="absolute top-4 right-4 text-white/50 hover:text-white transition">
-                <i class="fa-solid fa-xmark text-xl"></i>
-            </button>
-            <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-location-dot text-4xl text-red-500"></i>
-            </div>
+            <button onclick="closeLocationBlock()" class="absolute top-4 right-4 text-white/50 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-location-dot text-4xl text-red-500"></i></div>
             <h2 class="text-2xl font-bold text-white mb-2">อยู่นอกพื้นที่จัดงาน</h2>
             <p class="text-slate-300 text-sm mb-6">กรุณาอยู่ในบริเวณงานเพื่อทำการโหวตหรือลงทะเบียน</p>
             <div class="bg-black/20 rounded-xl p-4 mb-6 text-left">
                 <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
                 <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
             </div>
-            <button onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3">
-                <i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่
-            </button>
-            <button onclick="closeLocationBlock()" class="w-full text-slate-400 text-sm hover:text-white underline">
-                ย้อนกลับ
-            </button>
+            <button onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่</button>
+            <button onclick="closeLocationBlock()" class="w-full text-slate-400 text-sm hover:text-white underline">ย้อนกลับ</button>
             <div class="mt-6 pt-4 border-t border-white/10">
-                 <button onclick="window.location.hash='#admin'; closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300">
-                    <i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ
-                </button>
+                 <button onclick="window.location.hash='#admin'; closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300"><i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ</button>
             </div>
         </div>
     </div>
 
     <div class="max-w-md mx-auto min-h-screen flex flex-col relative">
-        
-        <!-- WARNING BANNER (Sticky Top) -->
-        <div id="location-warning-banner" class="sticky top-0 shadow-md">
-            <i class="fa-solid fa-circle-exclamation mr-1"></i> อยู่นอกพื้นที่จัดงาน (ดูข้อมูลได้อย่างเดียว)
-        </div>
+        <div id="location-warning-banner" class="sticky top-0 shadow-md"><i class="fa-solid fa-circle-exclamation mr-1"></i> อยู่นอกพื้นที่จัดงาน (ดูข้อมูลได้อย่างเดียว)</div>
 
-        <!-- Header -->
         <header class="pt-8 pb-4 text-center px-4" id="main-header">
-            <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce">
-                <i class="fa-solid fa-tree text-green-400 text-2xl"></i>
-            </div>
-            <h1 class="text-3xl font-extrabold text-white drop-shadow-md">
-                Christmas <span class="text-red-500">2025</span>
-            </h1>
+            <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce"><i class="fa-solid fa-tree text-green-400 text-2xl"></i></div>
+            <h1 class="text-3xl font-extrabold text-white drop-shadow-md">Christmas <span class="text-red-500">2025</span></h1>
             <p class="text-slate-300 text-xs mt-1 font-light tracking-wide">ระบบลงทะเบียนและโหวต (ใช้รหัสนักศึกษา)</p>
         </header>
 
-        <!-- MAIN CONTENT AREA -->
         <main class="flex-1 px-4 relative">
             
             <!-- 1. VIEW: VOTE LIST -->
@@ -209,106 +146,64 @@
                         <i class="fa-solid fa-check-to-slot"></i> <span id="vote-header-category">เปิดโหวตลงคะแนน</span>
                     </div>
                 </div>
-                
-                <div id="loading-vote" class="text-center py-10 text-white/60">
-                    <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...
-                </div>
-                
-                <div id="candidates-list" class="grid gap-4 pb-24">
-                    <!-- Candidates will be injected here -->
+                <div id="loading-vote" class="text-center py-10 text-white/60"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...</div>
+                <!-- 2-Column Grid -->
+                <div id="candidates-list" class="grid grid-cols-2 gap-3 pb-24">
+                    <!-- Candidates injected here -->
                 </div>
             </div>
 
-            <!-- 2. VIEW: REGISTER MENU (Choose Type) -->
+            <!-- 2. VIEW: REGISTER MENU -->
             <div id="view-register-menu" class="view-section hidden space-y-4 animate-fade-in">
-                <div class="text-center mb-4">
-                    <span class="bg-green-500/20 text-green-100 px-4 py-1 rounded-full text-sm font-bold border border-green-500/50">
-                        <i class="fa-solid fa-clipboard-list"></i> เปิดรับลงทะเบียน
-                    </span>
-                </div>
+                <div class="text-center mb-4"><span class="bg-green-500/20 text-green-100 px-4 py-1 rounded-full text-sm font-bold border border-green-500/50"><i class="fa-solid fa-clipboard-list"></i> เปิดรับลงทะเบียน</span></div>
                 
                 <a href="#register-attend" id="menu-btn-attend" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden cursor-pointer">
                     <div class="absolute right-0 top-0 w-24 h-24 bg-blue-500/20 rounded-bl-full -mr-4 -mt-4 transition group-hover:bg-blue-500/30"></div>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-sm icon-container">
-                            <i class="fa-solid fa-ticket"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg text-slate-800 title-text">ลงทะเบียนเข้างาน</h3>
-                            <p class="text-xs text-slate-500">สำหรับผู้เข้าร่วมงานทั่วไป (Check-in)</p>
-                        </div>
+                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-sm icon-container"><i class="fa-solid fa-ticket"></i></div>
+                        <div><h3 class="font-bold text-lg text-slate-800 title-text">ลงทะเบียนเข้างาน</h3><p class="text-xs text-slate-500">สำหรับผู้เข้าร่วมงาน</p></div>
                     </div>
                 </a>
 
                 <a href="#register-contest" id="menu-btn-contest" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden cursor-pointer">
                     <div class="absolute right-0 top-0 w-24 h-24 bg-red-500/20 rounded-bl-full -mr-4 -mt-4 transition group-hover:bg-red-500/30"></div>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shadow-sm icon-container">
-                            <i class="fa-solid fa-user-astronaut"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg text-slate-800 title-text">ลงทะเบียนประกวด</h3>
-                            <p class="text-xs text-slate-500">สำหรับผู้เข้าแข่งขันแต่งกายแฟนซี</p>
-                        </div>
+                        <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shadow-sm icon-container"><i class="fa-solid fa-user-astronaut"></i></div>
+                        <div><h3 class="font-bold text-lg text-slate-800 title-text">ลงทะเบียนประกวด</h3><p class="text-xs text-slate-500">สำหรับผู้เข้าแข่งขัน</p></div>
                     </div>
                 </a>
             </div>
 
-            <!-- 3. VIEW: REGISTER ATTEND (Event) -->
+            <!-- 3. VIEW: REGISTER ATTEND -->
             <div id="view-register-attend" class="view-section hidden">
                 <div class="glass-panel p-6 rounded-3xl shadow-2xl relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
-                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <i class="fa-solid fa-ticket text-blue-500"></i> ลงทะเบียนเข้างาน
-                    </h2>
-                    
+                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="fa-solid fa-ticket text-blue-500"></i> ลงทะเบียนเข้างาน</h2>
                     <div id="form-attend" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label>
-                            <input type="tel" id="attend-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อ-นามสกุล</label>
-                            <input type="text" id="attend-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none" placeholder="ระบุชื่อของคุณ...">
-                        </div>
-                        <button onclick="handleAttendSubmit()" id="btn-attend" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg mt-2">
-                            ยืนยันการลงชื่อ
-                        </button>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label><input type="tel" id="attend-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">ชื่อ-นามสกุล</label><input type="text" id="attend-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none" placeholder="ระบุชื่อของคุณ..."></div>
+                        <button onclick="handleAttendSubmit()" id="btn-attend" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg mt-2">ยืนยันการลงชื่อ</button>
                     </div>
                 </div>
                 <div class="text-center mt-4">
-                    <a href="#register-menu" onclick="event.preventDefault(); window.history.back();" class="text-white/60 text-sm underline cursor-pointer" id="btn-back-attend">ย้อนกลับ</a>
+                    <button onclick="navigateBackFromRegister()" class="text-white/60 text-sm underline cursor-pointer" id="btn-back-attend">ย้อนกลับ</button>
                 </div>
             </div>
 
-            <!-- 4. VIEW: REGISTER CONTEST (Candidate) -->
+            <!-- 4. VIEW: REGISTER CONTEST -->
             <div id="view-register-contest" class="view-section hidden">
                 <div class="glass-panel p-6 rounded-3xl shadow-2xl relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-400 to-green-600"></div>
-                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <i class="fa-solid fa-user-astronaut text-red-500"></i> ลงทะเบียนประกวด
-                    </h2>
-                    
+                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="fa-solid fa-user-astronaut text-red-500"></i> ลงทะเบียนประกวด</h2>
                     <div id="form-contest" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label>
-                            <input type="tel" id="contest-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-red-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อผู้เข้าประกวด (เดี่ยว)</label>
-                            <input type="text" id="contest-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-red-500 outline-none" placeholder="ระบุชื่อของคุณ...">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">ชื่อชุด / คอนเซปต์</label>
-                            <input type="text" id="contest-costume" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-green-500 outline-none" placeholder="เช่น ซานต้าขาลุย...">
-                        </div>
-                        <button onclick="handleContestSubmit()" id="btn-contest" class="w-full bg-gradient-to-r from-red-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg mt-2">
-                            สมัครประกวด
-                        </button>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label><input type="tel" id="contest-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-red-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">ชื่อผู้เข้าประกวด (เดี่ยว)</label><input type="text" id="contest-name" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-red-500 outline-none" placeholder="ระบุชื่อของคุณ..."></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">ชื่อชุด / คอนเซปต์</label><input type="text" id="contest-costume" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-green-500 outline-none" placeholder="เช่น ซานต้าขาลุย..."></div>
+                        <button onclick="handleContestSubmit()" id="btn-contest" class="w-full bg-gradient-to-r from-red-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg mt-2">สมัครประกวด</button>
                     </div>
                 </div>
                 <div class="text-center mt-4">
-                    <a href="#register-menu" onclick="event.preventDefault(); window.history.back();" class="text-white/60 text-sm underline cursor-pointer">ย้อนกลับ</a>
+                    <button onclick="navigateBackFromRegister()" class="text-white/60 text-sm underline cursor-pointer">ย้อนกลับ</button>
                 </div>
             </div>
 
@@ -316,13 +211,9 @@
             <div id="view-result" class="view-section hidden">
                 <div class="glass-panel rounded-3xl shadow-2xl overflow-hidden">
                     <div class="bg-gradient-to-r from-yellow-500 to-amber-600 p-4 text-white text-center shadow-md">
-                        <h2 class="text-xl font-bold flex justify-center items-center gap-2">
-                            <i class="fa-solid fa-crown text-yellow-200"></i> ผลคะแนน: <span id="result-header-category">รวม</span>
-                        </h2>
+                        <h2 class="text-xl font-bold flex justify-center items-center gap-2"><i class="fa-solid fa-crown text-yellow-200"></i> ผลคะแนน: <span id="result-header-category">รวม</span></h2>
                     </div>
-                    <div id="leaderboard-list" class="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
-                        <!-- Leaderboard Items -->
-                    </div>
+                    <div id="leaderboard-list" class="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto"></div>
                 </div>
             </div>
 
@@ -338,9 +229,7 @@
             <!-- 7. VIEW: ADMIN LOGIN -->
             <div id="view-admin-login" class="view-section hidden pt-10">
                 <div class="glass-panel p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-auto">
-                    <div class="w-16 h-16 bg-slate-800 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-                        <i class="fa-solid fa-user-secret"></i>
-                    </div>
+                    <div class="w-16 h-16 bg-slate-800 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-user-secret"></i></div>
                     <h2 class="text-xl font-bold text-slate-800 mb-6">ผู้ดูแลระบบ</h2>
                     <input type="password" id="admin-pass" class="w-full p-3 rounded-lg border border-slate-300 mb-4 text-center font-mono placeholder:font-sans" placeholder="กรอกรหัสผ่าน" onkeyup="if(event.key==='Enter')checkAdminPass()">
                     <button onclick="checkAdminPass()" class="w-full bg-slate-800 text-white py-3 rounded-lg font-bold">เข้าสู่ระบบ</button>
@@ -351,15 +240,10 @@
             <div id="view-admin-dashboard" class="view-section hidden">
                 <div class="glass-panel p-6 rounded-3xl shadow-2xl border-t-4 border-slate-600">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                            <i class="fa-solid fa-sliders text-slate-600"></i> แผงควบคุม
-                        </h2>
-                        <button onclick="logoutAdmin()" class="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 hover:bg-slate-200" title="ออกจากระบบ">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> ออก
-                        </button>
+                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><i class="fa-solid fa-sliders text-slate-600"></i> แผงควบคุม</h2>
+                        <button onclick="logoutAdmin()" class="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-500 hover:bg-slate-200" title="ออกจากระบบ"><i class="fa-solid fa-arrow-right-from-bracket"></i> ออก</button>
                     </div>
 
-                    <!-- ADMIN TABS -->
                     <div class="flex border-b border-slate-200 mb-6">
                         <button id="tab-control" onclick="switchAdminTab('control')" class="flex-1 py-2 text-sm font-medium admin-tab-active transition-all">ควบคุมระบบ</button>
                         <button id="tab-data" onclick="switchAdminTab('data')" class="flex-1 py-2 text-sm font-medium admin-tab-inactive transition-all">ดูข้อมูล / สรุปผล</button>
@@ -368,131 +252,79 @@
                     <!-- TAB CONTENT: CONTROL -->
                     <div id="admin-content-control" class="space-y-6">
                         
-                        <!-- NEW: CATEGORY / AWARD SETTING -->
                         <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
-                            <h3 class="font-bold text-indigo-800 text-sm mb-3 flex items-center gap-2">
-                                <i class="fa-solid fa-award"></i> ตั้งค่าหัวข้อรางวัล (เปลี่ยน = เริ่มโหวตใหม่)
-                            </h3>
+                            <h3 class="font-bold text-indigo-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-award"></i> ตั้งค่าหัวข้อรางวัล</h3>
                             <div class="flex gap-2">
                                 <input type="text" id="input-award-name" class="w-full p-2 rounded-lg border border-indigo-300 text-sm" placeholder="เช่น Popular Vote, ชุดสร้างสรรค์">
-                                <button onclick="saveAwardConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap">
-                                    บันทึก
-                                </button>
+                                <button onclick="saveAwardConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap">บันทึก</button>
                             </div>
-                            <p class="text-[10px] text-indigo-500 mt-2">* เมื่อเปลี่ยนชื่อรางวัล ผู้ใช้จะสามารถโหวตใหม่ได้ทันที (คะแนนแยกกัน)</p>
+                            <p class="text-[10px] text-indigo-500 mt-2">* เปลี่ยนชื่อรางวัล = เริ่มโหวตใหม่ (คะแนนแยกกัน)</p>
                         </div>
 
-                        <!-- Location Control (Updated with Map) -->
                         <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
                             <h3 class="font-bold text-slate-700 text-sm mb-3 flex justify-between items-center">
                                 <span><i class="fa-solid fa-map-location-dot"></i> การจำกัดพื้นที่ (GPS)</span>
                                 <button onclick="toggleLocationCheck()" id="btn-loc-toggle" class="px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500">ปิดอยู่</button>
                             </h3>
-                            
-                            <!-- Map Container -->
-                            <div id="admin-map" class="w-full h-64 rounded-lg border border-slate-300 mb-3 z-0"></div>
-                            <p class="text-[10px] text-slate-500 mb-2 text-center"><i class="fa-solid fa-hand-pointer"></i> จิ้มบนแผนที่เพื่อเลือกพิกัด หรือลากหมุด</p>
+                            <!-- Map Container with Lock Button -->
+                            <div class="relative w-full h-64 mb-3">
+                                <button onclick="toggleMapLock()" id="btn-map-lock" class="lock-btn bg-white p-2 rounded shadow text-slate-600 hover:text-slate-900" title="ล็อก/ปลดล็อกแผนที่">
+                                    <i class="fa-solid fa-lock"></i>
+                                </button>
+                                <div id="admin-map" class="w-full h-full rounded-lg border border-slate-300 z-0 map-locked"></div>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mb-2 text-center"><i class="fa-solid fa-hand-pointer"></i> กดปุ่มกุญแจเพื่อแก้ไขตำแหน่ง</p>
 
                             <div class="grid grid-cols-2 gap-2 mb-2">
-                                <div>
-                                    <label class="text-[10px] text-slate-500 block">Latitude</label>
-                                    <input type="number" id="input-lat" class="w-full text-xs p-2 rounded border bg-slate-50" placeholder="13.xxx" readonly>
-                                </div>
-                                <div>
-                                    <label class="text-[10px] text-slate-500 block">Longitude</label>
-                                    <input type="number" id="input-lng" class="w-full text-xs p-2 rounded border bg-slate-50" placeholder="100.xxx" readonly>
-                                </div>
+                                <div><label class="text-[10px] text-slate-500 block">Latitude</label><input type="number" id="input-lat" class="w-full text-xs p-2 rounded border bg-slate-50" placeholder="13.xxx" readonly></div>
+                                <div><label class="text-[10px] text-slate-500 block">Longitude</label><input type="number" id="input-lng" class="w-full text-xs p-2 rounded border bg-slate-50" placeholder="100.xxx" readonly></div>
                             </div>
                             <div class="flex gap-2 items-end">
-                                <div class="flex-1">
-                                    <label class="text-[10px] text-slate-500 block">รัศมี (เมตร)</label>
-                                    <input type="number" id="input-radius" class="w-full text-xs p-2 rounded border" placeholder="100">
-                                </div>
-                                <button onclick="getLocationFromDevice()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-xs text-slate-600 flex items-center gap-1" title="ใช้ตำแหน่งปัจจุบัน">
-                                    <i class="fa-solid fa-crosshairs"></i> ตำแหน่งฉัน
-                                </button>
+                                <div class="flex-1"><label class="text-[10px] text-slate-500 block">รัศมี (เมตร)</label><input type="number" id="input-radius" class="w-full text-xs p-2 rounded border" placeholder="100"></div>
+                                <button onclick="getLocationFromDevice()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-xs text-slate-600 flex items-center gap-1" title="ใช้ตำแหน่งปัจจุบัน"><i class="fa-solid fa-crosshairs"></i> ตำแหน่งฉัน</button>
                                 <button onclick="saveLocationConfig()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white font-bold">บันทึก</button>
                             </div>
                         </div>
 
-                        <!-- Link Copy -->
                         <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
                             <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์สำหรับผู้ใช้งาน</h3>
                             <div class="flex gap-2">
                                 <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
-                                <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
-                                    คัดลอก
-                                </button>
+                                <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">คัดลอก</button>
                             </div>
                         </div>
 
-                        <!-- PHASE CONTROL -->
                         <div>
                             <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">เลือกสถานะระบบ</h3>
-                            
                             <div class="grid grid-cols-2 gap-3">
-                                <!-- Register Phase -->
                                 <button onclick="changePhase('register')" id="btn-phase-register" class="p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all phase-btn-inactive group relative h-32 hover:shadow-md">
                                     <div class="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-slate-300 status-indicator transition-colors"></div>
-                                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm">
-                                        <i class="fa-solid fa-clipboard-user"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-bold text-sm">เปิดลงทะเบียน</div>
-                                        <div class="text-[10px] opacity-70 mt-0.5">รับสมัคร</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-clipboard-user"></i></div>
+                                    <div><div class="font-bold text-sm">เปิดลงทะเบียน</div><div class="text-[10px] opacity-70 mt-0.5">รับสมัคร</div></div>
                                 </button>
-
-                                <!-- Vote Phase -->
                                 <button onclick="changePhase('vote')" id="btn-phase-vote" class="p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all phase-btn-inactive group relative h-32 hover:shadow-md">
                                     <div class="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-slate-300 status-indicator transition-colors"></div>
-                                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm">
-                                        <i class="fa-solid fa-check-to-slot"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-bold text-sm">เปิดโหวต</div>
-                                        <div class="text-[10px] opacity-70 mt-0.5">ลงคะแนน</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-check-to-slot"></i></div>
+                                    <div><div class="font-bold text-sm">เปิดโหวต</div><div class="text-[10px] opacity-70 mt-0.5">ลงคะแนน</div></div>
                                 </button>
-
-                                <!-- Result Phase -->
                                 <button onclick="changePhase('result')" id="btn-phase-result" class="p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all phase-btn-inactive group relative h-32 hover:shadow-md">
                                     <div class="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-slate-300 status-indicator transition-colors"></div>
-                                    <div class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm">
-                                        <i class="fa-solid fa-trophy"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-bold text-sm">แสดงผล</div>
-                                        <div class="text-[10px] opacity-70 mt-0.5">Leaderboard</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-trophy"></i></div>
+                                    <div><div class="font-bold text-sm">แสดงผล</div><div class="text-[10px] opacity-70 mt-0.5">Leaderboard</div></div>
                                 </button>
-
-                                <!-- Closed Phase -->
                                 <button onclick="changePhase('closed')" id="btn-phase-closed" class="p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all phase-btn-inactive group relative h-32 hover:shadow-md">
                                     <div class="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-slate-300 status-indicator transition-colors"></div>
-                                    <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm">
-                                        <i class="fa-solid fa-lock"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-bold text-sm">ปิดระบบ</div>
-                                        <div class="text-[10px] opacity-70 mt-0.5">ซ่อนทั้งหมด</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-lock"></i></div>
+                                    <div><div class="font-bold text-sm">ปิดระบบ</div><div class="text-[10px] opacity-70 mt-0.5">ซ่อนทั้งหมด</div></div>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- DANGER ZONE: DATA MANAGEMENT -->
                         <div class="p-4 bg-red-50 rounded-xl border border-red-200 mt-6">
-                            <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2">
-                                <i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (สำหรับรางวัลปัจจุบัน)
-                            </h3>
+                            <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (สำหรับรางวัลปัจจุบัน)</h3>
                             <div class="grid grid-cols-1 gap-2">
-                                <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold">
-                                    <i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (เฉพาะรางวัลนี้)
-                                </button>
-                                <button onclick="resetAll()" class="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-xs font-bold">
-                                    <i class="fa-solid fa-skull mr-1"></i> รีเซ็ตทั้งงาน (ล้างทุกอย่าง)
-                                </button>
+                                <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (เฉพาะรางวัลนี้)</button>
+                                <button onclick="resetAll()" class="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-xs font-bold"><i class="fa-solid fa-skull mr-1"></i> รีเซ็ตทั้งงาน (ล้างทุกอย่าง)</button>
                             </div>
                         </div>
                     </div>
@@ -500,19 +332,12 @@
                     <!-- TAB CONTENT: DATA -->
                     <div id="admin-content-data" class="hidden space-y-8">
                         <div class="grid grid-cols-2 gap-4">
-                            <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
-                                <h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4>
-                                <div id="stat-attendee-count" class="text-3xl font-bold text-blue-800">0</div>
-                            </div>
-                            <div class="bg-red-50 p-4 rounded-xl text-center border border-red-100">
-                                <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
-                                <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
-                            </div>
+                            <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100"><h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4><div id="stat-attendee-count" class="text-3xl font-bold text-blue-800">0</div></div>
+                            <div class="bg-red-50 p-4 rounded-xl text-center border border-red-100"><h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4><div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div></div>
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                                <span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> ผลคะแนน (รางวัลปัจจุบัน)
-                            </h3>
+                            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> ผลคะแนน (รางวัลปัจจุบัน)</h3>
+                            <p class="text-[10px] text-slate-400 mb-2">* คลิกที่ชื่อเพื่อดูคนโหวต</p>
                             <div class="overflow-x-auto rounded-xl border border-slate-200">
                                 <table class="w-full data-table">
                                     <thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ชุด</th><th class="text-right">คะแนน</th></tr></thead>
@@ -521,9 +346,7 @@
                             </div>
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span> รายชื่อผู้ลงทะเบียนเข้างาน
-                            </h3>
+                            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span> รายชื่อผู้ลงทะเบียนเข้างาน</h3>
                             <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-60 overflow-y-auto">
                                 <table class="w-full data-table">
                                     <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr></thead>
@@ -532,28 +355,19 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
         </main>
 
-        <!-- FOOTER -->
         <footer class="mt-auto py-6 text-center" id="site-footer">
-            <p class="text-slate-400/30 text-xs">
-                © 2024 Christmas Event 
-                <a href="#admin" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login">
-                    <i class="fa-solid fa-lock"></i> Admin Login
-                </a>
-            </p>
+            <p class="text-slate-400/30 text-xs">© 2024 Christmas Event <a href="#admin" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a></p>
         </footer>
 
         <!-- VOTE VERIFICATION MODAL -->
         <div id="vote-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
             <div class="bg-white rounded-2xl p-6 w-[90%] max-w-sm relative transform scale-95 transition-transform duration-300" id="vote-modal-content">
-                <button onclick="closeVoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
+                <button onclick="closeVoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
                 <div class="text-center mb-6">
                     <div class="w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-check-to-slot"></i></div>
                     <h3 class="text-lg font-bold text-gray-800">ยืนยันการโหวต</h3>
@@ -567,10 +381,21 @@
             </div>
         </div>
 
+        <!-- VOTE DETAILS MODAL (ADMIN) -->
+        <div id="admin-vote-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+            <div class="bg-white rounded-2xl p-6 w-[90%] max-w-sm relative max-h-[80vh] flex flex-col">
+                <button onclick="closeAdminVoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">รายชื่อผู้โหวต</h3>
+                <p class="text-xs text-slate-500 mb-4" id="admin-vote-modal-title">...</p>
+                <div class="overflow-y-auto flex-1 space-y-2" id="admin-vote-list">
+                    <!-- List injected here -->
+                </div>
+            </div>
+        </div>
+
         <!-- TOAST NOTIFICATION -->
         <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[100] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
-            <div id="toast-icon"></div>
-            <span id="toast-msg" class="font-medium text-sm"></span>
+            <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
         </div>
 
     </div>
@@ -614,6 +439,7 @@
         let adminMap = null;
         let adminMarker = null;
         let isLocationValid = true;
+        let isMapLocked = true; // Default locked
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -641,7 +467,6 @@
 
         function handleRouting() {
             let hash = window.location.hash.substring(1);
-            
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             window.scrollTo(0, 0);
 
@@ -655,6 +480,21 @@
                 currentSubView = 'register-contest';
                 updateUIBasedOnConfig();
             } else {
+                currentSubView = 'register-menu';
+                updateUIBasedOnConfig();
+            }
+        }
+
+        // Explicit Back Logic
+        function navigateBackFromRegister() {
+            // Check if we came from auto-redirect
+            if (sessionStorage.getItem('autoRedirectFromVote')) {
+                // If yes, go back to vote page (main)
+                sessionStorage.removeItem('autoRedirectFromVote');
+                window.location.hash = ''; // Go to root/vote
+            } else {
+                // If standard navigation, go to register menu
+                window.location.hash = ''; // Assuming menu is default or we can force register-menu logic
                 currentSubView = 'register-menu';
                 updateUIBasedOnConfig();
             }
@@ -679,25 +519,66 @@
 
         // --- MAP FUNCTIONS ---
         function initAdminMap() {
-            if (adminMap) {
-                adminMap.invalidateSize();
-                return;
-            }
+            if (adminMap) { adminMap.invalidateSize(); return; }
             const lat = systemConfig.targetLat || 13.7563;
             const lng = systemConfig.targetLng || 100.5018;
-            adminMap = L.map('admin-map').setView([lat, lng], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(adminMap);
-            adminMarker = L.marker([lat, lng], {draggable: true}).addTo(adminMap);
+            adminMap = L.map('admin-map', { 
+                dragging: !isMapLocked, 
+                touchZoom: !isMapLocked,
+                doubleClickZoom: !isMapLocked,
+                scrollWheelZoom: !isMapLocked,
+                boxZoom: !isMapLocked,
+                keyboard: !isMapLocked,
+                zoomControl: !isMapLocked
+            }).setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(adminMap);
+            adminMarker = L.marker([lat, lng], {draggable: !isMapLocked}).addTo(adminMap);
+            
             adminMarker.on('dragend', function(e) {
                 const pos = e.target.getLatLng();
                 updateLocationInputs(pos.lat, pos.lng);
             });
             adminMap.on('click', function(e) {
+                if(isMapLocked) return;
                 adminMarker.setLatLng(e.latlng);
                 updateLocationInputs(e.latlng.lat, e.latlng.lng);
             });
+            updateMapLockUI();
+        }
+
+        function toggleMapLock() {
+            isMapLocked = !isMapLocked;
+            if (adminMap) {
+                if (isMapLocked) {
+                    adminMap.dragging.disable();
+                    adminMap.touchZoom.disable();
+                    adminMap.doubleClickZoom.disable();
+                    adminMap.scrollWheelZoom.disable();
+                    if(adminMarker) adminMarker.dragging.disable();
+                } else {
+                    adminMap.dragging.enable();
+                    adminMap.touchZoom.enable();
+                    adminMap.doubleClickZoom.enable();
+                    adminMap.scrollWheelZoom.enable();
+                    if(adminMarker) adminMarker.dragging.enable();
+                }
+            }
+            updateMapLockUI();
+        }
+
+        function updateMapLockUI() {
+            const btn = document.getElementById('btn-map-lock');
+            const mapEl = document.getElementById('admin-map');
+            if (isMapLocked) {
+                btn.innerHTML = '<i class="fa-solid fa-lock"></i>';
+                btn.classList.add('text-red-500');
+                mapEl.classList.add('map-locked');
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
+                btn.classList.remove('text-red-500');
+                btn.classList.add('text-green-500');
+                mapEl.classList.remove('map-locked');
+            }
         }
 
         function updateLocationInputs(lat, lng) {
@@ -717,10 +598,7 @@
                     adminMarker.setLatLng([lat, lng]);
                 }
                 showToast("พบพิกัดของคุณแล้ว", "success");
-            }, (err) => {
-                console.error(err);
-                showToast("ไม่สามารถดึงพิกัดได้", "error");
-            });
+            }, (err) => { console.error(err); showToast("ไม่สามารถดึงพิกัดได้", "error"); });
         }
 
         // --- ADMIN TABS CONTROL ---
@@ -731,37 +609,26 @@
             const contentData = document.getElementById('admin-content-data');
 
             if (tabName === 'control') {
-                btnControl.classList.add('admin-tab-active');
-                btnControl.classList.remove('admin-tab-inactive');
-                btnData.classList.add('admin-tab-inactive');
-                btnData.classList.remove('admin-tab-active');
-                contentControl.classList.remove('hidden');
-                contentData.classList.add('hidden');
+                btnControl.classList.add('admin-tab-active'); btnControl.classList.remove('admin-tab-inactive');
+                btnData.classList.add('admin-tab-inactive'); btnData.classList.remove('admin-tab-active');
+                contentControl.classList.remove('hidden'); contentData.classList.add('hidden');
                 setTimeout(() => { if(adminMap) adminMap.invalidateSize(); }, 100);
             } else {
-                btnData.classList.add('admin-tab-active');
-                btnData.classList.remove('admin-tab-inactive');
-                btnControl.classList.add('admin-tab-inactive');
-                btnControl.classList.remove('admin-tab-active');
-                contentControl.classList.add('hidden');
-                contentData.classList.remove('hidden');
+                btnData.classList.add('admin-tab-active'); btnData.classList.remove('admin-tab-inactive');
+                btnControl.classList.add('admin-tab-inactive'); btnControl.classList.remove('admin-tab-active');
+                contentControl.classList.add('hidden'); contentData.classList.remove('hidden');
                 renderAdminDataTables(); 
             }
         }
 
-        function hideAllViews() {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-        }
+        function hideAllViews() { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); }
 
         // --- AUTH & DATA LISTENERS ---
         async function initAuth() {
             if (!auth) return;
             auth.onAuthStateChanged(user => {
-                if (user) {
-                    listenToConfig();
-                    listenToCandidates();
-                    listenToAttendees(); 
-                } else {
+                if (user) { listenToConfig(); listenToCandidates(); listenToAttendees(); } 
+                else {
                     const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                     if (initialToken) auth.signInWithCustomToken(initialToken);
                     else auth.signInAnonymously().catch(e => console.error("Auth Error:", e));
@@ -769,8 +636,15 @@
             });
         }
         
-        function getConfigRef() {
-            return db.collection('artifacts').doc(appId).collection('public').doc('data').collection('config').doc('main');
+        function getConfigRef() { return db.collection('artifacts').doc(appId).collection('public').doc('data').collection('config').doc('main'); }
+
+        // --- SCORE SEPARATION HELPER ---
+        function getScoreField(awardName) {
+            // Normalize award name to be a valid field key (e.g. "Popular Vote" -> "votes_Popular_Vote")
+            // Firestore field paths should be simple. Let's just remove special chars.
+            if (!awardName) return 'votes';
+            const safeName = awardName.replace(/[^a-zA-Z0-9]/g, '_');
+            return `votes_${safeName}`;
         }
 
         function listenToConfig() {
@@ -781,55 +655,30 @@
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
                     if (!systemConfig.awardName) systemConfig.awardName = 'Popular Vote';
 
-                    // --- RESET / CATEGORY CHANGE CHECK ---
-                    // Unique Reset Key depends on both a timestamp version AND the current award name
+                    // --- RESET CHECK ---
                     const serverResetKey = `${systemConfig.voteResetVersion}_${systemConfig.awardName}`;
                     const localResetKey = safeGetStorage(`vote_reset_key_${appId}`);
 
                     if (serverResetKey && localResetKey !== serverResetKey) {
-                        console.log("Config changed or Reset triggered: Clearing local vote state.");
-                        // Clear voted flag only (Registration is usually one-time event, so we keep it)
-                        // Note: We use dynamic key based on award name for voting storage
-                        // But if explicit reset is called, we might want to clear even current view
-                        
-                        // Just update the key so we don't loop
+                        console.log("Config changed: Resetting local view.");
                         safeSetStorage(`vote_reset_key_${appId}`, serverResetKey);
-                        
-                        // Force UI refresh
+                        // Do not clear registration state, only current voting view
                         renderCandidates();
-                        
                         if (systemConfig.activePhase === 'vote') {
                             showToast(`เข้าสู่การโหวต: ${systemConfig.awardName}`, 'info');
                         }
                     }
-                    // ------------------------------------
-
                 } else {
                     systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
                     getConfigRef().set(systemConfig).catch(e=>console.error(e));
                 }
-                
                 const loader = document.getElementById('initial-loader');
-                if(loader && loader.style.display !== 'none') {
-                    loader.style.opacity = '0';
-                    setTimeout(() => loader.style.display = 'none', 500);
+                if(loader && loader.style.display !== 'none') { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 500); }
+                updateUIBasedOnConfig(); updateAdminUIState(); 
+                if (adminMap && systemConfig.targetLat && document.getElementById('input-lat').value === "") {
+                     document.getElementById('input-lat').value = systemConfig.targetLat; document.getElementById('input-lng').value = systemConfig.targetLng;
+                     adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15); adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
                 }
-
-                updateUIBasedOnConfig();
-                updateAdminUIState(); 
-                
-                if (adminMap && systemConfig.targetLat) {
-                    if (document.getElementById('input-lat').value === "") {
-                         document.getElementById('input-lat').value = systemConfig.targetLat;
-                         document.getElementById('input-lng').value = systemConfig.targetLng;
-                         adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15);
-                         adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
-                    }
-                }
-            }, (error) => {
-                console.error("Config Listener Error:", error);
-                const loader = document.getElementById('initial-loader');
-                if(loader) loader.style.display = 'none';
             });
         }
 
@@ -840,9 +689,7 @@
             .onSnapshot(snapshot => {
                 candidates = [];
                 snapshot.forEach(doc => candidates.push({ id: doc.id, ...doc.data() }));
-                renderCandidates();
-                renderLeaderboard();
-                renderAdminDataTables(); 
+                renderCandidates(); renderLeaderboard(); renderAdminDataTables(); 
                 document.getElementById('stat-candidate-count').innerText = candidates.length;
                 document.getElementById('loading-vote').classList.add('hidden');
             });
@@ -862,54 +709,22 @@
 
         // --- DATA MANAGEMENT FUNCTIONS ---
         async function resetVotes() {
-            if (!confirm(`ยืนยันล้างคะแนนโหวตสำหรับรางวัล "${systemConfig.awardName}" ใช่หรือไม่?`)) return;
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            if (!confirm(`ยืนยันล้างคะแนนโหวตสำหรับรางวัล "${currentAward}" ใช่หรือไม่?`)) return;
             if (!db) return;
             
             showToast('กำลังล้างคะแนน...', 'success');
             const batch = db.batch();
+            const scoreField = getScoreField(currentAward);
             
-            // 1. Delete votes for THIS award only (filter by awardName field in vote doc)
-            // Limitations: Firestore can't delete by query in client SDK easily in one batch without reading first
-            // So we read all votes, check if they belong to current category, then delete
-            // BETTER: Since we are in strict mode, we just reset 'votes' count on candidates. 
-            // The actual vote docs are for history/audit. 
-            // But to allow re-voting, we must ensure validation logic permits it.
-            
-            // Wait, my validation logic checks `votes` collection by Voter ID.
-            // If we have multiple awards, the vote doc ID should probably be `${voterId}_${awardName}` to allow multiple votes.
-            // Let's implement that in submitVote.
-            
-            // For Reset: We will delete votes matching the current award logic or just increment version
-            // Actually, simply incrementing the `voteResetVersion` forces clients to ignore local storage.
-            // But we also need to clear the `votes` count on candidates? 
-            // Yes, "Reset Votes" usually means setting candidate scores to 0.
-            
+            // Reset score field for all candidates
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
-            // We use a specific field for score per award? Or just reset the main 'votes' field?
-            // "Give 2 awards gradually" implies:
-            // 1. Vote for Award A -> Candidates get votes -> Winner announced.
-            // 2. Reset -> Candidates votes = 0.
-            // 3. Vote for Award B -> Candidates get votes -> Winner announced.
-            // So resetting 'votes' to 0 is correct for this flow.
-            
-            candSnap.forEach(doc => batch.update(doc.ref, { votes: 0 }));
+            candSnap.forEach(doc => batch.update(doc.ref, { [scoreField]: 0 }));
 
-            // Also trigger client reset
+            // Trigger client reset via version bump
             const configRef = getConfigRef();
             batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
-
-            // Note: We are NOT deleting the `votes` collection documents here to save reads/writes, 
-            // relying on the fact that `submitVote` checks for duplicates via specific ID.
-            // If we want to truly allow re-voting on same ID after reset, we should delete the docs.
-            // Let's delete them to be safe and clean.
-            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
-            const votesSnap = await votesRef.get();
-            votesSnap.forEach(doc => {
-                // Only delete if it matches current award? Or just wipe all for this session reset?
-                // The user said "Reset Votes", implying for the current session. Wiping all is safer to prevent bugs.
-                batch.delete(doc.ref);
-            });
 
             await batch.commit();
             showToast('ล้างคะแนนเรียบร้อยแล้ว', 'success');
@@ -920,10 +735,9 @@
             const name = document.getElementById('input-award-name').value.trim();
             if(!name) return showToast("กรุณาใส่ชื่อรางวัล", "error");
             
-            // Changing award name effectively starts a new session
             await getConfigRef().set({ 
                 awardName: name,
-                voteResetVersion: Date.now() // Trigger UI refresh for everyone
+                voteResetVersion: Date.now() 
             }, { merge: true });
             
             showToast(`เปลี่ยนหัวข้อเป็น: ${name}`, 'success');
@@ -937,6 +751,8 @@
             showToast('กำลังรีเซ็ตระบบ...', 'success');
             const batch = db.batch();
 
+            // Clear all collections manually is hard in client SDK without recursive delete, so we do best effort
+            // Delete votes
             const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
             const votesSnap = await votesRef.get();
             votesSnap.forEach(doc => batch.delete(doc.ref));
@@ -958,30 +774,24 @@
 
         // --- LOCATION LOGIC ---
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-            var R = 6371; // km
-            var dLat = deg2rad(lat2-lat1);
-            var dLon = deg2rad(lon2-lon1); 
+            var R = 6371; var dLat = deg2rad(lat2-lat1); var dLon = deg2rad(lon2-lon1); 
             var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
             var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-            var d = R * c; 
-            return d * 1000; // meters
+            return R * c * 1000;
         }
-
         function deg2rad(deg) { return deg * (Math.PI/180); }
 
         function checkLocationAccess(forceShowModal = false) {
             if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) {
                 document.getElementById('view-location-block').classList.add('hidden');
                 document.getElementById('location-warning-banner').style.display = 'none';
-                isLocationValid = true;
-                return;
+                isLocationValid = true; return;
             }
             if (!navigator.geolocation) { isLocationValid = false; return; }
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const userLat = position.coords.latitude;
-                    const userLng = position.coords.longitude;
+                    const userLat = position.coords.latitude; const userLng = position.coords.longitude;
                     const dist = getDistanceFromLatLonInMeters(userLat, userLng, systemConfig.targetLat, systemConfig.targetLng);
                     document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
                     document.getElementById('loc-allowed').innerText = systemConfig.allowedRadius + " เมตร";
@@ -997,10 +807,8 @@
                     }
                 },
                 (error) => {
-                    console.error("GPS Error", error);
                     isLocationValid = false;
                     document.getElementById('location-warning-banner').style.display = 'block';
-                    document.getElementById('loc-dist').innerText = "ไม่ได้รับอนุญาต";
                     if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
                 }
             );
@@ -1009,29 +817,17 @@
         function enforceLocationCheck() {
             if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) return true;
             checkLocationAccess(false);
-            if (!isLocationValid) {
-                document.getElementById('view-location-block').classList.remove('hidden');
-                return false;
-            }
+            if (!isLocationValid) { document.getElementById('view-location-block').classList.remove('hidden'); return false; }
             return true;
         }
-
-        function closeLocationBlock() {
-            document.getElementById('view-location-block').classList.add('hidden');
-        }
-
-        async function toggleLocationCheck() {
-            if(!db) return;
-            const newState = !systemConfig.locationCheckEnabled;
-            await getConfigRef().set({ locationCheckEnabled: newState }, { merge: true });
-        }
-
+        function closeLocationBlock() { document.getElementById('view-location-block').classList.add('hidden'); }
+        async function toggleLocationCheck() { if(!db) return; await getConfigRef().set({ locationCheckEnabled: !systemConfig.locationCheckEnabled }, { merge: true }); }
         async function saveLocationConfig() {
             if(!db) return;
             const lat = parseFloat(document.getElementById('input-lat').value);
             const lng = parseFloat(document.getElementById('input-lng').value);
             const rad = parseFloat(document.getElementById('input-radius').value);
-            if(isNaN(lat) || isNaN(lng) || isNaN(rad)) return showToast("กรุณากำหนดพิกัดบนแผนที่", "error");
+            if(isNaN(lat)) return showToast("กรุณากำหนดพิกัด", "error");
             await getConfigRef().set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
             showToast("บันทึกพิกัดแล้ว", "success");
         }
@@ -1040,16 +836,11 @@
         function updateUIBasedOnConfig() {
             window.scrollTo(0, 0);
             const hash = window.location.hash.substring(1);
-            if (hash === 'admin') {
-                updateAdminUIState();
-                return;
-            }
+            if (hash === 'admin') { updateAdminUIState(); return; }
             hideAllViews();
             document.getElementById('site-footer').classList.remove('hidden');
 
             const phase = systemConfig.activePhase || 'closed';
-            
-            // Update Headers
             const currentAward = systemConfig.awardName || 'Popular Vote';
             document.getElementById('vote-header-category').innerText = `โหวต: ${currentAward}`;
             document.getElementById('result-header-category').innerText = currentAward;
@@ -1119,18 +910,9 @@
                 }
             });
             const locBtn = document.getElementById('btn-loc-toggle');
-            if (systemConfig.locationCheckEnabled) {
-                locBtn.innerText = "เปิดอยู่";
-                locBtn.className = "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white";
-            } else {
-                locBtn.innerText = "ปิดอยู่";
-                locBtn.className = "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
-            }
-            if(document.getElementById('input-lat').value === "" && systemConfig.targetLat) {
-                document.getElementById('input-lat').value = systemConfig.targetLat;
-                document.getElementById('input-lng').value = systemConfig.targetLng;
-                document.getElementById('input-radius').value = systemConfig.allowedRadius || 100;
-            }
+            locBtn.innerText = "เปิดอยู่";
+            locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
+            
             if(document.getElementById('input-award-name').value === "" && systemConfig.awardName) {
                 document.getElementById('input-award-name').value = systemConfig.awardName;
             }
@@ -1138,10 +920,8 @@
 
         async function changePhase(newPhase) {
             if (!db) return;
-            try {
-                await getConfigRef().set({ activePhase: newPhase }, { merge: true });
-                showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
-            } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
+            await getConfigRef().set({ activePhase: newPhase }, { merge: true });
+            showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
         }
 
         // --- ACTION: VOTE ---
@@ -1170,9 +950,8 @@
             const candidateId = document.getElementById('selected-candidate-id').value;
             const voterId = document.getElementById('voter-id-input').value.trim();
             const btn = document.getElementById('btn-confirm-vote');
-            
-            // Current Award Category Context
             const currentAward = systemConfig.awardName || 'Popular Vote';
+            const scoreField = getScoreField(currentAward);
 
             if (!voterId) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
 
@@ -1195,8 +974,8 @@
                     return;
                 }
 
-                // Check vote using composite ID (VoterID + AwardName) to allow multiple votes for different awards
-                const voteDocId = `${voterId}_${currentAward}`; 
+                // Check vote ID combined with current award name
+                const voteDocId = `${voterId}_${scoreField}`; 
                 const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voteDocId);
                 const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
 
@@ -1206,30 +985,28 @@
                     
                     transaction.set(voteRef, {
                         voterId: voterId,
+                        voterName: attendeeDoc.data().name || 'Unknown', // Save name for easier admin viewing
                         candidateId: candidateId,
                         awardCategory: currentAward,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
+                    // Increment specific score field
                     transaction.update(candidateRef, {
-                        votes: firebase.firestore.FieldValue.increment(1)
+                        [scoreField]: firebase.firestore.FieldValue.increment(1)
                     });
                 });
 
                 showToast('โหวตสำเร็จ! ขอบคุณครับ ❤️', 'success');
                 closeVoteModal();
-                
-                // Store vote state specific to this award
                 safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
-                
                 renderCandidates();
 
             } catch (error) {
                 console.error(error);
                 if (error === "ALREADY_VOTED") {
                     showToast('คุณได้โหวตในหัวข้อนี้ไปแล้ว', 'error');
-                    // Sync local state just in case
-                    safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId); // We assume existing vote matches input for UI simplicity or just block
+                    safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
                     closeVoteModal();
                     renderCandidates(); 
                 }
@@ -1243,9 +1020,7 @@
         // --- ACTION: REGISTER ---
         async function handleAttendSubmit() {
             if (!db) return;
-            if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) {
-                return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
-            }
+            if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
             if (!enforceLocationCheck()) return;
             
             const id = document.getElementById('attend-id').value.trim();
@@ -1253,28 +1028,22 @@
             const btn = document.getElementById('btn-attend');
 
             if (!id || !name) return showToast('กรุณากรอกข้อมูลให้ครบ', 'error');
+            
+            // Validation: Check duplicates
+            if (attendees.some(a => a.studentId === id)) {
+                return showToast('รหัสนักศึกษานี้ลงทะเบียนเข้างานไปแล้ว', 'error');
+            }
 
-            btn.disabled = true;
-            btn.innerHTML = 'กำลังบันทึก...';
+            btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
 
             try {
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).set({
-                    studentId: id,
-                    name: name,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    studentId: id, name: name, timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 safeSetStorage(`reg_attend_${appId}`, 'true');
                 showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
-                document.getElementById('attend-id').value = '';
-                document.getElementById('attend-name').value = '';
-
-                if (sessionStorage.getItem('autoRedirectFromVote')) {
-                    sessionStorage.removeItem('autoRedirectFromVote');
-                    showToast('กำลังกลับไปหน้าโหวต...', 'success');
-                    setTimeout(() => { updateUIBasedOnConfig(); }, 1000);
-                } else {
-                    forceNavigate('register-menu');
-                }
+                document.getElementById('attend-id').value = ''; document.getElementById('attend-name').value = '';
+                navigateBackFromRegister();
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาด', 'error'); } 
             finally { btn.disabled = false; btn.innerHTML = 'ยืนยันการลงชื่อ'; }
         }
@@ -1290,133 +1059,109 @@
             const btn = document.getElementById('btn-contest');
 
             if (!id || !name || !costume) return showToast('กรุณากรอกข้อมูลให้ครบ', 'error');
+            
+            // Validation: Check duplicates
+            if (candidates.some(c => c.studentId === id)) {
+                return showToast('รหัสนักศึกษานี้ลงสมัครประกวดไปแล้ว', 'error');
+            }
 
-            btn.disabled = true;
-            btn.innerHTML = 'กำลังบันทึก...';
+            btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
 
             try {
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').add({
-                    studentId: id,
-                    name: name,
-                    costumeTitle: costume,
-                    votes: 0,
+                    studentId: id, name: name, costumeTitle: costume,
+                    votes: 0, // Base legacy field
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 safeSetStorage(`reg_contest_${appId}`, 'true');
                 showToast('สมัครประกวดเรียบร้อย!', 'success');
-                document.getElementById('contest-id').value = '';
-                document.getElementById('contest-name').value = '';
-                document.getElementById('contest-costume').value = '';
-                forceNavigate('register-menu');
+                document.getElementById('contest-id').value = ''; document.getElementById('contest-name').value = ''; document.getElementById('contest-costume').value = '';
+                navigateBackFromRegister();
             } catch (error) { showToast('เกิดข้อผิดพลาด', 'error'); } 
             finally { btn.disabled = false; btn.innerHTML = 'สมัครประกวด'; }
         }
 
-        // --- ACTION: ADMIN ---
+        // --- ADMIN ---
         function checkAdminPass() {
             const input = document.getElementById('admin-pass');
             if (input.value === 'Admin123') { 
-                isAdminAuthenticated = true;
-                input.value = '';
+                isAdminAuthenticated = true; input.value = '';
                 showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success');
                 document.getElementById('view-admin-login').classList.add('hidden');
                 document.getElementById('view-admin-dashboard').classList.remove('hidden');
                 window.location.hash = '#admin'; 
-                showAdminDashboard();
-                checkLocationAccess();
+                showAdminDashboard(); checkLocationAccess();
             } else {
                 showToast('รหัสผ่านไม่ถูกต้อง', 'error');
-                input.classList.add('border-red-500');
-                setTimeout(() => input.classList.remove('border-red-500'), 1000);
+                input.classList.add('border-red-500'); setTimeout(() => input.classList.remove('border-red-500'), 1000);
             }
         }
-
-        function logoutAdmin() {
-            isAdminAuthenticated = false;
-            window.location.hash = ''; 
-        }
-
-        function copyUserLink() {
-            const input = document.getElementById('user-link-input');
-            input.select();
-            document.execCommand('copy');
-            showToast('คัดลอกลิงก์แล้ว', 'success');
-        }
+        function logoutAdmin() { isAdminAuthenticated = false; window.location.hash = ''; }
+        function copyUserLink() { document.getElementById('user-link-input').select(); document.execCommand('copy'); showToast('คัดลอกลิงก์แล้ว', 'success'); }
 
         // --- RENDER FUNCTIONS ---
         function renderCandidates() {
             const container = document.getElementById('candidates-list');
             const currentAward = systemConfig.awardName || 'Popular Vote';
-            
-            // CHECK IF USER HAS VOTED (Using Award-Specific Key)
             const votedCandidateId = safeGetStorage(`voted_candidate_${appId}_${currentAward}`);
             
+            // Single Card View if Voted
             if (votedCandidateId) {
                 const votedCandidate = candidates.find(c => c.id === votedCandidateId);
-                // Even if candidate deleted, show they voted if local storage says so (prevent double voting UX)
-                // But better UX: if candidate missing, maybe allow revote? Let's assume candidate exists.
-                if (votedCandidate || votedCandidateId) {
-                    const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ผู้สมัคร";
-                    const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
-                    
-                    container.innerHTML = `
-                        <div class="text-center py-6 animate-fade-in">
-                            <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg border-4 border-white">
-                                <i class="fa-solid fa-check"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-white mb-1">คุณโหวตเรียบร้อยแล้ว</h3>
-                            <p class="text-green-300 text-sm mb-6 font-bold bg-green-900/30 py-1 px-3 rounded-full inline-block">หัวข้อ: ${currentAward}</p>
-                            
-                            <div class="glass-panel p-6 rounded-2xl shadow-xl max-w-xs mx-auto border-2 border-green-400/50">
-                                <div class="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2">คุณเลือกโหวตให้กับ</div>
-                                <h2 class="text-2xl font-bold text-slate-800 mb-1">${cName}</h2>
-                                <p class="text-green-600 font-medium mb-4">${cCostume}</p>
-                                <div class="bg-slate-100 rounded-lg py-2 text-xs text-slate-500">
-                                    บันทึกคะแนนในระบบแล้ว
-                                </div>
-                                <div class="mt-4 pt-4 border-t border-slate-200">
-                                    <button onclick="recheckVoteStatus()" class="text-[10px] text-slate-400 hover:text-red-500 underline">
-                                        <i class="fa-solid fa-rotate-right"></i> ตรวจสอบสถานะใหม่ (หากระบบรีเซ็ต)
-                                    </button>
-                                </div>
+                // Even if not found (deleted), show card to prevent re-vote UX
+                const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ผู้สมัคร";
+                const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
+                
+                container.parentElement.innerHTML = `
+                    <div class="text-center py-6 animate-fade-in">
+                        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg border-4 border-white"><i class="fa-solid fa-check"></i></div>
+                        <h3 class="text-xl font-bold text-white mb-1">คุณโหวตเรียบร้อยแล้ว</h3>
+                        <p class="text-green-300 text-sm mb-6 font-bold bg-green-900/30 py-1 px-3 rounded-full inline-block">หัวข้อ: ${currentAward}</p>
+                        <div class="glass-panel p-6 rounded-2xl shadow-xl max-w-xs mx-auto border-2 border-green-400/50">
+                            <div class="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2">คุณเลือกโหวตให้กับ</div>
+                            <h2 class="text-2xl font-bold text-slate-800 mb-1">${cName}</h2>
+                            <p class="text-green-600 font-medium mb-4">${cCostume}</p>
+                            <div class="bg-slate-100 rounded-lg py-2 text-xs text-slate-500">บันทึกคะแนนแล้ว</div>
+                            <div class="mt-4 pt-4 border-t border-slate-200">
+                                <button onclick="recheckVoteStatus()" class="text-[10px] text-slate-400 hover:text-red-500 underline"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบสถานะใหม่ (หากระบบรีเซ็ต)</button>
                             </div>
                         </div>
+                    </div>
+                `;
+                return;
+            } else {
+                // Restore Grid if needed
+                if(!document.getElementById('candidates-list')) {
+                    document.getElementById('view-vote').innerHTML = `
+                        <div class="text-center mb-4"><div class="bg-red-500/20 text-red-100 px-4 py-2 rounded-xl text-sm font-bold border border-red-500/50 inline-block"><i class="fa-solid fa-check-to-slot"></i> <span id="vote-header-category">เปิดโหวต: ${currentAward}</span></div></div>
+                        <div id="loading-vote" class="hidden text-center py-10 text-white/60"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...</div>
+                        <div id="candidates-list" class="grid grid-cols-2 gap-3 pb-24"></div>
                     `;
-                    return;
                 }
             }
 
-            if (candidates.length === 0) {
-                container.innerHTML = `<div class="text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`;
-                return;
-            }
+            const grid = document.getElementById('candidates-list');
+            if (candidates.length === 0) { grid.innerHTML = `<div class="col-span-2 text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`; return; }
             
-            // Sort by ID/Name to allow consistent ordering
             const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
             
-            container.innerHTML = sortedCandidates.map(c => `
-                <div class="glass-panel p-4 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
-                    <div class="flex justify-between items-start mb-2">
-                         <div class="flex items-center gap-2">
-                             <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-mono">${c.studentId || 'ID?'}</span>
-                         </div>
+            grid.innerHTML = sortedCandidates.map(c => `
+                <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
+                    <div class="flex justify-between items-start mb-1">
+                         <span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-mono">${c.studentId || '?'}</span>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-800 leading-tight mb-1">${escapeHtml(c.name)}</h3>
-                    <p class="text-slate-500 text-sm mb-4">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
-                    <button onclick="openVoteModal('${c.id}')" id="btn-vote-${c.id}" class="vote-btn w-full py-2 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95 hover:shadow-red-500/30">
-                        <i class="fa-regular fa-heart"></i> โหวต (${currentAward})
+                    <h3 class="text-sm font-bold text-slate-800 leading-tight mb-0.5 line-clamp-1">${escapeHtml(c.name)}</h3>
+                    <p class="text-[10px] text-slate-500 mb-2 line-clamp-1">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
+                    <button onclick="openVoteModal('${c.id}')" class="w-full py-1.5 rounded-lg font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95">
+                        <i class="fa-regular fa-heart"></i> โหวต
                     </button>
                 </div>
             `).join('');
         }
         
-        // Manual re-check button for users who are stuck
         function recheckVoteStatus() {
-            // Force clear local flag for current award and re-render
             const currentAward = systemConfig.awardName || 'Popular Vote';
-            // We don't just clear; we could assume if they pressed this, they suspect a reset.
-            // But to be safe, let's just clear and let them try to vote. If DB has vote, it will fail gracefully.
-            if(confirm("คุณต้องการลองโหวตใหม่ใช่หรือไม่? (กดตกลงหากแอดมินแจ้งว่ารีเซ็ตแล้ว)")) {
+            if(confirm("กดตกลงเพื่อรีเฟรชหน้าโหวตใหม่")) {
                 localStorage.removeItem(`voted_candidate_${appId}_${currentAward}`);
                 renderCandidates();
             }
@@ -1424,36 +1169,31 @@
 
         function renderLeaderboard() {
             const container = document.getElementById('leaderboard-list');
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            const scoreField = getScoreField(currentAward);
+
             const sorted = [...candidates].sort((a, b) => {
-                if (b.votes !== a.votes) return b.votes - a.votes;
+                const scoreA = a[scoreField] || 0;
+                const scoreB = b[scoreField] || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
                 return (a.name || '').localeCompare(b.name || '');
             });
 
-            if (sorted.length === 0) {
-                container.innerHTML = '<div class="p-6 text-center text-slate-400">ยังไม่มีข้อมูล</div>';
-                return;
-            }
+            if (sorted.length === 0) { container.innerHTML = '<div class="p-6 text-center text-slate-400">ยังไม่มีข้อมูล</div>'; return; }
+            
             container.innerHTML = sorted.map((c, i) => {
-                let rankStyle = "bg-slate-100 text-slate-500";
-                let icon = "";
+                let rankStyle = "bg-slate-100 text-slate-500"; let icon = "";
                 if (i === 0) { rankStyle = "bg-yellow-400 text-yellow-900 shadow-md"; icon = '<i class="fa-solid fa-trophy text-yellow-500 text-xs ml-1"></i>'; }
                 if (i === 1) rankStyle = "bg-slate-300 text-slate-700";
                 if (i === 2) rankStyle = "bg-amber-600 text-amber-100";
+                const score = c[scoreField] || 0;
                 return `
                 <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
                     <div class="flex items-center gap-4">
-                        <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">
-                            ${i + 1}
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3>
-                            <p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p>
-                        </div>
+                        <div class="w-8 h-8 rounded-full ${rankStyle} flex items-center justify-center font-bold text-sm">${i + 1}</div>
+                        <div><h3 class="font-bold text-slate-800 text-sm">${escapeHtml(c.name)} ${i===0?icon:''}</h3><p class="text-xs text-slate-400">${escapeHtml(c.costumeTitle)}</p></div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-lg font-bold text-red-600">${c.votes}</span>
-                        <span class="text-[10px] text-slate-400 block uppercase">Votes</span>
-                    </div>
+                    <div class="text-right"><span class="text-lg font-bold text-red-600">${score}</span><span class="text-[10px] text-slate-400 block uppercase">Votes</span></div>
                 </div>
                 `;
             }).join('');
@@ -1461,13 +1201,21 @@
 
         function renderAdminDataTables() {
             const candBody = document.getElementById('table-candidates-body');
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            const scoreField = getScoreField(currentAward);
+
             const sortedCand = [...candidates].sort((a, b) => {
-                if (b.votes !== a.votes) return b.votes - a.votes;
+                const scoreA = a[scoreField] || 0;
+                const scoreB = b[scoreField] || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
                 return (a.name || '').localeCompare(b.name || '');
             });
 
             if (sortedCand.length === 0) candBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
-            else candBody.innerHTML = sortedCand.map((c, i) => `<tr><td><span class="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">#${i+1}</span></td><td><div class="font-bold text-slate-700">${escapeHtml(c.name)}</div><div class="text-[10px] text-slate-400 font-mono">${c.studentId || '-'}</div></td><td>${escapeHtml(c.costumeTitle)}</td><td class="text-right font-bold text-red-600">${c.votes}</td></tr>`).join('');
+            else candBody.innerHTML = sortedCand.map((c, i) => {
+                const score = c[scoreField] || 0;
+                return `<tr class="clickable-row" onclick="openAdminVoteDetail('${c.id}', '${escapeHtml(c.name)}')"><td><span class="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">#${i+1}</span></td><td><div class="font-bold text-slate-700 text-xs">${escapeHtml(c.name)}</div></td><td>${escapeHtml(c.costumeTitle)}</td><td class="text-right font-bold text-red-600">${score}</td></tr>`
+            }).join('');
 
             const attendBody = document.getElementById('table-attendees-body');
             if (attendees.length === 0) attendBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
@@ -1475,6 +1223,49 @@
                 let timeStr = '-';
                 if (a.timestamp) { try { const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp); timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); } catch(e) {} }
                 return `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td><td class="text-right text-xs text-slate-400">${timeStr}</td></tr>`}).join('');
+        }
+
+        async function openAdminVoteDetail(candidateId, candidateName) {
+            const modal = document.getElementById('admin-vote-modal');
+            const list = document.getElementById('admin-vote-list');
+            const title = document.getElementById('admin-vote-modal-title');
+            
+            modal.classList.remove('hidden');
+            title.innerHTML = `คะแนนของ: <b>${candidateName}</b><br>รางวัล: ${systemConfig.awardName}`;
+            list.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลด...</div>';
+
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            // Fetch relevant votes (Client-side filtering as simple query restricted by rules)
+            // Rule: No complex queries. So we fetch ALL votes then filter. 
+            // In a large app this is bad, but for school event (1000 docs) it's fine.
+            try {
+                const snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').get();
+                const votes = [];
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    if (d.candidateId === candidateId && d.awardCategory === currentAward) {
+                        votes.push(d);
+                    }
+                });
+                
+                if (votes.length === 0) {
+                    list.innerHTML = '<div class="text-center py-4 text-gray-400">ไม่มีข้อมูลผู้โหวต</div>';
+                } else {
+                    list.innerHTML = votes.map(v => `
+                        <div class="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100 text-xs">
+                            <span class="font-mono text-blue-600">${v.voterId}</span>
+                            <span class="text-gray-600">${v.voterName || '-'}</span>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {
+                console.error(e);
+                list.innerHTML = '<div class="text-center text-red-500">เกิดข้อผิดพลาด</div>';
+            }
+        }
+
+        function closeAdminVoteModal() {
+            document.getElementById('admin-vote-modal').classList.add('hidden');
         }
 
         // --- UTILS ---
