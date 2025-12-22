@@ -11,10 +11,16 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
     
+    <!-- Leaflet CSS (For Map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
     <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" crossorigin="anonymous"></script>
+
+    <!-- Leaflet JS (For Map) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -88,6 +94,26 @@
     </style>
 </head>
 <body class="snow-bg min-h-screen text-gray-800 pb-20">
+
+    <!-- LOCATION BLOCK SCREEN -->
+    <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 text-center hidden">
+        <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 max-w-sm w-full animate-bounce-short">
+            <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-location-dot text-4xl text-red-500"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">อยู่นอกพื้นที่จัดงาน</h2>
+            <p class="text-slate-300 text-sm mb-6">คุณต้องอยู่ในบริเวณงานเท่านั้นจึงจะสามารถเข้าใช้งานได้</p>
+            
+            <div class="bg-black/20 rounded-xl p-4 mb-6 text-left">
+                <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
+                <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
+            </div>
+
+            <button onclick="checkLocationAccess()" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่
+            </button>
+        </div>
+    </div>
 
     <div class="max-w-md mx-auto min-h-screen flex flex-col relative">
         
@@ -180,7 +206,7 @@
                     </div>
                 </div>
                 <div class="text-center mt-4">
-                    <button onclick="forceNavigate('register-menu')" class="text-white/60 text-sm underline">ย้อนกลับ</button>
+                    <button onclick="forceNavigate('register-menu')" class="text-white/60 text-sm underline" id="btn-back-attend">ย้อนกลับ</button>
                 </div>
             </div>
 
@@ -245,12 +271,12 @@
                         <i class="fa-solid fa-user-secret"></i>
                     </div>
                     <h2 class="text-xl font-bold text-slate-800 mb-6">ผู้ดูแลระบบ</h2>
-                    <input type="password" id="admin-pass" class="w-full p-3 rounded-lg border border-slate-300 mb-4 text-center font-mono placeholder:font-sans" placeholder="กรอกรหัสผ่าน">
+                    <input type="password" id="admin-pass" class="w-full p-3 rounded-lg border border-slate-300 mb-4 text-center font-mono placeholder:font-sans" placeholder="กรอกรหัสผ่าน" onkeyup="if(event.key==='Enter')checkAdminPass()">
                     <button onclick="checkAdminPass()" class="w-full bg-slate-800 text-white py-3 rounded-lg font-bold">เข้าสู่ระบบ</button>
                 </div>
             </div>
 
-            <!-- 8. VIEW: ADMIN DASHBOARD (Updated with Data Tables) -->
+            <!-- 8. VIEW: ADMIN DASHBOARD -->
             <div id="view-admin-dashboard" class="view-section hidden">
                 <div class="glass-panel p-6 rounded-3xl shadow-2xl border-t-4 border-slate-600">
                     <div class="flex justify-between items-center mb-4">
@@ -270,7 +296,42 @@
                     
                     <!-- TAB CONTENT: CONTROL -->
                     <div id="admin-content-control" class="space-y-6">
-                        <div class="mb-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                        
+                        <!-- Location Control (Updated with Map) -->
+                        <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-slate-700 text-sm mb-3 flex justify-between items-center">
+                                <span><i class="fa-solid fa-map-location-dot"></i> การจำกัดพื้นที่ (GPS)</span>
+                                <button onclick="toggleLocationCheck()" id="btn-loc-toggle" class="px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500">ปิดอยู่</button>
+                            </h3>
+                            
+                            <!-- Map Container -->
+                            <div id="admin-map" class="w-full h-64 rounded-lg border border-slate-300 mb-3 z-0"></div>
+                            <p class="text-[10px] text-slate-500 mb-2 text-center"><i class="fa-solid fa-hand-pointer"></i> จิ้มบนแผนที่เพื่อเลือกพิกัด หรือลากหมุด</p>
+
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <div>
+                                    <label class="text-[10px] text-slate-500 block">Latitude</label>
+                                    <input type="number" id="input-lat" class="w-full text-xs p-2 rounded border bg-slate-50" placeholder="13.xxx" readonly>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-500 block">Longitude</label>
+                                    <input type="number" id="input-lng" class="w-full text-xs p-2 rounded border bg-slate-50" placeholder="100.xxx" readonly>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 items-end">
+                                <div class="flex-1">
+                                    <label class="text-[10px] text-slate-500 block">รัศมี (เมตร)</label>
+                                    <input type="number" id="input-radius" class="w-full text-xs p-2 rounded border" placeholder="100">
+                                </div>
+                                <button onclick="getLocationFromDevice()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-xs text-slate-600 flex items-center gap-1" title="ใช้ตำแหน่งปัจจุบัน">
+                                    <i class="fa-solid fa-crosshairs"></i> ตำแหน่งฉัน
+                                </button>
+                                <button onclick="saveLocationConfig()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white font-bold">บันทึก</button>
+                            </div>
+                        </div>
+
+                        <!-- Link Copy -->
+                        <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
                             <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fa-solid fa-link"></i> ลิงก์สำหรับผู้ใช้งาน</h3>
                             <div class="flex gap-2">
                                 <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
@@ -282,56 +343,40 @@
 
                         <!-- PHASE CONTROL -->
                         <div class="space-y-4">
-                            <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">เลือกสถานะระบบ (แสดงผลทีละหน้า)</h3>
+                            <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">เลือกสถานะระบบ</h3>
                             
+                            <!-- Register Phase -->
                             <button onclick="changePhase('register')" id="btn-phase-register" class="w-full p-4 rounded-xl border flex items-center justify-between transition-all phase-btn-inactive group">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <i class="fa-solid fa-clipboard-user"></i>
-                                    </div>
-                                    <div class="text-left">
-                                        <div class="font-bold">เปิดลงทะเบียน</div>
-                                        <div class="text-xs opacity-70">แสดงหน้าสมัครเข้างาน/ประกวด</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform"><i class="fa-solid fa-clipboard-user"></i></div>
+                                    <div class="text-left"><div class="font-bold">เปิดลงทะเบียน</div><div class="text-xs opacity-70">แสดงหน้าสมัครเข้างาน/ประกวด</div></div>
                                 </div>
                                 <div class="w-4 h-4 rounded-full border-2 border-slate-300 status-indicator"></div>
                             </button>
 
+                            <!-- Vote Phase -->
                             <button onclick="changePhase('vote')" id="btn-phase-vote" class="w-full p-4 rounded-xl border flex items-center justify-between transition-all phase-btn-inactive group">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <i class="fa-solid fa-check-to-slot"></i>
-                                    </div>
-                                    <div class="text-left">
-                                        <div class="font-bold">เปิดโหวต</div>
-                                        <div class="text-xs opacity-70">แสดงรายชื่อและปุ่มโหวต</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform"><i class="fa-solid fa-check-to-slot"></i></div>
+                                    <div class="text-left"><div class="font-bold">เปิดโหวต</div><div class="text-xs opacity-70">แสดงรายชื่อและปุ่มโหวต</div></div>
                                 </div>
                                 <div class="w-4 h-4 rounded-full border-2 border-slate-300 status-indicator"></div>
                             </button>
 
+                            <!-- Result Phase -->
                             <button onclick="changePhase('result')" id="btn-phase-result" class="w-full p-4 rounded-xl border flex items-center justify-between transition-all phase-btn-inactive group">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <i class="fa-solid fa-trophy"></i>
-                                    </div>
-                                    <div class="text-left">
-                                        <div class="font-bold">แสดงผลคะแนน</div>
-                                        <div class="text-xs opacity-70">แสดง Leaderboard</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center group-hover:scale-110 transition-transform"><i class="fa-solid fa-trophy"></i></div>
+                                    <div class="text-left"><div class="font-bold">แสดงผลคะแนน</div><div class="text-xs opacity-70">แสดง Leaderboard</div></div>
                                 </div>
                                 <div class="w-4 h-4 rounded-full border-2 border-slate-300 status-indicator"></div>
                             </button>
 
+                            <!-- Closed Phase -->
                             <button onclick="changePhase('closed')" id="btn-phase-closed" class="w-full p-4 rounded-xl border flex items-center justify-between transition-all phase-btn-inactive group">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <i class="fa-solid fa-lock"></i>
-                                    </div>
-                                    <div class="text-left">
-                                        <div class="font-bold">ปิดระบบ</div>
-                                        <div class="text-xs opacity-70">ซ่อนทุกหน้า</div>
-                                    </div>
+                                    <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform"><i class="fa-solid fa-lock"></i></div>
+                                    <div class="text-left"><div class="font-bold">ปิดระบบ</div><div class="text-xs opacity-70">ซ่อนทุกหน้า</div></div>
                                 </div>
                                 <div class="w-4 h-4 rounded-full border-2 border-slate-300 status-indicator"></div>
                             </button>
@@ -340,8 +385,6 @@
 
                     <!-- TAB CONTENT: DATA -->
                     <div id="admin-content-data" class="hidden space-y-8">
-                        
-                        <!-- Summary Stats -->
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
                                 <h4 class="text-blue-600 font-bold text-xs uppercase">ผู้เข้าร่วมงาน</h4>
@@ -352,52 +395,28 @@
                                 <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
                             </div>
                         </div>
-
-                        <!-- Data Table: Candidates (Votes) -->
                         <div>
                             <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                                <span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span>
-                                ผลคะแนนผู้เข้าประกวด
+                                <span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> ผลคะแนนผู้เข้าประกวด
                             </h3>
                             <div class="overflow-x-auto rounded-xl border border-slate-200">
                                 <table class="w-full data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>อันดับ</th>
-                                            <th>ชื่อ</th>
-                                            <th>ชุด</th>
-                                            <th class="text-right">คะแนน</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-candidates-body" class="bg-white">
-                                        <tr><td colspan="4" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>
-                                    </tbody>
+                                    <thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ชุด</th><th class="text-right">คะแนน</th></tr></thead>
+                                    <tbody id="table-candidates-body" class="bg-white"><tr><td colspan="4" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr></tbody>
                                 </table>
                             </div>
                         </div>
-
-                        <!-- Data Table: Attendees -->
                         <div>
                             <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span>
-                                รายชื่อผู้ลงทะเบียนเข้างาน
+                                <span class="bg-blue-100 text-blue-600 p-1.5 rounded-lg"><i class="fa-solid fa-users"></i></span> รายชื่อผู้ลงทะเบียนเข้างาน
                             </h3>
                             <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-60 overflow-y-auto">
                                 <table class="w-full data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>รหัส</th>
-                                            <th>ชื่อ-นามสกุล</th>
-                                            <th class="text-right">เวลา</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="table-attendees-body" class="bg-white">
-                                        <tr><td colspan="3" class="text-center p-4 text-slate-400">กำลังโหลด...</td></tr>
-                                    </tbody>
+                                    <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr></thead>
+                                    <tbody id="table-attendees-body" class="bg-white"><tr><td colspan="3" class="text-center p-4 text-slate-400">กำลังโหลด...</td></tr></tbody>
                                 </table>
                             </div>
                         </div>
-
                     </div>
 
                 </div>
@@ -405,7 +424,7 @@
 
         </main>
 
-        <!-- FOOTER (Added for easier Admin Access) -->
+        <!-- FOOTER -->
         <footer class="mt-auto py-6 text-center" id="site-footer">
             <p class="text-slate-400/30 text-xs">
                 © 2024 Christmas Event 
@@ -421,22 +440,15 @@
                 <button onclick="closeVoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
-                
                 <div class="text-center mb-6">
-                    <div class="w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                        <i class="fa-solid fa-check-to-slot"></i>
-                    </div>
+                    <div class="w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-check-to-slot"></i></div>
                     <h3 class="text-lg font-bold text-gray-800">ยืนยันการโหวต</h3>
-                    <p class="text-sm text-gray-500 mt-1">กรุณาระบุรหัสนักศึกษาของคุณ<br>เพื่อใช้สิทธิ์ (1 รหัส / 1 เสียง)</p>
+                    <p class="text-sm text-gray-500 mt-1">ระบุรหัสนักศึกษาที่ใช้ลงทะเบียนเข้างาน</p>
                 </div>
-
                 <div class="space-y-4">
                     <input type="tel" id="voter-id-input" class="w-full text-center text-2xl font-mono tracking-widest p-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-0 outline-none" placeholder="XXXXXXXX" maxlength="20">
                     <input type="hidden" id="selected-candidate-id">
-                    
-                    <button onclick="submitVote()" id="btn-confirm-vote" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-600/30">
-                        ยืนยันคะแนน
-                    </button>
+                    <button onclick="submitVote()" id="btn-confirm-vote" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-600/30">ยืนยันคะแนน</button>
                 </div>
             </div>
         </div>
@@ -468,41 +480,33 @@
         };
 
         try {
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                configObj = JSON.parse(__firebase_config);
-            } 
-            else if (yourFirebaseConfig && yourFirebaseConfig.apiKey) {
-                configObj = yourFirebaseConfig;
-            }
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) configObj = JSON.parse(__firebase_config);
+            else if (yourFirebaseConfig && yourFirebaseConfig.apiKey) configObj = yourFirebaseConfig;
 
             if (configObj) {
                 app = firebase.initializeApp(configObj);
                 auth = firebase.auth();
                 db = firebase.firestore();
                 console.log("Firebase initialized successfully");
-            } else {
-                console.warn("Firebase config is missing.");
-            }
-        } catch (e) { 
-            console.error("Error initializing Firebase:", e); 
-        }
+            } else { console.warn("Firebase config is missing."); }
+        } catch (e) { console.error("Error initializing Firebase:", e); }
 
         // --- STATE ---
-        let systemConfig = { activePhase: 'closed' }; 
+        let systemConfig = { activePhase: 'closed', locationCheckEnabled: false, targetLat: 13.7563, targetLng: 100.5018, allowedRadius: 100 }; 
         let candidates = [];
         let attendees = [];
         let isAdminAuthenticated = false;
         let currentSubView = 'register-menu'; 
+        let adminMap = null;
+        let adminMarker = null;
 
         // --- ROUTING ---
         window.addEventListener('hashchange', handleRouting);
         window.addEventListener('load', () => {
-            if (auth) {
-                initAuth();
-            } else {
-                 if (!configObj) showToast('ไม่พบการตั้งค่า Firebase', 'error');
-            }
+            if (auth) initAuth();
             handleRouting();
+            setInterval(checkLocationAccess, 10000); 
+            checkLocationAccess(); 
         });
 
         function forceNavigate(viewId) {
@@ -516,14 +520,9 @@
 
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             
-            const footer = document.getElementById('site-footer');
-            
             if (hash === 'admin') {
-                if (isAdminAuthenticated) {
-                    showAdminDashboard();
-                } else {
-                    showAdminLogin();
-                }
+                if (isAdminAuthenticated) showAdminDashboard();
+                else showAdminLogin();
             } else {
                 updateUIBasedOnConfig();
             }
@@ -535,11 +534,70 @@
         }
 
         function showAdminDashboard() {
+            document.getElementById('view-admin-login').classList.add('hidden');
             document.getElementById('view-admin-dashboard').classList.remove('hidden');
             const baseUrl = window.location.href.split('#')[0];
             document.getElementById('user-link-input').value = baseUrl;
             document.getElementById('site-footer').classList.add('hidden');
             updateAdminUIState();
+            // Need to delay map init slightly until element is visible
+            setTimeout(initAdminMap, 300);
+        }
+
+        // --- MAP FUNCTIONS ---
+        function initAdminMap() {
+            if (adminMap) {
+                adminMap.invalidateSize();
+                return;
+            }
+
+            const lat = systemConfig.targetLat || 13.7563; // Default Bangkok
+            const lng = systemConfig.targetLng || 100.5018;
+
+            adminMap = L.map('admin-map').setView([lat, lng], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(adminMap);
+
+            adminMarker = L.marker([lat, lng], {draggable: true}).addTo(adminMap);
+
+            // Update inputs when dragged
+            adminMarker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                updateLocationInputs(pos.lat, pos.lng);
+            });
+
+            // Move marker on map click
+            adminMap.on('click', function(e) {
+                adminMarker.setLatLng(e.latlng);
+                updateLocationInputs(e.latlng.lat, e.latlng.lng);
+            });
+        }
+
+        function updateLocationInputs(lat, lng) {
+            document.getElementById('input-lat').value = lat.toFixed(6);
+            document.getElementById('input-lng').value = lng.toFixed(6);
+        }
+
+        function getLocationFromDevice() {
+            if (!navigator.geolocation) return showToast("ไม่รองรับ GPS", "error");
+            
+            showToast("กำลังค้นหาพิกัด...", "success");
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                updateLocationInputs(lat, lng);
+                
+                if (adminMap && adminMarker) {
+                    adminMap.setView([lat, lng], 17);
+                    adminMarker.setLatLng([lat, lng]);
+                }
+                showToast("พบพิกัดของคุณแล้ว", "success");
+            }, (err) => {
+                console.error(err);
+                showToast("ไม่สามารถดึงพิกัดได้", "error");
+            });
         }
 
         // --- ADMIN TABS CONTROL ---
@@ -556,6 +614,7 @@
                 btnData.classList.remove('admin-tab-active');
                 contentControl.classList.remove('hidden');
                 contentData.classList.add('hidden');
+                setTimeout(() => { if(adminMap) adminMap.invalidateSize(); }, 100);
             } else {
                 btnData.classList.add('admin-tab-active');
                 btnData.classList.remove('admin-tab-inactive');
@@ -563,7 +622,7 @@
                 btnControl.classList.remove('admin-tab-active');
                 contentControl.classList.add('hidden');
                 contentData.classList.remove('hidden');
-                renderAdminDataTables(); // Refresh data tables
+                renderAdminDataTables(); 
             }
         }
 
@@ -574,12 +633,11 @@
         // --- AUTH & DATA LISTENERS ---
         async function initAuth() {
             if (!auth) return;
-
             auth.onAuthStateChanged(user => {
                 if (user) {
                     listenToConfig();
                     listenToCandidates();
-                    listenToAttendees(); // Added listener for attendees
+                    listenToAttendees(); 
                 } else {
                     const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                     if (initialToken) auth.signInWithCustomToken(initialToken);
@@ -600,6 +658,19 @@
                     db.collection('artifacts').doc(appId).collection('public').doc('system_config').set(systemConfig).catch(e=>console.error(e));
                 }
                 updateUIBasedOnConfig();
+                updateAdminUIState(); 
+                
+                // Update map if opened
+                if (adminMap && systemConfig.targetLat) {
+                    // Only update if we haven't manually moved it? Or just update init state.
+                    // For simplicity, we assume map is for INPUT, so we set inputs.
+                    if (document.getElementById('input-lat').value === "") {
+                         document.getElementById('input-lat').value = systemConfig.targetLat;
+                         document.getElementById('input-lng').value = systemConfig.targetLng;
+                         adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15);
+                         adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
+                    }
+                }
             });
         }
 
@@ -612,13 +683,12 @@
                 snapshot.forEach(doc => candidates.push({ id: doc.id, ...doc.data() }));
                 renderCandidates();
                 renderLeaderboard();
-                renderAdminDataTables(); // Update admin data too
+                renderAdminDataTables(); 
                 document.getElementById('stat-candidate-count').innerText = candidates.length;
                 document.getElementById('loading-vote').classList.add('hidden');
             });
         }
 
-        // NEW: Listener for Attendees
         function listenToAttendees() {
             if (!db) return;
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees')
@@ -626,9 +696,79 @@
             .onSnapshot(snapshot => {
                 attendees = [];
                 snapshot.forEach(doc => attendees.push({ id: doc.id, ...doc.data() }));
-                renderAdminDataTables(); // Update admin data
+                renderAdminDataTables(); 
                 document.getElementById('stat-attendee-count').innerText = attendees.length;
             });
+        }
+
+        // --- LOCATION LOGIC ---
+        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+            var R = 6371; // km
+            var dLat = deg2rad(lat2-lat1);
+            var dLon = deg2rad(lon2-lon1); 
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            var d = R * c; 
+            return d * 1000; // meters
+        }
+
+        function deg2rad(deg) { return deg * (Math.PI/180); }
+
+        function checkLocationAccess() {
+            // Skip check if admin or disabled
+            if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) {
+                document.getElementById('view-location-block').classList.add('hidden');
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                // If denied or not supported, maybe show generic error if strictly required
+                // But typically we don't want to block unless we are sure
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    const dist = getDistanceFromLatLonInMeters(userLat, userLng, systemConfig.targetLat, systemConfig.targetLng);
+                    
+                    document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
+                    document.getElementById('loc-allowed').innerText = systemConfig.allowedRadius + " เมตร";
+
+                    if (dist > systemConfig.allowedRadius) {
+                        document.getElementById('view-location-block').classList.remove('hidden');
+                    } else {
+                        document.getElementById('view-location-block').classList.add('hidden');
+                    }
+                },
+                (error) => {
+                    console.error("GPS Error", error);
+                    // Force block if cant verify location? Usually yes for strict events
+                    document.getElementById('view-location-block').classList.remove('hidden'); 
+                    document.getElementById('loc-dist').innerText = "ไม่ได้รับอนุญาต";
+                }
+            );
+        }
+
+        async function toggleLocationCheck() {
+            if(!db) return;
+            const newState = !systemConfig.locationCheckEnabled;
+            await db.collection('artifacts').doc(appId).collection('public').doc('system_config')
+                .set({ locationCheckEnabled: newState }, { merge: true });
+        }
+
+        async function saveLocationConfig() {
+            if(!db) return;
+            const lat = parseFloat(document.getElementById('input-lat').value);
+            const lng = parseFloat(document.getElementById('input-lng').value);
+            const rad = parseFloat(document.getElementById('input-radius').value);
+            
+            if(isNaN(lat) || isNaN(lng) || isNaN(rad)) return showToast("กรุณากำหนดพิกัดบนแผนที่", "error");
+
+            await db.collection('artifacts').doc(appId).collection('public').doc('system_config')
+                .set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
+            showToast("บันทึกพิกัดแล้ว", "success");
         }
 
         // --- MAIN UI CONTROLLER ---
@@ -647,6 +787,7 @@
             if (phase === 'register') {
                 if (currentSubView === 'register-attend') {
                     document.getElementById('view-register-attend').classList.remove('hidden');
+                    document.getElementById('btn-back-attend').classList.toggle('hidden', sessionStorage.getItem('autoRedirectFromVote'));
                 } else if (currentSubView === 'register-contest') {
                     document.getElementById('view-register-contest').classList.remove('hidden');
                 } else {
@@ -666,51 +807,55 @@
             phases.forEach(p => {
                 const btn = document.getElementById(`btn-phase-${p}`);
                 const indicator = btn.querySelector('.status-indicator');
-                
                 if (systemConfig.activePhase === p) {
-                    btn.classList.remove('phase-btn-inactive');
-                    btn.classList.add('phase-btn-active');
-                    indicator.classList.remove('border-slate-300');
-                    indicator.classList.add('bg-white', 'border-transparent');
+                    btn.classList.remove('phase-btn-inactive'); btn.classList.add('phase-btn-active');
+                    indicator.classList.remove('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
                 } else {
-                    btn.classList.add('phase-btn-inactive');
-                    btn.classList.remove('phase-btn-active');
-                    indicator.classList.add('border-slate-300');
-                    indicator.classList.remove('bg-white', 'border-transparent');
+                    btn.classList.add('phase-btn-inactive'); btn.classList.remove('phase-btn-active');
+                    indicator.classList.add('border-slate-300'); indicator.classList.remove('bg-white', 'border-transparent');
                 }
             });
+
+            const locBtn = document.getElementById('btn-loc-toggle');
+            if (systemConfig.locationCheckEnabled) {
+                locBtn.innerText = "เปิดอยู่";
+                locBtn.className = "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white";
+            } else {
+                locBtn.innerText = "ปิดอยู่";
+                locBtn.className = "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
+            }
+            // Only update inputs if they are empty (first load)
+            if(document.getElementById('input-lat').value === "" && systemConfig.targetLat) {
+                document.getElementById('input-lat').value = systemConfig.targetLat;
+                document.getElementById('input-lng').value = systemConfig.targetLng;
+                document.getElementById('input-radius').value = systemConfig.allowedRadius || 100;
+            }
         }
 
         async function changePhase(newPhase) {
             if (!db) return;
-            const configRef = db.collection('artifacts').doc(appId).collection('public').doc('system_config');
             try {
-                await configRef.set({ activePhase: newPhase }, { merge: true });
+                await db.collection('artifacts').doc(appId).collection('public').doc('system_config').set({ activePhase: newPhase }, { merge: true });
                 showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
         }
 
         // --- ACTION: VOTE ---
         function openVoteModal(candidateId) {
-            if (systemConfig.activePhase !== 'vote') {
-                return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
-            }
+            if (systemConfig.activePhase !== 'vote') return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
             document.getElementById('selected-candidate-id').value = candidateId;
             document.getElementById('voter-id-input').value = '';
             
             const modal = document.getElementById('vote-modal');
             const content = document.getElementById('vote-modal-content');
             modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                content.classList.add('modal-enter');
-            }, 10);
+            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.add('modal-enter'); }, 10);
         }
 
         function closeVoteModal() {
             const modal = document.getElementById('vote-modal');
             modal.classList.add('opacity-0');
-            setTimeout(() => { modal.classList.add('hidden'); }, 300); // 300ms transition
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
             modal.classList.add('hidden'); 
         }
 
@@ -725,10 +870,25 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังตรวจสอบ...';
 
-            const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voterId);
-            const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
-
             try {
+                const attendeeRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(voterId);
+                const attendeeDoc = await attendeeRef.get();
+
+                if (!attendeeDoc.exists) {
+                    showToast('ไม่พบรหัสนักศึกษานี้ในระบบลงทะเบียน', 'error');
+                    setTimeout(() => {
+                        closeVoteModal();
+                        sessionStorage.setItem('autoRedirectFromVote', 'true'); 
+                        hideAllViews();
+                        document.getElementById('view-register-attend').classList.remove('hidden');
+                        document.getElementById('attend-id').value = voterId; 
+                    }, 1500);
+                    return;
+                }
+
+                const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voterId);
+                const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
+
                 await db.runTransaction(async (transaction) => {
                     const voteDoc = await transaction.get(voteRef);
                     if (voteDoc.exists) throw "ALREADY_VOTED";
@@ -760,7 +920,9 @@
         // --- ACTION: REGISTER ---
         async function handleAttendSubmit() {
             if (!db) return;
-            if (systemConfig.activePhase !== 'register') return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) {
+                return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            }
             
             const id = document.getElementById('attend-id').value.trim();
             const name = document.getElementById('attend-name').value.trim();
@@ -772,16 +934,25 @@
             btn.innerHTML = 'กำลังบันทึก...';
 
             try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').add({
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).set({
                     studentId: id,
                     name: name,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                
                 showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
                 document.getElementById('attend-id').value = '';
                 document.getElementById('attend-name').value = '';
-                forceNavigate('register-menu');
-            } catch (error) { showToast('เกิดข้อผิดพลาด', 'error'); } 
+
+                if (sessionStorage.getItem('autoRedirectFromVote')) {
+                    sessionStorage.removeItem('autoRedirectFromVote');
+                    showToast('กำลังกลับไปหน้าโหวต...', 'success');
+                    setTimeout(() => { updateUIBasedOnConfig(); }, 1000);
+                } else {
+                    forceNavigate('register-menu');
+                }
+
+            } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาด', 'error'); } 
             finally { btn.disabled = false; btn.innerHTML = 'ยืนยันการลงชื่อ'; }
         }
 
@@ -823,6 +994,8 @@
                 isAdminAuthenticated = true;
                 input.value = '';
                 showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success');
+                document.getElementById('view-admin-login').classList.add('hidden');
+                document.getElementById('view-admin-dashboard').classList.remove('hidden');
                 window.location.hash = '#admin'; 
                 showAdminDashboard();
             } else {
@@ -899,47 +1072,17 @@
         }
 
         function renderAdminDataTables() {
-            // Render Candidates Table (Sorted by Votes)
             const candBody = document.getElementById('table-candidates-body');
             const sortedCand = [...candidates].sort((a, b) => b.votes - a.votes);
-            
-            if (sortedCand.length === 0) {
-                candBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
-            } else {
-                candBody.innerHTML = sortedCand.map((c, i) => `
-                    <tr>
-                        <td><span class="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">#${i+1}</span></td>
-                        <td>
-                            <div class="font-bold text-slate-700">${escapeHtml(c.name)}</div>
-                            <div class="text-[10px] text-slate-400 font-mono">${c.studentId || '-'}</div>
-                        </td>
-                        <td>${escapeHtml(c.costumeTitle)}</td>
-                        <td class="text-right font-bold text-red-600">${c.votes}</td>
-                    </tr>
-                `).join('');
-            }
+            if (sortedCand.length === 0) candBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
+            else candBody.innerHTML = sortedCand.map((c, i) => `<tr><td><span class="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">#${i+1}</span></td><td><div class="font-bold text-slate-700">${escapeHtml(c.name)}</div><div class="text-[10px] text-slate-400 font-mono">${c.studentId || '-'}</div></td><td>${escapeHtml(c.costumeTitle)}</td><td class="text-right font-bold text-red-600">${c.votes}</td></tr>`).join('');
 
-            // Render Attendees Table
             const attendBody = document.getElementById('table-attendees-body');
-            if (attendees.length === 0) {
-                attendBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
-            } else {
-                attendBody.innerHTML = attendees.map(a => {
-                    let timeStr = '-';
-                    if (a.timestamp) {
-                        try {
-                            const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
-                            timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-                        } catch(e) {}
-                    }
-                    return `
-                    <tr>
-                        <td class="font-mono text-indigo-600 font-bold">${a.studentId}</td>
-                        <td>${escapeHtml(a.name)}</td>
-                        <td class="text-right text-xs text-slate-400">${timeStr}</td>
-                    </tr>
-                `}).join('');
-            }
+            if (attendees.length === 0) attendBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-slate-400">ไม่มีข้อมูล</td></tr>';
+            else attendBody.innerHTML = attendees.map(a => {
+                let timeStr = '-';
+                if (a.timestamp) { try { const date = a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp); timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); } catch(e) {} }
+                return `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td><td class="text-right text-xs text-slate-400">${timeStr}</td></tr>`}).join('');
         }
 
         // --- UTILS ---
@@ -951,11 +1094,7 @@
             setTimeout(() => toast.classList.add('opacity-0', '-translate-y-10'), 3000);
         }
 
-        function safeSetStorage(key, value) {
-            try { localStorage.setItem(key, value); }
-            catch (e) { console.warn("LocalStorage blocked", e); }
-        }
-
+        function safeSetStorage(key, value) { try { localStorage.setItem(key, value); } catch (e) { console.warn("LocalStorage blocked", e); } }
         function escapeHtml(text) { return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
     </script>
 </body>
