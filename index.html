@@ -90,6 +90,19 @@
             background-color: #ffffff;
             padding: 8px;
         }
+
+        /* --- NEW PUMP & TV STYLES (ADDED) --- */
+        .pump-heart { position: absolute; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 50; }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+        .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; flex-direction: column; }
+        .tv-rank { font-size: 4rem; font-weight: 800; line-height: 1; }
+        .tv-name { font-size: 3.5rem; font-weight: 700; }
+        .tv-points { font-size: 5rem; font-weight: 900; color: #ef4444; }
+        .countdown-text { font-size: 15rem; font-weight: 900; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -339,6 +352,8 @@
                                     <input type="text" id="user-link-input" class="w-full bg-white border border-yellow-300 rounded-lg px-3 py-1 text-xs text-gray-600" readonly>
                                     <button onclick="copyUserLink()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">คัดลอก</button>
                                 </div>
+                                <!-- NEW TV LINK BUTTON (ADDED) -->
+                                <button onclick="window.open(window.location.origin + window.location.pathname + '#tv-result')" class="mt-2 w-full bg-slate-800 text-white text-xs py-2 rounded-lg font-bold"><i class="fa-solid fa-tv"></i> เปิดหน้าจอ TV (Full Screen)</button>
                             </div>
 
                             <div class="relative pointer-events-auto">
@@ -359,12 +374,28 @@
                                         <div class="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-trophy"></i></div>
                                         <div><div class="font-bold text-sm">แสดงผล</div><div class="text-[10px] opacity-70 mt-0.5">Leaderboard</div></div>
                                     </button>
+                                    <!-- NEW PUMP BUTTON (ADDED) -->
+                                    <button onclick="changePhase('pump')" id="btn-phase-pump" class="p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all phase-btn-inactive group relative h-32 hover:shadow-md cursor-pointer z-20">
+                                        <div class="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-slate-300 status-indicator transition-colors"></div>
+                                        <div class="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-heart-pulse"></i></div>
+                                        <div><div class="font-bold text-sm">กดรัวๆ</div><div class="text-[10px] opacity-70 mt-0.5">Pump Mode</div></div>
+                                    </button>
                                     <button onclick="changePhase('closed')" id="btn-phase-closed" class="p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all phase-btn-inactive group relative h-32 hover:shadow-md cursor-pointer z-20">
                                         <div class="absolute top-3 right-3 w-3 h-3 rounded-full border-2 border-slate-300 status-indicator transition-colors"></div>
                                         <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm"><i class="fa-solid fa-lock"></i></div>
                                         <div><div class="font-bold text-sm">ปิดระบบ</div><div class="text-[10px] opacity-70 mt-0.5">ซ่อนทั้งหมด</div></div>
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- NEW PUMP CONTROL (ADDED) -->
+                            <div id="pump-control-section" class="p-4 bg-pink-50 rounded-xl border border-pink-200 hidden">
+                                <h3 class="font-bold text-pink-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-bolt"></i> ควบคุมโหมดกดรัวๆ</h3>
+                                <div class="flex gap-2 mb-3">
+                                    <input type="number" id="pump-duration" class="w-full p-2 rounded-lg border border-pink-300 text-sm" placeholder="เวลา (นาที)" value="1">
+                                    <button onclick="startPumpGame()" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap">เริ่มนับถอยหลัง</button>
+                                </div>
+                                <div id="pump-status-msg" class="text-[10px] text-pink-500 text-center">พร้อมเริ่มเกม...</div>
                             </div>
 
                             <!-- AUTO FLOW SCHEDULE UI -->
@@ -446,6 +477,54 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- NEW VIEW: PUMP GAME (ADDED) -->
+                <div id="view-pump" class="view-section hidden flex flex-col items-center justify-center py-10 space-y-8 animate-fade-in min-h-[60vh]">
+                    <div id="pump-countdown-container" class="text-center hidden">
+                        <div class="text-white/60 text-lg mb-2">เกมจะเริ่มใน...</div>
+                        <div id="pump-countdown-timer" class="text-white font-black text-9xl drop-shadow-2xl">3</div>
+                    </div>
+                    <div id="pump-game-container" class="w-full text-center space-y-6 hidden relative">
+                        <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 inline-block mb-4">
+                            <div class="text-pink-400 text-sm font-bold uppercase tracking-widest">Time Remaining</div>
+                            <div id="pump-game-timer" class="text-white text-5xl font-black">00:00</div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 w-full">
+                            <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3">
+                                <!-- Candidates for Pumping -->
+                            </div>
+                        </div>
+                    </div>
+                    <div id="pump-waiting-container" class="text-center text-white/50">
+                        <i class="fa-solid fa-hourglass-start text-5xl mb-4 animate-spin-slow"></i>
+                        <h3 class="text-xl font-bold">รอ Admin เริ่มเกม</h3>
+                        <p class="text-sm">เตรียมตัวกดรัวๆ เมื่อสัญญาณเริ่ม!</p>
+                    </div>
+                </div>
+
+                <!-- NEW VIEW: TV DISPLAY (ADDED) -->
+                <div id="view-tv-result" class="tv-layout hidden p-12">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <h1 class="text-6xl font-black text-white flex items-center gap-4">
+                                <i class="fa-solid fa-tree text-green-400"></i>
+                                CHRISTMAS 2025 <span class="text-red-500">LEADERBOARD</span>
+                            </h1>
+                            <p id="tv-current-category" class="text-3xl text-slate-400 mt-2 font-bold uppercase tracking-widest">-- WAITING --</p>
+                        </div>
+                        <div class="text-right">
+                            <div id="tv-clock" class="text-5xl font-bold text-white mb-2">00:00:00</div>
+                            <div class="bg-red-500 text-white px-4 py-1 rounded font-bold text-lg">LIVE RESULTS</div>
+                        </div>
+                    </div>
+                    <div id="tv-leaderboard-container" class="flex-1 grid grid-cols-1 gap-4 overflow-hidden">
+                        <!-- TV Scores -->
+                    </div>
+                    <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/90 z-[1000] flex flex-col items-center justify-center hidden">
+                        <div class="text-slate-400 text-4xl mb-4 font-bold uppercase">GAME STARTING IN</div>
+                        <div id="tv-countdown-val" class="countdown-text text-white">3</div>
                     </div>
                 </div>
 
@@ -620,6 +699,10 @@
             } else if (hash === 'register-contest') {
                 currentSubView = 'register-contest';
                 updateUIBasedOnConfig();
+            } else if (hash === 'tv-result') { // NEW ROUTE (ADDED)
+                document.getElementById('view-tv-result').classList.remove('hidden');
+                updateTVDisplay();
+                setInterval(updateTVDisplay, 1000);
             } else {
                 currentSubView = 'register-menu';
                 updateUIBasedOnConfig();
@@ -859,6 +942,7 @@
                 
                 updateUIBasedOnConfig(); 
                 updateAdminUIState(); 
+                syncPumpGame(); // NEW SYNC (ADDED)
                 
                 if (systemConfig.activePhase === 'vote') {
                     renderCandidates();
@@ -880,6 +964,8 @@
                 renderCandidates(); renderLeaderboard(); renderAdminDataTables(); 
                 document.getElementById('stat-candidate-count').innerText = candidates.length;
                 document.getElementById('loading-vote').classList.add('hidden');
+                
+                if(systemConfig.activePhase === 'pump') renderPumpCandidates(); // NEW RENDER (ADDED)
             });
         }
 
@@ -1285,6 +1371,8 @@
             }
 
             if (hash === 'admin') { updateAdminUIState(); return; }
+            if (hash === 'tv-result') return; // Skip standard UI if TV mode
+            
             hideAllViews();
             document.getElementById('site-footer').classList.remove('hidden'); 
 
@@ -1306,7 +1394,10 @@
             else if (phase === 'result') { 
                 document.getElementById('view-result').classList.remove('hidden'); 
                 updateResultDropdown();
-            } 
+            } else if (phase === 'pump') { // NEW PHASE (ADDED)
+                document.getElementById('view-pump').classList.remove('hidden');
+                syncPumpGame();
+            }
             else { document.getElementById('view-closed').classList.remove('hidden'); }
         }
 
@@ -1345,7 +1436,7 @@
         }
 
         function updateAdminUIState() {
-            const phases = ['register', 'vote', 'result', 'closed'];
+            const phases = ['register', 'vote', 'result', 'pump', 'closed']; // Updated list
             phases.forEach(p => {
                 const btn = document.getElementById(`btn-phase-${p}`);
                 if (!btn) return;
@@ -1358,6 +1449,14 @@
                     indicator.classList.remove('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
                 }
             });
+
+            // Toggle Pump Control Panel Visibility
+            const pumpControl = document.getElementById('pump-control-section');
+            if(pumpControl) {
+                if(systemConfig.activePhase === 'pump') pumpControl.classList.remove('hidden');
+                else pumpControl.classList.add('hidden');
+            }
+
             const locBtn = document.getElementById('btn-loc-toggle');
             if (locBtn) {
                 locBtn.innerText = systemConfig.locationCheckEnabled ? "เปิดอยู่" : "ปิดอยู่";
@@ -1476,7 +1575,7 @@
             btn.disabled = true; btn.innerHTML = 'กำลังบันทึก...';
             try {
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').add({
-                    studentId: id, name: name, costumeTitle: costume, votes: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    studentId: id, name: name, costumeTitle: costume, votes: 0, cheer_points: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 safeSetStorage(`reg_contest_${appId}`, 'true');
                 showToast('สมัครประกวดเรียบร้อย!', 'success');
@@ -1817,6 +1916,7 @@
 
         function showToast(msg, type = 'success') {
             const toast = document.getElementById('toast');
+            if(!toast) return;
             document.getElementById('toast-msg').innerText = msg;
             document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : (type === 'info' ? '<i class="fa-solid fa-circle-info text-blue-400"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-400"></i>');
             toast.classList.remove('opacity-0', '-translate-y-10');
@@ -1858,6 +1958,147 @@
             voteSnap.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
             showToast('ล้างคะแนนทั้งหมดสำเร็จ', 'success');
+        }
+
+        /* --- NEW PUMP & TV LOGIC (ADDED) --- */
+        let pumpSessionPoints = {}; 
+        let pumpPushTimer = null;
+
+        async function startPumpGame() {
+            if(!db) return;
+            const duration = parseInt(document.getElementById('pump-duration').value) || 1;
+            const startTime = Date.now() + 5000; // Start in 5 seconds
+            await getConfigRef().set({ 
+                pumpConfig: { startTime, durationMinutes: duration, isStarted: true }
+            }, { merge: true });
+            showToast("ส่งสัญญาณเริ่มเกมแล้ว!", "success");
+        }
+
+        function syncPumpGame() {
+            if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) return;
+            const config = systemConfig.pumpConfig;
+            const now = Date.now();
+            const startAt = config.startTime;
+            const endAt = startAt + (config.durationMinutes * 60 * 1000);
+
+            if (now < startAt) {
+                // Pre-Countdown
+                document.getElementById('pump-waiting-container').classList.add('hidden');
+                document.getElementById('pump-countdown-container').classList.remove('hidden');
+                document.getElementById('pump-game-container').classList.add('hidden');
+                
+                const diff = Math.ceil((startAt - now) / 1000);
+                document.getElementById('pump-countdown-timer').innerText = diff > 3 ? "Ready" : diff;
+                
+                // For TV
+                const tvCount = document.getElementById('tv-pump-countdown');
+                if(tvCount) {
+                    tvCount.classList.remove('hidden');
+                    document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
+                }
+            } else if (now < endAt) {
+                // Game ON
+                document.getElementById('pump-countdown-container').classList.add('hidden');
+                document.getElementById('pump-game-container').classList.remove('hidden');
+                document.getElementById('pump-waiting-container').classList.add('hidden');
+                
+                const remaining = Math.ceil((endAt - now) / 1000);
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                document.getElementById('pump-game-timer').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+                const tvCount = document.getElementById('tv-pump-countdown');
+                if(tvCount) tvCount.classList.add('hidden');
+            } else {
+                // Game Finished
+                document.getElementById('pump-game-container').classList.add('hidden');
+                document.getElementById('pump-waiting-container').classList.remove('hidden');
+                document.getElementById('pump-waiting-container').innerHTML = `<i class="fa-solid fa-flag-checkered text-5xl mb-4 text-green-400"></i><h3 class="text-xl font-bold">หมดเวลาแล้ว!</h3><p class="text-sm">ขอบคุณที่ร่วมสนุก</p>`;
+            }
+        }
+
+        function renderPumpCandidates() {
+            const grid = document.getElementById('pump-candidates-grid');
+            if(!grid) return;
+            grid.innerHTML = candidates.map(c => `
+                <div class="glass-panel p-4 rounded-2xl shadow-xl active:scale-95 transition-all cursor-pointer relative overflow-hidden h-40 flex flex-col items-center justify-center border-2 border-pink-200" onclick="handlePumpClick(event, '${c.id}')">
+                    <div class="text-pink-500 text-3xl mb-2"><i class="fa-solid fa-heart"></i></div>
+                    <div class="font-bold text-slate-800 text-lg line-clamp-1">${escapeHtml(c.name)}</div>
+                    <div class="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Tap Here to Pump!</div>
+                    <div id="pump-score-${c.id}" class="absolute bottom-2 right-2 bg-pink-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">+0</div>
+                </div>
+            `).join('');
+        }
+
+        function handlePumpClick(e, cid) {
+            // Visual Feedback
+            const heart = document.createElement('div');
+            heart.className = 'pump-heart text-pink-500 text-2xl';
+            heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
+            heart.style.left = e.clientX + 'px';
+            heart.style.top = e.clientY + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 1000);
+
+            // Accumulate Points
+            pumpSessionPoints[cid] = (pumpSessionPoints[cid] || 0) + 1;
+            const badge = document.getElementById(`pump-score-${cid}`);
+            if(badge) badge.innerText = `+${pumpSessionPoints[cid]}`;
+
+            // Schedule Sync to Firebase (every 1 second)
+            if(!pumpPushTimer) {
+                pumpPushTimer = setTimeout(async () => {
+                    const batch = db.batch();
+                    const pointsToSync = {...pumpSessionPoints};
+                    pumpSessionPoints = {}; // Reset local
+                    pumpPushTimer = null;
+
+                    for(let id in pointsToSync) {
+                        const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(id);
+                        batch.update(ref, { cheer_points: firebase.firestore.FieldValue.increment(pointsToSync[id]) });
+                    }
+                    await batch.commit();
+                }, 1000);
+            }
+        }
+
+        function updateTVDisplay() {
+            const container = document.getElementById('tv-leaderboard-container');
+            const clock = document.getElementById('tv-clock');
+            const cat = document.getElementById('tv-current-category');
+            if(!container) return;
+
+            // Clock
+            clock.innerText = new Date().toLocaleTimeString('th-TH');
+
+            // Header info
+            if(systemConfig.activePhase === 'pump') {
+                cat.innerText = "CHALLENGE: PUMP MODE (กดรัวๆ)";
+            } else {
+                cat.innerText = `CURRENT AWARD: ${systemConfig.awardName}`;
+            }
+
+            // Scores
+            let sorted = [];
+            const isPump = systemConfig.activePhase === 'pump';
+            const field = isPump ? 'cheer_points' : getScoreField(systemConfig.awardName);
+
+            sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 10);
+
+            container.innerHTML = sorted.map((c, i) => `
+                <div class="bg-white/5 backdrop-blur border border-white/10 p-6 rounded-3xl flex items-center justify-between transition-all">
+                    <div class="flex items-center gap-12">
+                        <div class="tv-rank ${i<3?'text-yellow-400':'text-slate-500'}">${i+1}</div>
+                        <div>
+                            <div class="tv-name">${escapeHtml(c.name)}</div>
+                            <div class="text-2xl text-slate-400 font-bold uppercase">${escapeHtml(c.costumeTitle)}</div>
+                        </div>
+                    </div>
+                    <div class="tv-points">${(c[field]||0).toLocaleString()} <span class="text-2xl text-slate-500 uppercase">${isPump?'Cheers':'Votes'}</span></div>
+                </div>
+            `).join('');
+            
+            if(isPump) syncPumpGame();
         }
     </script>
 </body>
