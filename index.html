@@ -752,9 +752,18 @@
                     renderCandidates();
                 }
 
-                if (adminMap && systemConfig.targetLat && document.getElementById('input-lat').value === "") {
-                     document.getElementById('input-lat').value = systemConfig.targetLat; document.getElementById('input-lng').value = systemConfig.targetLng;
-                     adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15); adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
+                if (adminMap && systemConfig.targetLat) {
+                     const latInput = document.getElementById('input-lat');
+                     const lngInput = document.getElementById('input-lng');
+                     const radInput = document.getElementById('input-radius');
+                     
+                     // Force update inputs to sync with server
+                     if(latInput) latInput.value = systemConfig.targetLat;
+                     if(lngInput) lngInput.value = systemConfig.targetLng;
+                     if(radInput && systemConfig.allowedRadius) radInput.value = systemConfig.allowedRadius;
+
+                     adminMap.setView([systemConfig.targetLat, systemConfig.targetLng], 15); 
+                     adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
                 }
             });
         }
@@ -1018,7 +1027,7 @@
             });
             const locBtn = document.getElementById('btn-loc-toggle');
             if (locBtn) {
-                locBtn.innerText = "เปิดอยู่";
+                locBtn.innerText = systemConfig.locationCheckEnabled ? "เปิดอยู่" : "ปิดอยู่";
                 locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
             }
             const awardInput = document.getElementById('input-award-name');
