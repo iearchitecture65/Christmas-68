@@ -381,6 +381,24 @@
                                 <div class="w-4 h-4 rounded-full border-2 border-slate-300 status-indicator"></div>
                             </button>
                         </div>
+
+                        <!-- DANGER ZONE: DATA MANAGEMENT -->
+                        <div class="p-4 bg-red-50 rounded-xl border border-red-200 mt-6">
+                            <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (อันตราย)
+                            </h3>
+                            <div class="grid grid-cols-1 gap-2">
+                                <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold">
+                                    <i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (รีเซ็ตเป็น 0)
+                                </button>
+                                <button onclick="resetAttendees()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold">
+                                    <i class="fa-solid fa-user-xmark mr-1"></i> ล้างรายชื่อผู้ลงทะเบียน
+                                </button>
+                                <button onclick="resetAll()" class="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-xs font-bold">
+                                    <i class="fa-solid fa-skull mr-1"></i> ล้างข้อมูลทั้งหมด (เริ่มงานใหม่)
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- TAB CONTENT: DATA -->
@@ -699,6 +717,70 @@
                 renderAdminDataTables(); 
                 document.getElementById('stat-attendee-count').innerText = attendees.length;
             });
+        }
+
+        // --- DATA MANAGEMENT FUNCTIONS ---
+        async function resetVotes() {
+            if (!confirm('ยืนยันล้างคะแนนโหวตทั้งหมด? ผู้เข้าประกวดยังอยู่ แต่คะแนนจะเป็น 0')) return;
+            if (!db) return;
+            
+            showToast('กำลังล้างคะแนน...', 'success');
+            const batch = db.batch();
+            
+            // 1. Delete all docs in 'votes' collection
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 2. Reset votes count in 'candidates' collection
+            const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const candSnap = await candidatesRef.get();
+            candSnap.forEach(doc => batch.update(doc.ref, { votes: 0 }));
+
+            await batch.commit();
+            showToast('ล้างคะแนนเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetAttendees() {
+            if (!confirm('ยืนยันลบรายชื่อผู้ลงทะเบียนทั้งหมด?')) return;
+            if (!db) return;
+
+            showToast('กำลังล้างรายชื่อ...', 'success');
+            const batch = db.batch();
+            
+            const attendeesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
+            const snap = await attendeesRef.get();
+            snap.forEach(doc => batch.delete(doc.ref));
+
+            await batch.commit();
+            showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetAll() {
+            const code = prompt('พิมพ์ "RESET" เพื่อยืนยันการล้างข้อมูลทั้งหมด (เริ่มงานใหม่)');
+            if (code !== 'RESET') return;
+            if (!db) return;
+
+            showToast('กำลังรีเซ็ตระบบ...', 'success');
+            const batch = db.batch();
+
+            // 1. Delete votes
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 2. Delete attendees
+            const attendeesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
+            const attSnap = await attendeesRef.get();
+            attSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 3. Delete candidates
+            const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+            const candSnap = await candidatesRef.get();
+            candSnap.forEach(doc => batch.delete(doc.ref));
+
+            await batch.commit();
+            showToast('รีเซ็ตระบบเรียบร้อยแล้ว', 'success');
         }
 
         // --- LOCATION LOGIC ---
