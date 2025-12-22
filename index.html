@@ -30,7 +30,7 @@
         html, body { height: 100%; overflow: hidden; font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         /* SCROLL CONTAINER */
-        #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; padding-bottom: 80px; /* Add padding for fixed footer */ }
+        #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; }
 
         /* THEME & ANIMATION */
         .snow-bg {
@@ -436,8 +436,7 @@
 
             </main>
 
-            <!-- FIXED FOOTER -->
-            <footer class="fixed bottom-0 left-0 right-0 py-4 text-center bg-slate-900/80 backdrop-blur-md border-t border-white/10 z-50" id="site-footer">
+            <footer class="mt-auto py-6 text-center" id="site-footer">
                 <p class="text-slate-400/30 text-xs">© 2025 Christmas Event 
                     <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a>
                 </p>
@@ -607,7 +606,7 @@
             const loader = document.getElementById('initial-loader');
             if(loader) loader.style.display = 'none';
             document.getElementById('view-admin-login').classList.remove('hidden');
-            // document.getElementById('site-footer').classList.add('hidden'); // REMOVED to keep footer visible
+            document.getElementById('site-footer').classList.add('hidden'); // Re-enable hiding footer
         }
 
         function showAdminDashboard() {
@@ -615,7 +614,7 @@
             document.getElementById('view-admin-dashboard').classList.remove('hidden');
             const baseUrl = window.location.href.split('#')[0];
             document.getElementById('user-link-input').value = baseUrl;
-            // document.getElementById('site-footer').classList.add('hidden'); // REMOVED to keep footer visible
+            document.getElementById('site-footer').classList.add('hidden'); // Re-enable hiding footer
             updateAdminUIState();
             setTimeout(initAdminMap, 300);
         }
@@ -1091,7 +1090,7 @@
 
             if (hash === 'admin') { updateAdminUIState(); return; }
             hideAllViews();
-            // document.getElementById('site-footer').classList.remove('hidden'); // REMOVED since footer is now fixed and always visible
+            document.getElementById('site-footer').classList.remove('hidden'); // Re-enable showing footer
 
             const phase = systemConfig.activePhase || 'closed';
             const currentAward = systemConfig.awardName || 'Popular Vote';
