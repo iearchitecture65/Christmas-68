@@ -834,10 +834,20 @@
             const voteHeader = document.getElementById('vote-header-category');
             if(voteHeader) voteHeader.innerText = `${currentAward}`;
 
+            // *** FIX: Priority Check for Redirected/Explicit Views ***
+            // Ensure Register Attend view works even in Vote Phase if explicitly navigated to (e.g. from redirect)
+            if (currentSubView === 'register-attend') {
+                document.getElementById('view-register-attend').classList.remove('hidden');
+                // Check if user is trying to register but it's not register phase AND they weren't redirected
+                const isRedirected = sessionStorage.getItem('pendingVoteId');
+                if (phase !== 'register' && !isRedirected) {
+                     // Optionally show extra warning or disable form, but handleAttendSubmit does the actual block
+                }
+                return;
+            }
+
             if (phase === 'register') {
-                if (currentSubView === 'register-attend') {
-                    document.getElementById('view-register-attend').classList.remove('hidden');
-                } else if (currentSubView === 'register-contest') { document.getElementById('view-register-contest').classList.remove('hidden'); } 
+                if (currentSubView === 'register-contest') { document.getElementById('view-register-contest').classList.remove('hidden'); } 
                 else { document.getElementById('view-register-menu').classList.remove('hidden'); updateRegisterMenuState(); }
             } else if (phase === 'vote') { document.getElementById('view-vote').classList.remove('hidden'); } 
             else if (phase === 'result') { 
