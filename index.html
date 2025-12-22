@@ -711,7 +711,12 @@
                          if (systemConfig.activePhase === 'vote') {
                              showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${newAwardName}`, 'info');
                              closeVoteModal();
-                             if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
+                             
+                             // FIX: Only reset scroll if NOT admin
+                             if(window.location.hash !== '#admin' && document.getElementById('app-scroll-wrapper')) {
+                                document.getElementById('app-scroll-wrapper').scrollTop = 0;
+                             }
+                             
                              renderCandidates(); 
                          }
                     }
@@ -992,8 +997,13 @@
 
         // --- MAIN UI CONTROLLER ---
         function updateUIBasedOnConfig() {
-            if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
             const hash = window.location.hash.substring(1);
+            
+            // FIX: Only reset scroll if NOT admin to prevent jump
+            if (hash !== 'admin') {
+                if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
+            }
+
             if (hash === 'admin') { updateAdminUIState(); return; }
             hideAllViews();
             document.getElementById('site-footer').classList.remove('hidden');
