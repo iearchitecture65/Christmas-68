@@ -91,29 +91,38 @@
             padding: 8px;
         }
 
-        /* --- NEW PUMP & TV STYLES (Adjusted for TV scaling and User UI) --- */
+        /* --- PUMP & TV STYLES --- */
         .pump-heart { position: absolute; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 50; }
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
         }
-        .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; flex-direction: column; }
+        .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; }
         
-        /* Adjusted TV sizes: Smaller padding, Bigger text */
-        .tv-row { background: rgba(255, 255, 255, 0.9); margin-bottom: 1rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease; padding: 1.5rem !important; }
-        .tv-row-1 { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color: #451a03; border: 4px solid #fff; margin-left: 1rem; margin-right: 1rem; }
-        .tv-row-2 { background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%); color: #1e293b; }
-        .tv-row-3 { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #fff; }
+        /* TV Row Styles - Matching Result Page but Bigger */
+        .tv-row { background: white; margin-bottom: 0.75rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; }
+        .tv-row-1 { background: linear-gradient(to right, #fef3c7, #fff); border: 2px solid #fbbf24; transform: scale(1.02); }
         
-        .tv-name { font-size: 3.5rem; font-weight: 800; line-height: 1.1; } /* Bigger name */
-        .tv-sub { font-size: 2rem; } /* Bigger subtext */
-        .tv-points { font-size: 4rem; font-weight: 900; } /* Bigger points */
+        .tv-rank-box { width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem; margin-right: 1.5rem; }
+        .tv-rank-1 { background-color: #facc15; color: #713f12; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tv-rank-2 { background-color: #cbd5e1; color: #334155; }
+        .tv-rank-3 { background-color: #d97706; color: #fff; }
+        .tv-rank-other { background-color: #f1f5f9; color: #64748b; }
 
+        .tv-name { font-size: 1.5rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+        .tv-sub { font-size: 1rem; color: #64748b; }
+        .tv-score { font-size: 2.25rem; font-weight: 800; color: #dc2626; }
+        
         .countdown-text { font-size: 15rem; font-weight: 900; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         
-        /* Pump Button Grayscale */
-        .pump-disabled { filter: grayscale(100%); opacity: 0.7; pointer-events: none; transform: scale(0.95); }
+        /* Pump Button Styles */
+        .pump-btn-wrapper { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+        .pump-disabled { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: not-allowed; }
+        
+        /* TV Layout Grid */
+        .tv-grid-active { display: grid; grid-template-columns: 7fr 3fr; gap: 2rem; height: 100%; }
+        .tv-grid-full { display: block; height: 100%; }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -500,6 +509,17 @@
                         </div>
                     </div>
 
+                    <!-- INPUT GATE -->
+                    <div id="pump-gate-container" class="hidden">
+                        <div class="glass-panel p-6 rounded-2xl max-w-sm mx-auto text-center animate-fade-in">
+                            <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-gamepad"></i></div>
+                            <h3 class="text-xl font-bold text-slate-800">เข้าสู่โหมดกดรัวๆ</h3>
+                            <p class="text-sm text-slate-500 mb-4">กรุณาระบุรหัสนักศึกษาเพื่อเริ่มเล่น</p>
+                            <input type="tel" id="pump-id-input" class="w-full text-center text-xl p-3 border-2 border-pink-200 rounded-xl focus:border-pink-500 outline-none mb-3" placeholder="รหัสนักศึกษา">
+                            <button onclick="enterPumpMode()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-lg">พร้อมลุย!</button>
+                        </div>
+                    </div>
+
                     <div id="pump-countdown-container" class="text-center py-10 hidden">
                         <div class="text-white/60 text-lg mb-2 uppercase tracking-widest">GET READY!</div>
                         <div id="pump-countdown-timer" class="text-white font-black text-9xl drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">3</div>
@@ -512,13 +532,16 @@
                             <div id="pump-game-timer" class="text-white text-5xl font-black">00:00</div>
                         </div>
                         
+                        <!-- STATUS BADGE -->
+                        <div id="pump-status-badge" class="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 hidden">รอสัญญาณ...</div>
+
                         <!-- PUMP GRID (LIKE VOTE GRID) -->
-                        <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24">
+                        <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24 hidden">
                             <!-- Candidates for Pumping will be injected here -->
                         </div>
                     </div>
 
-                    <div id="pump-waiting-container" class="text-center text-white/50 py-20">
+                    <div id="pump-waiting-container" class="text-center text-white/50 py-20 hidden">
                         <i class="fa-solid fa-hourglass-start text-6xl mb-4 animate-spin-slow"></i>
                         <h3 class="text-2xl font-bold text-white">รอ Admin เริ่มเกม</h3>
                         <p class="text-sm text-slate-300">เตรียมตัวกดรัวๆ เมื่อสัญญาณเริ่ม!</p>
@@ -529,32 +552,29 @@
                 </div>
 
                 <!-- NEW VIEW: TV DISPLAY (UPDATED TO LEADERBOARD STYLE) -->
-                <div id="view-tv-result" class="tv-layout hidden p-12 overflow-hidden">
-                    <div class="flex justify-between items-start mb-8 relative z-10">
-                        <div>
-                            <h1 class="text-7xl font-black text-white flex items-center gap-6">
-                                <i class="fa-solid fa-tree text-green-400"></i>
-                                CHRISTMAS <span class="text-red-500">2025</span>
-                            </h1>
-                            <p id="tv-current-category" class="text-5xl text-yellow-400 mt-4 font-bold uppercase tracking-widest drop-shadow-md">-- WAITING --</p>
-                        </div>
-                        <div class="text-right">
-                            <div id="tv-clock" class="text-6xl font-bold text-white mb-2 font-mono">00:00:00</div>
-                            <div class="bg-red-600 text-white px-6 py-2 rounded-xl font-bold text-2xl inline-flex items-center gap-3 shadow-lg">
-                                <span class="w-3 h-3 rounded-full bg-white animate-pulse"></span> LIVE RESULTS
+                <div id="view-tv-result" class="tv-layout hidden overflow-hidden">
+                    <!-- MAIN TV CONTENT WRAPPER -->
+                    <div id="tv-main-grid" class="w-full h-full p-8 transition-all duration-500">
+                        <!-- Left Panel (Leaderboard) -->
+                        <div id="tv-left-panel" class="flex flex-col h-full overflow-hidden">
+                            <div class="mb-4">
+                                <h1 class="text-5xl font-black text-white flex items-center gap-4">
+                                    <i class="fa-solid fa-tree text-green-400"></i>
+                                    CHRISTMAS <span class="text-red-500">2025</span>
+                                </h1>
+                                <p id="tv-current-category" class="text-3xl text-yellow-400 mt-2 font-bold uppercase tracking-widest drop-shadow-md">-- WAITING --</p>
                             </div>
-                            
-                            <!-- TV GAME TIMER (PROMINENT) -->
-                            <div id="tv-game-timer-container" class="mt-6 hidden bg-white/10 p-6 rounded-[2rem] border border-white/20 backdrop-blur-md shadow-2xl">
-                                <div class="text-pink-400 text-xl font-bold uppercase tracking-widest mb-1">REMAINING</div>
-                                <div id="tv-game-timer-val" class="text-8xl font-black text-white font-mono">00:00</div>
+                            <div id="tv-leaderboard-list" class="flex-1 space-y-4 overflow-y-auto pr-4">
+                                <!-- TV Rows injected here -->
                             </div>
                         </div>
-                    </div>
 
-                    <!-- TV LEADERBOARD CONTAINER (CARD STYLE) -->
-                    <div id="tv-leaderboard-container" class="flex-1 overflow-hidden py-6 relative z-10">
-                        <!-- TV Scores (Optimized Leaderboard Style) -->
+                        <!-- Right Panel (Timer) - Hidden by default -->
+                        <div id="tv-right-panel" class="hidden flex-col justify-center items-center bg-white/5 rounded-3xl border border-white/10 p-8 backdrop-blur-sm">
+                            <div class="text-pink-400 text-3xl font-bold uppercase tracking-widest mb-4">REMAINING</div>
+                            <div id="tv-game-timer-val" class="text-[12rem] font-black text-white font-mono leading-none">00:00</div>
+                            <div id="tv-clock" class="text-4xl font-bold text-white/50 mt-8 font-mono">00:00:00</div>
+                        </div>
                     </div>
                     
                     <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER -->
@@ -564,8 +584,8 @@
                     </div>
                     
                     <!-- DECORATIVE BG FOR TV -->
-                    <div class="absolute -bottom-20 -left-20 w-96 h-96 bg-red-600/10 blur-[100px] rounded-full"></div>
-                    <div class="absolute -top-20 -right-20 w-96 h-96 bg-blue-600/10 blur-[100px] rounded-full"></div>
+                    <div class="absolute -bottom-20 -left-20 w-96 h-96 bg-red-600/10 blur-[100px] rounded-full pointer-events-none"></div>
+                    <div class="absolute -top-20 -right-20 w-96 h-96 bg-blue-600/10 blur-[100px] rounded-full pointer-events-none"></div>
                 </div>
 
             </main>
@@ -718,9 +738,8 @@
         function handleRouting() {
             let hash = window.location.hash.substring(1);
             
-            // Allow manual scroll on routing change EXCEPT for admin which should maintain state if reloaded
             if(document.getElementById('app-scroll-wrapper') && hash !== 'admin') {
-                 // Only reset if specifically navigating to a new main view logic, simplified here
+                 // Reset logic
             }
 
             if (hash === 'admin') {
@@ -741,7 +760,7 @@
             } else if (hash === 'register-contest') {
                 currentSubView = 'register-contest';
                 updateUIBasedOnConfig();
-            } else if (hash === 'tv-result') { // NEW ROUTE (ADDED/FIXED)
+            } else if (hash === 'tv-result') { 
                 hideAllViews();
                 document.getElementById('view-tv-result').classList.remove('hidden');
                 document.getElementById('site-footer').classList.add('hidden');
@@ -2058,8 +2077,6 @@
         async function startPumpGame() {
             if(!db) return;
             const duration = parseInt(document.getElementById('pump-duration').value) || 1;
-            // Requirement: "Use single time from Firestore".
-            // We set an absolute start time (now + 5s) so everyone syncs to that specific timestamp.
             const startTime = Date.now() + 5000;
             await getConfigRef().set({ 
                 pumpConfig: { startTime, durationMinutes: duration, isStarted: true }
@@ -2074,38 +2091,53 @@
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
+            const gateContainer = document.getElementById('pump-gate-container');
             const userCountdown = document.getElementById('pump-countdown-container');
             const userGame = document.getElementById('pump-game-container');
             const userWaiting = document.getElementById('pump-waiting-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
-            const tvTimerContainer = document.getElementById('tv-game-timer-container');
+            const tvTimerPanel = document.getElementById('tv-right-panel');
             const summaryContainer = document.getElementById('pump-summary-container');
+            const statusBadge = document.getElementById('pump-status-badge');
 
-            if (now < startAt) {
-                // COUNTDOWN PHASE
-                if(userWaiting) userWaiting.classList.add('hidden');
-                if(userCountdown) userCountdown.classList.remove('hidden');
+            // 1. INPUT GATE CHECK
+            if (!pumpVoterId) {
+                if(gateContainer) gateContainer.classList.remove('hidden');
+                if(userCountdown) userCountdown.classList.add('hidden');
                 if(userGame) userGame.classList.add('hidden');
+                if(userWaiting) userWaiting.classList.add('hidden');
+                if(summaryContainer) summaryContainer.classList.add('hidden');
+                return; // Stop here, wait for input
+            } else {
+                if(gateContainer) gateContainer.classList.add('hidden');
+            }
+
+            // 2. GAME LOGIC
+            if (now < startAt) {
+                // WAITING PHASE
+                if(userWaiting) userWaiting.classList.add('hidden');
+                // Show game container but disabled
+                if(userGame) userGame.classList.remove('hidden'); 
+                if(statusBadge) { statusBadge.innerText = "รอสัญญาณ..."; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-pulse"; }
+                if(userCountdown) userCountdown.classList.add('hidden'); // Hide big countdown, show disabled grid
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 
-                // Show grid but grayed out
+                // Disable Grid
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) {
                     grid.classList.remove('hidden');
-                    // Add grayscale/disable class if ID entered
-                    if(pumpVoterId) {
-                        const buttons = grid.querySelectorAll('.pump-btn-wrapper');
-                        buttons.forEach(btn => btn.classList.add('pump-disabled'));
-                    }
+                    const buttons = grid.querySelectorAll('.pump-btn-wrapper');
+                    buttons.forEach(btn => btn.classList.add('pump-disabled'));
                 }
 
+                // TV Logic
                 const diff = Math.ceil((startAt - now) / 1000);
                 const countVal = diff > 3 ? "Ready" : diff;
                 
-                if(document.getElementById('pump-countdown-timer')) document.getElementById('pump-countdown-timer').innerText = countVal;
                 if(tvCountdown) tvCountdown.classList.remove('hidden');
                 if(document.getElementById('tv-countdown-val')) document.getElementById('tv-countdown-val').innerText = countVal;
-                if(tvTimerContainer) tvTimerContainer.classList.add('hidden');
+                if(tvTimerPanel) tvTimerPanel.classList.remove('flex'); // Hide timer panel on TV during countdown
+                if(tvTimerPanel) tvTimerPanel.classList.add('hidden');
 
                 // VOICE TRIGGER (ONLY ON TV)
                 if(diff <= 3 && diff > 0 && lastCountVal !== diff) {
@@ -2116,14 +2148,16 @@
                 lastPlayedState = 'countdown';
             } else if (now < endAt) {
                 // GAME ACTIVE PHASE
-                if(userCountdown) userCountdown.classList.add('hidden');
                 if(userGame) userGame.classList.remove('hidden');
+                if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
+                if(userCountdown) userCountdown.classList.add('hidden');
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 
-                // Enable buttons
+                // Enable Grid
                 const grid = document.getElementById('pump-candidates-grid');
-                if(grid && pumpVoterId) {
+                if(grid) {
+                    grid.classList.remove('hidden');
                     const buttons = grid.querySelectorAll('.pump-btn-wrapper');
                     buttons.forEach(btn => btn.classList.remove('pump-disabled'));
                 }
@@ -2133,8 +2167,13 @@
                 const timeStr = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
                 
                 if(document.getElementById('pump-game-timer')) document.getElementById('pump-game-timer').innerText = timeStr;
+                
                 if(tvCountdown) tvCountdown.classList.add('hidden');
-                if(tvTimerContainer) tvTimerContainer.classList.remove('hidden');
+                
+                // Show Timer Side Panel on TV
+                const tvMain = document.getElementById('tv-main-grid');
+                if(tvMain) { tvMain.classList.remove('grid-cols-1'); tvMain.classList.add('tv-grid-active'); }
+                if(tvTimerPanel) { tvTimerPanel.classList.remove('hidden'); tvTimerPanel.classList.add('flex'); }
                 if(document.getElementById('tv-game-timer-val')) document.getElementById('tv-game-timer-val').innerText = timeStr;
 
                 if(lastPlayedState === 'countdown') {
@@ -2146,7 +2185,10 @@
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userCountdown) userCountdown.classList.add('hidden');
                 
-                if(tvTimerContainer) tvTimerContainer.classList.add('hidden');
+                // Hide Timer on TV, expand list
+                const tvMain = document.getElementById('tv-main-grid');
+                if(tvMain) { tvMain.classList.remove('tv-grid-active'); tvMain.classList.add('tv-grid-full'); }
+                if(tvTimerPanel) { tvTimerPanel.classList.add('hidden'); tvTimerPanel.classList.remove('flex'); }
                 if(tvCountdown) tvCountdown.classList.add('hidden');
 
                 if(lastPlayedState === 'active') {
@@ -2160,24 +2202,6 @@
         }
 
         function renderPumpCandidates() {
-            if (!pumpVoterId) {
-                // Show Input Gate
-                const grid = document.getElementById('pump-candidates-grid');
-                if(!grid) return;
-                grid.classList.remove('grid-cols-2');
-                grid.classList.add('grid-cols-1');
-                grid.innerHTML = `
-                    <div class="glass-panel p-6 rounded-2xl max-w-sm mx-auto text-center animate-fade-in">
-                        <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-gamepad"></i></div>
-                        <h3 class="text-xl font-bold text-slate-800">เข้าสู่โหมดกดรัวๆ</h3>
-                        <p class="text-sm text-slate-500 mb-4">กรุณาระบุรหัสนักศึกษาเพื่อเริ่มเล่น</p>
-                        <input type="tel" id="pump-id-input" class="w-full text-center text-xl p-3 border-2 border-pink-200 rounded-xl focus:border-pink-500 outline-none mb-3" placeholder="รหัสนักศึกษา">
-                        <button onclick="enterPumpMode()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-lg">พร้อมลุย!</button>
-                    </div>
-                `;
-                return;
-            }
-
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
             if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
@@ -2191,11 +2215,11 @@
             grid.innerHTML = sortedCandidates.map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
                 return `
-                <div class="pump-btn-wrapper bg-gradient-to-br from-pink-500 to-rose-600 p-2 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition active:scale-90 h-48 items-center justify-center text-center cursor-pointer select-none border-4 border-white/20 active:border-white" onclick="handlePumpClick(event, '${c.id}')">
-                    <div class="absolute top-2 left-2"><span class="bg-black/20 text-white px-2 py-1 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
-                    <div class="text-white text-6xl mb-2 drop-shadow-md"><i class="fa-solid fa-hand-pointer"></i></div>
-                    <h3 class="text-lg font-bold text-white leading-tight line-clamp-1 drop-shadow-md">${escapeHtml(c.name)}</h3>
-                    <div id="pump-score-${c.id}" class="absolute bottom-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
+                <div class="pump-btn-wrapper bg-white/10 backdrop-blur-md p-4 rounded-3xl flex flex-col shadow-lg relative overflow-hidden transform transition active:scale-95 border-2 border-white/20 h-52 items-center justify-center text-center cursor-pointer select-none" onclick="handlePumpClick(event, '${c.id}')">
+                    <div class="text-pink-500 text-6xl mb-2 drop-shadow-lg"><i class="fa-solid fa-heart"></i></div>
+                    <h3 class="text-xl font-bold text-white leading-tight line-clamp-1 drop-shadow-md mb-1">${escapeHtml(c.name)}</h3>
+                    <p class="text-sm text-pink-200 line-clamp-1 font-medium">${escapeHtml(c.costumeTitle)}</p>
+                    <div id="pump-score-${c.id}" class="absolute top-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
                 </div>
             `}).join('');
         }
@@ -2207,24 +2231,23 @@
             
             // Check if user is registered (optional but good)
             if(!attendees.some(a => a.studentId === id)) {
-                 // Relaxed rule: Just warn but let them play or block? Let's just warn.
-                 showToast('ไม่พบรหัสลงทะเบียน (เล่นได้แต่ไม่มีชื่อ)', 'info');
+                 showToast('ไม่พบรหัสลงทะเบียน (บันทึกประวัติไม่ได้)', 'info');
             }
             
             renderPumpCandidates();
-            syncPumpGame(); // Re-sync to apply grayscale if needed
-            showToast('พร้อมกดแล้ว! รอสัญญาณ...', 'success');
+            syncPumpGame(); // Re-sync to apply logic
+            showToast('เตรียมพร้อม...', 'success');
         }
 
         function handlePumpClick(e, cid) {
-            if(!pumpVoterId) return showToast('กรุณาเข้าระบบก่อน', 'error');
+            if(!pumpVoterId) return; // Should be blocked by UI, but double check
             
             // Visual Effect
             const heart = document.createElement('div');
-            heart.className = 'pump-heart text-white text-4xl font-bold drop-shadow-md';
-            heart.innerText = '+1';
-            heart.style.left = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) + 'px';
-            heart.style.top = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) + 'px';
+            heart.className = 'pump-heart text-pink-400 text-5xl font-bold drop-shadow-md';
+            heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
+            heart.style.left = (e.clientX - 20) + 'px';
+            heart.style.top = (e.clientY - 20) + 'px';
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
 
@@ -2236,10 +2259,22 @@
             // Persist locally
             safeSetStorage(`pump_points_${appId}_${pumpVoterId}`, JSON.stringify(pumpSessionPoints));
 
-            // Immediate Send (Increment in Firestore)
-            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid).update({
+            // Immediate Send (Increment in Firestore - Candidate Score)
+            const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid);
+            candidateRef.update({
                 cheer_points: firebase.firestore.FieldValue.increment(1)
             }).catch(err => console.error(err));
+
+            // **NEW: HISTORY LOGGING (Debounced/Throttled is better but direct per request)**
+            // Writing to pump_logs for history tracking
+            const logId = `${pumpVoterId}_${cid}`;
+            const logRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').doc(logId);
+            logRef.set({
+                voterId: pumpVoterId,
+                candidateId: cid,
+                count: firebase.firestore.FieldValue.increment(1),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(err => console.error("Log error", err));
         }
         
         function renderPumpSummary() {
@@ -2253,7 +2288,6 @@
             }
             const topCand = candidates.find(c => c.id === topId);
             const cName = topCand ? topCand.name : (totalClicks > 0 ? "Multiple" : "-");
-            const cCostume = topCand ? topCand.costumeTitle : "-";
             const nowTime = new Date().toLocaleTimeString('th-TH');
 
             container.innerHTML = `
@@ -2287,7 +2321,7 @@
         }
 
         function updateTVDisplay() {
-            const container = document.getElementById('tv-leaderboard-container');
+            const container = document.getElementById('tv-leaderboard-list');
             const clock = document.getElementById('tv-clock');
             const cat = document.getElementById('tv-current-category');
             if(!container) return;
@@ -2303,41 +2337,34 @@
             }
 
             const field = isPump ? 'cheer_points' : getScoreField(currentAward);
-            const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 7);
+            const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 7); // Show top 7
 
             if(sorted.length === 0) {
                 container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING FOR DATA ---</div>';
                 return;
             }
 
-            // TV LEADERBOARD - LIST STYLE (MATCHING RESULT PAGE BUT BIGGER)
+            // TV LEADERBOARD - LIST STYLE (Optimized for TV)
             container.innerHTML = sorted.map((c, i) => {
                 let rowClass = 'tv-row';
-                let rankDisplay = `<div class="w-24 h-24 rounded-full bg-slate-700/50 flex items-center justify-center font-bold text-5xl text-white border-2 border-white/20">${i + 1}</div>`;
+                let rankClass = 'tv-rank-box tv-rank-other';
+                let icon = '';
                 
-                if (i === 0) { 
-                    rowClass += ' tv-row-1'; 
-                    rankDisplay = `<div class="w-32 h-32 rounded-full bg-yellow-300 text-yellow-800 flex items-center justify-center font-black text-7xl shadow-lg border-4 border-white"><i class="fa-solid fa-crown"></i></div>`;
-                } else if (i === 1) { 
-                    rowClass += ' tv-row-2'; 
-                    rankDisplay = `<div class="w-24 h-24 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-5xl shadow border-2 border-white">${i + 1}</div>`;
-                } else if (i === 2) { 
-                    rowClass += ' tv-row-3'; 
-                    rankDisplay = `<div class="w-24 h-24 rounded-full bg-amber-700 text-amber-100 flex items-center justify-center font-bold text-5xl shadow border-2 border-white">${i + 1}</div>`;
-                }
+                if (i === 0) { rowClass += ' tv-row-1'; rankClass = 'tv-rank-box tv-rank-1'; icon = '<i class="fa-solid fa-crown text-yellow-600 ml-3"></i>'; }
+                else if (i === 1) { rowClass += ' tv-row-2'; rankClass = 'tv-rank-box tv-rank-2'; }
+                else if (i === 2) { rowClass += ' tv-row-3'; rankClass = 'tv-rank-box tv-rank-3'; }
 
                 return `
-                <div class="${rowClass} flex items-center justify-between">
-                    <div class="flex items-center gap-10">
-                        ${rankDisplay}
+                <div class="${rowClass}">
+                    <div class="flex items-center">
+                        <div class="${rankClass}">${i + 1}</div>
                         <div>
-                            <div class="tv-name drop-shadow-sm">${escapeHtml(c.name)}</div>
-                            <div class="tv-sub opacity-80 uppercase tracking-widest">${escapeHtml(c.costumeTitle)}</div>
+                            <div class="tv-name">${escapeHtml(c.name)} ${icon}</div>
+                            <div class="tv-sub">${escapeHtml(c.costumeTitle)}</div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="tv-points drop-shadow-sm">${(c[field]||0).toLocaleString()}</div>
-                        <div class="text-xl opacity-60 uppercase font-bold tracking-widest mt-1">${isPump?'Cheers':'Votes'}</div>
+                        <div class="tv-score">${(c[field]||0).toLocaleString()}</div>
                     </div>
                 </div>`;
             }).join('');
