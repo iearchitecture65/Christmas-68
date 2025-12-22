@@ -477,11 +477,16 @@
                 </div>
             </div>
 
-            <!-- ATTENDEE/CANDIDATE LIST MODAL (NEW) -->
+            <!-- ATTENDEE/CANDIDATE LIST MODAL (UPDATED WITH CLEAR BUTTON) -->
             <div id="admin-data-list-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
                 <div class="bg-white rounded-2xl p-6 w-[95%] max-w-md relative max-h-[85vh] flex flex-col">
+                    <div class="flex justify-between items-start mb-4 pr-10">
+                        <h3 class="text-lg font-bold text-slate-800" id="admin-data-list-title">รายชื่อ</h3>
+                        <button id="btn-clear-data-list-in-modal" class="bg-red-100 text-red-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-200 transition" title="ล้างข้อมูลทั้งหมด">
+                            <i class="fa-solid fa-broom"></i>
+                        </button>
+                    </div>
                     <button onclick="closeAdminDataListModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-                    <h3 class="text-lg font-bold text-slate-800 mb-4" id="admin-data-list-title">รายชื่อ</h3>
                     <div class="overflow-y-auto flex-1 rounded-xl border border-slate-200">
                         <table class="w-full data-table">
                             <thead id="admin-data-list-head"></thead>
@@ -1350,7 +1355,7 @@
                     indicator.classList.remove('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
                 } else {
                     btn.classList.add('phase-btn-inactive'); btn.classList.remove('phase-btn-active');
-                    indicator.classList.add('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
+                    indicator.classList.remove('border-slate-300'); indicator.classList.add('bg-white', 'border-transparent');
                 }
             });
             const locBtn = document.getElementById('btn-loc-toggle');
@@ -1725,8 +1730,14 @@
             const title = document.getElementById('admin-data-list-title');
             const head = document.getElementById('admin-data-list-head');
             const body = document.getElementById('admin-data-list-body');
+            const clearBtn = document.getElementById('btn-clear-data-list-in-modal');
+            
             title.innerText = "ผู้ลงทะเบียนเข้างาน";
             head.innerHTML = '<tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th class="text-right">เวลา</th></tr>';
+            
+            // Bind clear functionality for attendees
+            clearBtn.onclick = () => resetAttendees();
+            
             if (attendees.length === 0) {
                 body.innerHTML = '<tr><td colspan="3" class="text-center p-8 text-slate-400">ไม่มีข้อมูล</td></tr>';
             } else {
@@ -1743,8 +1754,14 @@
             const title = document.getElementById('admin-data-list-title');
             const head = document.getElementById('admin-data-list-head');
             const body = document.getElementById('admin-data-list-body');
+            const clearBtn = document.getElementById('btn-clear-data-list-in-modal');
+            
             title.innerText = "ผู้เข้าประกวด";
             head.innerHTML = '<tr><th>รหัส</th><th>ชื่อเล่น</th><th>คอนเซปต์</th></tr>';
+            
+            // Bind clear functionality for candidates
+            clearBtn.onclick = () => resetCandidates();
+            
             if (candidates.length === 0) {
                 body.innerHTML = '<tr><td colspan="3" class="text-center p-8 text-slate-400">ไม่มีข้อมูล</td></tr>';
             } else {
