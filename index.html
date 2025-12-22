@@ -30,7 +30,7 @@
         html, body { height: 100%; overflow: hidden; font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
         
         /* SCROLL CONTAINER */
-        #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; }
+        #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; padding-bottom: 80px; /* Add padding for fixed footer */ }
 
         /* THEME & ANIMATION */
         .snow-bg {
@@ -137,9 +137,24 @@
         </div>
     </div>
 
+    <!-- CUSTOM CONFIRMATION MODAL (No Browser Alerts) -->
+    <div id="custom-confirm-modal" class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-6 w-[85%] max-w-xs relative transform scale-95 transition-transform duration-300 shadow-2xl">
+            <div class="text-center mb-5">
+                <div id="confirm-icon-container" class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md animate-bounce-short"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3 class="text-lg font-bold text-slate-800" id="confirm-title">ยืนยันการทำรายการ</h3>
+                <p class="text-sm text-slate-500 mt-2 leading-relaxed" id="confirm-message">...</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="btn-confirm-cancel" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-sm">ยกเลิก</button>
+                <button id="btn-confirm-ok" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-200 transition text-sm">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MAIN SCROLL WRAPPER -->
     <div id="app-scroll-wrapper">
-        <div class="max-w-md mx-auto min-h-full flex flex-col relative pb-20">
+        <div class="max-w-md mx-auto min-h-full flex flex-col relative">
             <div id="location-warning-banner" class="sticky top-0 shadow-md"><i class="fa-solid fa-circle-exclamation mr-1"></i> อยู่นอกพื้นที่จัดงาน (ดูข้อมูลได้อย่างเดียว)</div>
 
             <!-- HEADER -->
@@ -421,7 +436,8 @@
 
             </main>
 
-            <footer class="mt-auto py-6 text-center" id="site-footer">
+            <!-- FIXED FOOTER -->
+            <footer class="fixed bottom-0 left-0 right-0 py-4 text-center bg-slate-900/80 backdrop-blur-md border-t border-white/10 z-50" id="site-footer">
                 <p class="text-slate-400/30 text-xs">© 2025 Christmas Event 
                     <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a>
                 </p>
@@ -541,7 +557,11 @@
 
         function handleRouting() {
             let hash = window.location.hash.substring(1);
-            if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
+            
+            // Allow manual scroll on routing change EXCEPT for admin which should maintain state if reloaded
+            if(document.getElementById('app-scroll-wrapper') && hash !== 'admin') {
+                 // Only reset if specifically navigating to a new main view logic, simplified here
+            }
 
             if (hash === 'admin') {
                 if (isAdminAuthenticated) showAdminDashboard();
@@ -587,7 +607,7 @@
             const loader = document.getElementById('initial-loader');
             if(loader) loader.style.display = 'none';
             document.getElementById('view-admin-login').classList.remove('hidden');
-            document.getElementById('site-footer').classList.add('hidden');
+            // document.getElementById('site-footer').classList.add('hidden'); // REMOVED to keep footer visible
         }
 
         function showAdminDashboard() {
@@ -595,7 +615,7 @@
             document.getElementById('view-admin-dashboard').classList.remove('hidden');
             const baseUrl = window.location.href.split('#')[0];
             document.getElementById('user-link-input').value = baseUrl;
-            document.getElementById('site-footer').classList.add('hidden');
+            // document.getElementById('site-footer').classList.add('hidden'); // REMOVED to keep footer visible
             updateAdminUIState();
             setTimeout(initAdminMap, 300);
         }
@@ -803,10 +823,70 @@
             });
         }
 
+        // --- CUSTOM CONFIRM MODAL LOGIC ---
+        function showConfirmModal(title, message, isDanger = false) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('custom-confirm-modal');
+                const titleEl = document.getElementById('confirm-title');
+                const msgEl = document.getElementById('confirm-message');
+                const btnOk = document.getElementById('btn-confirm-ok');
+                const btnCancel = document.getElementById('btn-confirm-cancel');
+                const iconContainer = document.getElementById('confirm-icon-container');
+
+                titleEl.innerText = title;
+                msgEl.innerText = message;
+
+                // Style for Danger
+                if(isDanger) {
+                    btnOk.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-200 transition text-sm";
+                    iconContainer.className = "w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md animate-bounce-short";
+                    iconContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                } else {
+                    btnOk.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-200 transition text-sm";
+                    iconContainer.className = "w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border-4 border-white shadow-md";
+                    iconContainer.innerHTML = '<i class="fa-solid fa-circle-question"></i>';
+                }
+
+                // Show Modal
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modal.querySelector('div').classList.remove('scale-95');
+                    modal.querySelector('div').classList.add('scale-100');
+                }, 10);
+
+                // Handlers
+                const handleOk = () => {
+                    closeModal();
+                    resolve(true);
+                };
+                const handleCancel = () => {
+                    closeModal();
+                    resolve(false);
+                };
+
+                const closeModal = () => {
+                    modal.classList.add('opacity-0');
+                    modal.querySelector('div').classList.add('scale-95');
+                    modal.querySelector('div').classList.remove('scale-100');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        btnOk.removeEventListener('click', handleOk);
+                        btnCancel.removeEventListener('click', handleCancel);
+                    }, 300);
+                };
+
+                btnOk.addEventListener('click', handleOk);
+                btnCancel.addEventListener('click', handleCancel);
+            });
+        }
+
         // --- DATA MANAGEMENT FUNCTIONS ---
         async function resetVotes() {
             const currentAward = systemConfig.awardName || 'Popular Vote';
-            if (!confirm(`ยืนยันล้างคะแนนโหวตสำหรับรางวัล "${currentAward}" ใช่หรือไม่?`)) return;
+            const confirm1 = await showConfirmModal('ยืนยันการล้างคะแนน', `ต้องการล้างคะแนนโหวตสำหรับรางวัล "${currentAward}" ใช่หรือไม่?`, true);
+            if (!confirm1) return;
+            
             if (!db) return;
             
             showToast('กำลังล้างคะแนน...', 'success');
@@ -825,7 +905,9 @@
         }
 
         async function resetAttendees() {
-            if (!confirm('ยืนยันลบรายชื่อผู้ลงทะเบียนทั้งหมด?')) return;
+            const confirm1 = await showConfirmModal('ยืนยันลบรายชื่อ', 'ต้องการลบรายชื่อผู้ลงทะเบียนทั้งหมดใช่หรือไม่?', true);
+            if (!confirm1) return;
+
             if (!db) return;
 
             showToast('กำลังล้างรายชื่อ...', 'success');
@@ -842,8 +924,11 @@
         }
 
         async function resetAllSystem() {
-            if (!confirm('⚠️ คำเตือนรุนแรง! ⚠️\n\nคุณกำลังจะ "ล้างข้อมูลทั้งระบบ" ประกอบด้วย:\n1. รายชื่อผู้ลงทะเบียนเข้างานทั้งหมด\n2. รายชื่อผู้เข้าประกวดทั้งหมด\n3. คะแนนโหวตและประวัติการโหวตทั้งหมด\n\nข้อมูลจะหายถาวร กู้คืนไม่ได้! ยืนยันหรือไม่?')) return;
-            if (!confirm('ยืนยันครั้งที่ 2: ต้องการล้างข้อมูลทั้งหมดจริงๆ ใช่ไหม?')) return;
+            const confirm1 = await showConfirmModal('⚠️ คำเตือนรุนแรง! ⚠️', 'คุณกำลังจะ "ล้างข้อมูลทั้งระบบ" ประกอบด้วย:\n1. รายชื่อผู้ลงทะเบียนเข้างานทั้งหมด\n2. รายชื่อผู้เข้าประกวดทั้งหมด\n3. คะแนนโหวตและประวัติการโหวตทั้งหมด\n\nข้อมูลจะหายถาวร กู้คืนไม่ได้! ยืนยันหรือไม่?', true);
+            if (!confirm1) return;
+
+            const confirm2 = await showConfirmModal('ยืนยันครั้งสุดท้าย', 'ต้องการล้างข้อมูลทั้งหมดจริงๆ ใช่ไหม? (ไม่สามารถย้อนกลับได้)', true);
+            if (!confirm2) return;
             
             if (!db) return;
             showToast('กำลังล้างข้อมูลทั้งระบบ...', 'info');
@@ -1006,7 +1091,7 @@
 
             if (hash === 'admin') { updateAdminUIState(); return; }
             hideAllViews();
-            document.getElementById('site-footer').classList.remove('hidden');
+            // document.getElementById('site-footer').classList.remove('hidden'); // REMOVED since footer is now fixed and always visible
 
             const phase = systemConfig.activePhase || 'closed';
             const currentAward = systemConfig.awardName || 'Popular Vote';
@@ -1397,6 +1482,16 @@
                 if (candidates.length === 0) { listContainer.innerHTML = `<div class="col-span-2 text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`; return; }
                 
                 const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+                
+                // NEW LOGIC HERE for grid columns
+                if (sortedCandidates.length === 1) {
+                    listContainer.classList.remove('grid-cols-2');
+                    listContainer.classList.add('grid-cols-1');
+                } else {
+                    listContainer.classList.remove('grid-cols-1');
+                    listContainer.classList.add('grid-cols-2');
+                }
+
                 listContainer.innerHTML = sortedCandidates.map(c => `
                     <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
                         <div class="flex justify-between items-start mb-1"><span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
