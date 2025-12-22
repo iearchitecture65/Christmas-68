@@ -111,6 +111,23 @@
             transition: opacity 0.5s ease;
         }
 
+        /* Top Warning Banner */
+        #location-warning-banner {
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 8px;
+            backdrop-filter: blur(4px);
+            z-index: 90;
+            display: none; /* Default hidden */
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
     </style>
 </head>
 <body class="snow-bg min-h-screen text-gray-800 pb-20">
@@ -126,28 +143,51 @@
         </div>
     </div>
 
-    <!-- LOCATION BLOCK SCREEN -->
-    <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 text-center hidden">
-        <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 max-w-sm w-full animate-bounce-short">
+    <!-- LOCATION BLOCK SCREEN (MODAL) -->
+    <!-- ปรับให้เป็น Modal ที่ปิดได้ ไม่บล็อกถาวร -->
+    <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center hidden">
+        <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 max-w-sm w-full animate-bounce-short relative">
+            
+            <!-- ปุ่มปิด Modal -->
+            <button onclick="closeLocationBlock()" class="absolute top-4 right-4 text-white/50 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
             <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fa-solid fa-location-dot text-4xl text-red-500"></i>
             </div>
             <h2 class="text-2xl font-bold text-white mb-2">อยู่นอกพื้นที่จัดงาน</h2>
-            <p class="text-slate-300 text-sm mb-6">คุณต้องอยู่ในบริเวณงานเท่านั้นจึงจะสามารถเข้าใช้งานได้</p>
+            <p class="text-slate-300 text-sm mb-6">กรุณาอยู่ในบริเวณงานเพื่อทำการโหวตหรือลงทะเบียน</p>
             
             <div class="bg-black/20 rounded-xl p-4 mb-6 text-left">
                 <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
                 <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
             </div>
 
-            <button onclick="checkLocationAccess()" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2">
+            <button onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3">
                 <i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่
             </button>
+            
+            <!-- ปุ่มดูอย่างเดียว -->
+            <button onclick="closeLocationBlock()" class="w-full text-slate-400 text-sm hover:text-white underline">
+                เข้าดูข้อมูล (Read Only)
+            </button>
+
+            <div class="mt-6 pt-4 border-t border-white/10">
+                 <a href="#admin" onclick="closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300">
+                    <i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ
+                </a>
+            </div>
         </div>
     </div>
 
     <div class="max-w-md mx-auto min-h-screen flex flex-col relative">
         
+        <!-- WARNING BANNER (Sticky Top) -->
+        <div id="location-warning-banner" class="sticky top-0 shadow-md">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i> อยู่นอกพื้นที่จัดงาน (ดูข้อมูลได้อย่างเดียว)
+        </div>
+
         <!-- Header -->
         <header class="pt-8 pb-4 text-center px-4" id="main-header">
             <div class="inline-block p-3 rounded-full bg-white/10 backdrop-blur border border-white/20 mb-2 shadow-lg animate-bounce">
@@ -548,6 +588,7 @@
         let currentSubView = 'register-menu'; 
         let adminMap = null;
         let adminMarker = null;
+        let isLocationValid = true; // Default true until checked
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -564,8 +605,8 @@
         window.addEventListener('load', () => {
             if (auth) initAuth();
             handleRouting();
-            setInterval(checkLocationAccess, 10000); 
-            checkLocationAccess(); 
+            setInterval(() => checkLocationAccess(false), 10000); 
+            checkLocationAccess(false); 
         });
 
         function forceNavigate(viewId) {
@@ -713,17 +754,25 @@
                 }
             });
         }
+        
+        // HELPER FOR PATHS
+        function getConfigRef() {
+            // FIX: Move config inside public/data to satisfy security rules
+            return db.collection('artifacts').doc(appId).collection('public').doc('data').collection('config').doc('main');
+        }
 
         function listenToConfig() {
             if (!db) return;
-            db.collection('artifacts').doc(appId).collection('public').doc('system_config')
-            .onSnapshot(doc => {
+            
+            // USE NEW PATH
+            getConfigRef().onSnapshot(doc => {
                 if (doc.exists) {
                     systemConfig = doc.data();
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
                 } else {
                     systemConfig = { activePhase: 'vote' };
-                    db.collection('artifacts').doc(appId).collection('public').doc('system_config').set(systemConfig).catch(e=>console.error(e));
+                    // Create default config if missing
+                    getConfigRef().set(systemConfig).catch(e=>console.error(e));
                 }
                 
                 // Hide Loader once config is loaded
@@ -745,6 +794,11 @@
                          adminMarker.setLatLng([systemConfig.targetLat, systemConfig.targetLng]);
                     }
                 }
+            }, (error) => {
+                console.error("Config Listener Error:", error);
+                // Even on error, hide loader so user isn't stuck
+                const loader = document.getElementById('initial-loader');
+                if(loader) loader.style.display = 'none';
             });
         }
 
@@ -852,16 +906,18 @@
 
         function deg2rad(deg) { return deg * (Math.PI/180); }
 
-        function checkLocationAccess() {
+        function checkLocationAccess(forceShowModal = false) {
             // Skip check if admin or disabled
             if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) {
                 document.getElementById('view-location-block').classList.add('hidden');
+                document.getElementById('location-warning-banner').style.display = 'none';
+                isLocationValid = true;
                 return;
             }
 
             if (!navigator.geolocation) {
-                // If denied or not supported, maybe show generic error if strictly required
-                // But typically we don't want to block unless we are sure
+                // Not supported
+                isLocationValid = false;
                 return;
             }
 
@@ -875,25 +931,55 @@
                     document.getElementById('loc-allowed').innerText = systemConfig.allowedRadius + " เมตร";
 
                     if (dist > systemConfig.allowedRadius) {
-                        document.getElementById('view-location-block').classList.remove('hidden');
+                        isLocationValid = false;
+                        document.getElementById('location-warning-banner').style.display = 'block';
+                        
+                        // Only show full screen block if explicitly asked (e.g. user clicked update)
+                        if (forceShowModal) {
+                            document.getElementById('view-location-block').classList.remove('hidden');
+                        }
                     } else {
+                        isLocationValid = true;
                         document.getElementById('view-location-block').classList.add('hidden');
+                        document.getElementById('location-warning-banner').style.display = 'none';
                     }
                 },
                 (error) => {
                     console.error("GPS Error", error);
-                    // Force block if cant verify location? Usually yes for strict events
-                    document.getElementById('view-location-block').classList.remove('hidden'); 
+                    isLocationValid = false;
+                    document.getElementById('location-warning-banner').style.display = 'block';
                     document.getElementById('loc-dist').innerText = "ไม่ได้รับอนุญาต";
+                    
+                    if (forceShowModal) {
+                        document.getElementById('view-location-block').classList.remove('hidden');
+                    }
                 }
             );
+        }
+
+        // New function to enforce location strictly before actions
+        function enforceLocationCheck() {
+            if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) return true;
+            
+            // Force a check update just in case
+            checkLocationAccess(false);
+
+            if (!isLocationValid) {
+                document.getElementById('view-location-block').classList.remove('hidden');
+                return false;
+            }
+            return true;
+        }
+
+        function closeLocationBlock() {
+            document.getElementById('view-location-block').classList.add('hidden');
         }
 
         async function toggleLocationCheck() {
             if(!db) return;
             const newState = !systemConfig.locationCheckEnabled;
-            await db.collection('artifacts').doc(appId).collection('public').doc('system_config')
-                .set({ locationCheckEnabled: newState }, { merge: true });
+            // USE NEW PATH
+            await getConfigRef().set({ locationCheckEnabled: newState }, { merge: true });
         }
 
         async function saveLocationConfig() {
@@ -904,8 +990,8 @@
             
             if(isNaN(lat) || isNaN(lng) || isNaN(rad)) return showToast("กรุณากำหนดพิกัดบนแผนที่", "error");
 
-            await db.collection('artifacts').doc(appId).collection('public').doc('system_config')
-                .set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
+            // USE NEW PATH
+            await getConfigRef().set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
             showToast("บันทึกพิกัดแล้ว", "success");
         }
 
@@ -976,7 +1062,8 @@
         async function changePhase(newPhase) {
             if (!db) return;
             try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('system_config').set({ activePhase: newPhase }, { merge: true });
+                // USE NEW PATH
+                await getConfigRef().set({ activePhase: newPhase }, { merge: true });
                 showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
         }
@@ -984,6 +1071,10 @@
         // --- ACTION: VOTE ---
         function openVoteModal(candidateId) {
             if (systemConfig.activePhase !== 'vote') return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
+            
+            // CHECK LOCATION BEFORE VOTING
+            if (!enforceLocationCheck()) return;
+
             document.getElementById('selected-candidate-id').value = candidateId;
             document.getElementById('voter-id-input').value = '';
             
@@ -1002,6 +1093,9 @@
 
         async function submitVote() {
             if (!db) return;
+            // Double check location just in case
+            if (!enforceLocationCheck()) return;
+
             const candidateId = document.getElementById('selected-candidate-id').value;
             const voterId = document.getElementById('voter-id-input').value.trim();
             const btn = document.getElementById('btn-confirm-vote');
@@ -1071,6 +1165,9 @@
             if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) {
                 return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
             }
+
+            // CHECK LOCATION BEFORE REGISTERING
+            if (!enforceLocationCheck()) return;
             
             const id = document.getElementById('attend-id').value.trim();
             const name = document.getElementById('attend-name').value.trim();
@@ -1107,6 +1204,9 @@
         async function handleContestSubmit() {
             if (!db) return;
             if (systemConfig.activePhase !== 'register') return showToast('ปิดรับสมัครแล้ว', 'error');
+
+            // CHECK LOCATION
+            if (!enforceLocationCheck()) return;
 
             const id = document.getElementById('contest-id').value.trim();
             const name = document.getElementById('contest-name').value.trim();
@@ -1146,6 +1246,9 @@
                 document.getElementById('view-admin-dashboard').classList.remove('hidden');
                 window.location.hash = '#admin'; 
                 showAdminDashboard();
+                
+                // Re-check location logic to hide warnings if any
+                checkLocationAccess();
             } else {
                 showToast('รหัสผ่านไม่ถูกต้อง', 'error');
                 input.classList.add('border-red-500');
