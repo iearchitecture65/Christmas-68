@@ -784,6 +784,30 @@
                 if (doc.exists) {
                     systemConfig = doc.data();
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
+
+                    // --- NEW: CHECK FOR RESET SIGNAL ---
+                    const localResetVer = safeGetStorage(`vote_reset_ver_${appId}`);
+                    const serverResetVer = systemConfig.voteResetVersion;
+
+                    // If server has a reset version and it doesn't match local (or local is empty)
+                    if (serverResetVer && localResetVer != serverResetVer) {
+                        console.log("Vote reset detected from server");
+                        // Clear local storage vote flags
+                        localStorage.removeItem(`voted_candidate_${appId}`);
+                        localStorage.removeItem(`voted_${appId}`);
+                        
+                        // Update local version to match server so we don't reset again loop
+                        safeSetStorage(`vote_reset_ver_${appId}`, serverResetVer);
+                        
+                        // Force re-render (this will switch from "Voted Card" to "Vote List")
+                        renderCandidates();
+                        
+                        if (systemConfig.activePhase === 'vote') {
+                            showToast('ระบบได้ทำการรีเซ็ตการโหวตใหม่', 'info');
+                        }
+                    }
+                    // ------------------------------------
+
                 } else {
                     systemConfig = { activePhase: 'vote' };
                     // Create default config if missing
@@ -862,6 +886,10 @@
             const candSnap = await candidatesRef.get();
             candSnap.forEach(doc => batch.update(doc.ref, { votes: 0 }));
 
+            // 3. NEW: Signal all clients to reset local state
+            const configRef = getConfigRef();
+            batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
+
             await batch.commit();
             showToast('ล้างคะแนนเรียบร้อยแล้ว', 'success');
         }
@@ -903,6 +931,10 @@
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
             candSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 4. Signal reset
+            const configRef = getConfigRef();
+            batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
 
             await batch.commit();
             showToast('รีเซ็ตระบบเรียบร้อยแล้ว', 'success');
