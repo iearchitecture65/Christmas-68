@@ -54,8 +54,7 @@
         .phase-btn-active { 
             background-color: #3b82f6; color: white; border-color: #2563eb; 
             box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5); 
-            cursor: default;
-            transform: scale(1);
+            cursor: default; transform: scale(1);
         }
         .phase-btn-inactive { 
             background-color: white; color: #64748b; border-color: #e2e8f0; 
@@ -68,7 +67,6 @@
         .admin-tab-inactive { color: #64748b; border-bottom: 2px solid transparent; }
         .disabled-link { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: default; background-color: #f1f5f9; }
         
-        /* DATA TABLE */
         .data-table th { text-align: left; padding: 0.75rem; background-color: #f1f5f9; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
         .data-table td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; color: #334155; }
         .data-table tr:last-child td { border-bottom: none; }
@@ -80,10 +78,7 @@
         @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
         .map-locked { pointer-events: none; opacity: 0.8; }
         .lock-btn { z-index: 1000; position: absolute; top: 10px; right: 10px; }
-        
-        /* Modal Override */
-        /* FIX: เพิ่ม z-index ให้สูงที่สุด และ fixed position ให้ถูกต้อง */
-        .fixed.inset-0.z-50 { z-index: 99999 !important; }
+        .fixed.inset-0.z-50 { z-index: 99999 !important; } /* Force Modal on Top */
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -113,8 +108,7 @@
         </div>
     </div>
     
-    <!-- VOTE VERIFICATION MODAL (MOVED OUTSIDE SCROLL WRAPPER FOR SAFETY) -->
-    <!-- FIX: ย้าย Modal ออกมานอก Scroll Wrapper เพื่อให้แสดงผลทับทุกอย่างได้ถูกต้อง -->
+    <!-- VOTE VERIFICATION MODAL (High Z-Index) -->
     <div id="vote-modal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-2xl p-6 w-[90%] max-w-sm relative transform scale-95 transition-transform duration-300" id="vote-modal-content">
             <button onclick="closeVoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
@@ -649,6 +643,23 @@
                         updateRegisterMenuState();
                     }
                     // ---------------------------------
+                    
+                    // --- INTELLIGENT CATEGORY CHANGE LOGIC ---
+                    // If awardName changes, user should see the new category.
+                    // The view will automatically re-render because listenToConfig calls updateUIBasedOnConfig.
+                    // But we can check if category changed to trigger toast or specific refresh logic.
+                    const currentAward = systemConfig.awardName;
+                    const lastAward = safeGetStorage(`last_award_${appId}`);
+                    
+                    if (lastAward && lastAward !== currentAward) {
+                        // Category changed!
+                        // Force back to vote view if currently on vote page to show new list
+                         if (systemConfig.activePhase === 'vote') {
+                             renderCandidates(); // Re-render to show list instead of "Voted" card if not voted for new cat
+                             showToast(`เปลี่ยนหัวข้อโหวตเป็น: ${currentAward}`, 'info');
+                         }
+                    }
+                    safeSetStorage(`last_award_${appId}`, currentAward);
 
                 } else {
                     systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
@@ -689,7 +700,7 @@
             });
         }
 
-        // --- DATA MANAGEMENT ---
+        // --- DATA MANAGEMENT FUNCTIONS ---
         async function resetVotes() {
             const currentAward = systemConfig.awardName || 'Popular Vote';
             if (!confirm(`ยืนยันล้างคะแนนโหวตสำหรับรางวัล "${currentAward}" ใช่หรือไม่?`)) return;
@@ -814,7 +825,7 @@
             showToast("บันทึกพิกัดแล้ว", "success");
         }
 
-        // --- MAIN UI ---
+        // --- MAIN UI CONTROLLER ---
         function updateUIBasedOnConfig() {
             if(document.getElementById('app-scroll-wrapper')) document.getElementById('app-scroll-wrapper').scrollTop = 0;
             const hash = window.location.hash.substring(1);
@@ -876,11 +887,10 @@
         }
 
         function updateAdminUIState() {
-            // ... (Same phase button logic)
             const phases = ['register', 'vote', 'result', 'closed'];
             phases.forEach(p => {
                 const btn = document.getElementById(`btn-phase-${p}`);
-                if (!btn) return; // FIX: Add safety check for button existence
+                if (!btn) return;
                 const indicator = btn.querySelector('.status-indicator');
                 if (systemConfig.activePhase === p) {
                     btn.classList.remove('phase-btn-inactive'); btn.classList.add('phase-btn-active');
@@ -891,7 +901,7 @@
                 }
             });
             const locBtn = document.getElementById('btn-loc-toggle');
-            if (locBtn) { // FIX: Add safety check
+            if (locBtn) {
                 locBtn.innerText = "เปิดอยู่";
                 locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
             }
@@ -915,13 +925,11 @@
         function updateResultDropdown() {
             const cats = getAvailableCategories();
             const select = document.getElementById('result-category-select');
-            // FIX: Safety check if select exists
             if (!select) return;
 
             const currentHTML = `<option value="current">รางวัลปัจจุบัน (${systemConfig.awardName})</option>`;
             const opts = cats.map(c => `<option value="${c}">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`).join('');
             
-            // Only update if options changed to prevent jump
             if (select.innerHTML !== currentHTML + opts) {
                 select.innerHTML = currentHTML + opts;
                 select.value = selectedResultCategory;
@@ -929,7 +937,14 @@
         }
 
         // --- ACTION HANDLERS ---
-        // ... (Same as before, using Versioning logic for reset) ...
+        async function changePhase(newPhase) {
+            if (!db) return;
+            try {
+                await getConfigRef().set({ activePhase: newPhase }, { merge: true });
+                showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
+            } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
+        }
+
         async function handleAttendSubmit() {
             if (!db) return;
             if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
@@ -1030,6 +1045,12 @@
 
                 showToast('โหวตสำเร็จ!', 'success');
                 closeVoteModal();
+                
+                // Store Timestamp
+                const now = new Date();
+                const timeString = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
+                safeSetStorage(`voted_timestamp_${appId}_${currentAward}`, timeString);
+                
                 safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
                 renderCandidates();
             } catch (error) {
@@ -1056,6 +1077,9 @@
                 const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ผู้สมัคร";
                 const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
                 
+                // Get stored timestamp or default
+                const timestamp = safeGetStorage(`voted_timestamp_${appId}_${currentAward}`) || '-';
+                
                 listContainer.classList.add('hidden');
                 votedContainer.classList.remove('hidden');
                 votedContainer.innerHTML = `
@@ -1064,9 +1088,21 @@
                         <h3 class="text-xl font-bold text-white mb-1">คุณโหวตเรียบร้อยแล้ว</h3>
                         <p class="text-green-300 text-sm mb-6 font-bold bg-green-900/30 py-1 px-3 rounded-full inline-block">หัวข้อ: ${currentAward}</p>
                         <div class="glass-panel p-6 rounded-2xl shadow-xl max-w-xs mx-auto border-2 border-green-400/50">
+                            <div class="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2">คุณเลือกโหวตให้กับ</div>
                             <h2 class="text-2xl font-bold text-slate-800 mb-1">${cName}</h2>
                             <p class="text-green-600 font-medium mb-4">${cCostume}</p>
-                            <div class="bg-slate-100 rounded-lg py-2 text-xs text-slate-500">บันทึกคะแนนแล้ว</div>
+                            
+                            <div class="border-t border-dashed border-slate-300 my-4 pt-4 text-left space-y-2">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-500">สถานะ:</span>
+                                    <span class="text-green-600 font-bold">บันทึกคะแนนแล้ว</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-500">เวลาที่โหวต:</span>
+                                    <span class="text-slate-700">${timestamp}</span>
+                                </div>
+                            </div>
+                            
                             <div class="mt-4 pt-4 border-t border-slate-200">
                                 <button onclick="recheckVoteStatus()" class="text-[10px] text-slate-400 hover:text-red-500 underline"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบสถานะใหม่</button>
                             </div>
