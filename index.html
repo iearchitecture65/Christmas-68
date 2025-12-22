@@ -147,7 +147,7 @@
                 <div id="view-vote" class="view-section hidden space-y-4">
                     <div class="text-center mb-4">
                         <div class="bg-red-500/20 text-red-100 px-4 py-2 rounded-xl text-sm font-bold border border-red-500/50 inline-block shadow-lg backdrop-blur-md">
-                            <i class="fa-solid fa-award text-yellow-400"></i> หัวข้อ: <span id="vote-header-category" class="text-white underline decoration-wavy decoration-red-400">...</span>
+                            <i class="fa-solid fa-award text-yellow-400"></i> หัวข้อ: <span id="vote-header-category" class="text-white font-bold">...</span>
                         </div>
                     </div>
                     <div id="loading-vote" class="text-center py-10 text-white/60"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-2"></i><br>กำลังโหลดรายชื่อ...</div>
@@ -1004,9 +1004,16 @@
             document.getElementById('voter-id-input').value = '';
             const modal = document.getElementById('vote-modal');
             modal.classList.remove('hidden');
-            setTimeout(() => { modal.querySelector('#vote-modal-content').classList.add('modal-enter'); }, 10);
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('#vote-modal-content').classList.add('modal-enter'); 
+            }, 10);
         }
-        function closeVoteModal() { document.getElementById('vote-modal').classList.add('hidden'); }
+        function closeVoteModal() { 
+            const modal = document.getElementById('vote-modal');
+            modal.classList.add('opacity-0'); 
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
 
         async function submitVote() {
             if (!db) return;
