@@ -766,6 +766,10 @@
             .onSnapshot(snapshot => {
                 candidates = [];
                 snapshot.forEach(doc => candidates.push({ id: doc.id, ...doc.data() }));
+                
+                // Ensure dropdown updates when data arrives
+                updateResultDropdown(); 
+                
                 renderCandidates(); renderLeaderboard(); renderAdminDataTables(); 
                 document.getElementById('stat-candidate-count').innerText = candidates.length;
                 document.getElementById('loading-vote').classList.add('hidden');
@@ -1069,12 +1073,20 @@
             const select = document.getElementById('result-category-select');
             if (!select) return;
 
+            // Current Award Key
+            const currentKey = getScoreField(systemConfig.awardName);
+
             // Use classes directly on options as a backup
             const currentHTML = `<option value="current" class="text-slate-800 bg-white">รางวัลปัจจุบัน (${systemConfig.awardName})</option>`;
-            const opts = cats.map(c => `<option value="${c}" class="text-slate-800 bg-white">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`).join('');
+            
+            // Filter out the current key from historical list to avoid duplication if it has votes
+            const historicalOpts = cats
+                .filter(c => c !== currentKey)
+                .map(c => `<option value="${c}" class="text-slate-800 bg-white">${c.replace('votes_', '').replace(/_/g, ' ')}</option>`)
+                .join('');
             
             // Only update if content changed to prevent loop issues
-            const newContent = currentHTML + opts;
+            const newContent = currentHTML + historicalOpts;
             if (select.innerHTML !== newContent) {
                 const currentVal = select.value;
                 select.innerHTML = newContent;
