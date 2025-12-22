@@ -102,29 +102,32 @@
         }
         .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; flex-direction: column; }
         
-        /* TV Row Styles - Grid Based for Consistency */
+        /* TV Row Styles - Simple & Clean like Result Page */
         .tv-row { 
-            background: white; 
-            margin-bottom: 0.75rem; 
-            border-radius: 0.75rem; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
-            display: grid; 
-            grid-template-columns: 80px 1fr 150px; /* Rank, Name/Costume, Score */
+            background: rgba(255, 255, 255, 0.95); 
+            margin-bottom: 1rem; 
+            border-radius: 1rem; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            display: flex; 
             align-items: center; 
-            padding: 0.75rem 1.5rem; 
-            gap: 1.5rem;
+            justify-content: space-between; 
+            padding: 1.5rem 2rem;
+            transition: all 0.3s ease;
         }
-        .tv-row-1 { background: linear-gradient(to right, #fef3c7, #fff); border: 3px solid #fbbf24; transform: scale(1.02); z-index: 10; }
+        .tv-row-1 { background: linear-gradient(135deg, #fef3c7, #fff); border: 4px solid #fbbf24; transform: scale(1.02); z-index: 10; }
+        .tv-row-2 { background: linear-gradient(135deg, #e2e8f0, #fff); }
+        .tv-row-3 { background: linear-gradient(135deg, #ffedd5, #fff); }
         
-        .tv-rank-box { width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem; }
-        .tv-rank-1 { background-color: #facc15; color: #713f12; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tv-rank-box { width: 4rem; height: 4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 2rem; margin-right: 2rem; flex-shrink: 0; }
+        .tv-rank-1 { background-color: #facc15; color: #713f12; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .tv-rank-2 { background-color: #cbd5e1; color: #334155; }
         .tv-rank-3 { background-color: #d97706; color: #fff; }
         .tv-rank-other { background-color: #f1f5f9; color: #64748b; }
 
-        .tv-name { font-size: 1.5rem; font-weight: 700; color: #1e293b; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .tv-sub { font-size: 1rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .tv-score { font-size: 2.25rem; font-weight: 900; color: #dc2626; text-align: right; }
+        .tv-name { font-size: 2.5rem; font-weight: 700; color: #1e293b; line-height: 1.1; }
+        .tv-sub { font-size: 1.5rem; color: #64748b; margin-top: 0.25rem; }
+        .tv-score { font-size: 3.5rem; font-weight: 900; color: #dc2626; text-align: right; }
+        .tv-label { font-size: 1rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; }
         
         .countdown-text { font-size: 15rem; font-weight: 900; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
@@ -134,14 +137,15 @@
         .pump-disabled { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: not-allowed; }
         
         /* TV Layout Grid */
-        #tv-main-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; height: 100%; padding: 3rem; }
-        .tv-cols-2 { grid-template-columns: 2fr 1fr !important; }
+        #tv-main-container { display: flex; height: 100%; width: 100%; }
+        #tv-list-col { flex: 1; overflow-y: auto; padding: 3rem; transition: all 0.5s ease; }
+        #tv-time-col { width: 30%; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); display: none; flex-direction: column; justify-content: center; align-items: center; border-left: 1px solid rgba(255,255,255,0.1); padding: 2rem; transition: all 0.5s ease; }
         
-        #tv-leaderboard-panel { overflow-y: auto; padding-right: 10px; }
-        #tv-timer-panel { display: none; flex-direction: column; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); border-radius: 2rem; border: 1px solid rgba(255,255,255,0.1); }
+        /* State when timer is active */
+        .tv-mode-active #tv-time-col { display: flex; }
         
         /* Scrollbar hide for TV */
-        #tv-leaderboard-panel::-webkit-scrollbar { width: 0px; background: transparent; }
+        #tv-list-col::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -573,32 +577,32 @@
                 <!-- NEW VIEW: TV DISPLAY (UPDATED TO LEADERBOARD STYLE) -->
                 <div id="view-tv-result" class="tv-layout hidden overflow-hidden">
                     <!-- MAIN TV CONTENT WRAPPER -->
-                    <div id="tv-main-grid" class="w-full h-full p-8 transition-all duration-500">
+                    <div id="tv-main-container">
                         <!-- Left Panel (Leaderboard) -->
-                        <div id="tv-left-panel" class="flex flex-col h-full overflow-hidden">
-                            <div class="mb-4">
-                                <h1 class="text-5xl font-black text-white flex items-center gap-4">
+                        <div id="tv-list-col">
+                            <div class="mb-6">
+                                <h1 class="text-6xl font-black text-white flex items-center gap-6">
                                     <i class="fa-solid fa-tree text-green-400"></i>
                                     CHRISTMAS <span class="text-red-500">2025</span>
                                 </h1>
-                                <p id="tv-current-category" class="text-3xl text-yellow-400 mt-2 font-bold uppercase tracking-widest drop-shadow-md">-- WAITING --</p>
+                                <p id="tv-current-category" class="text-4xl text-yellow-400 mt-4 font-bold uppercase tracking-widest drop-shadow-md">-- WAITING --</p>
                             </div>
-                            <div id="tv-leaderboard-list" class="flex-1 space-y-4 overflow-y-auto pr-4">
+                            <div id="tv-leaderboard-list">
                                 <!-- TV Rows injected here -->
                             </div>
                         </div>
 
                         <!-- Right Panel (Timer) - Hidden by default -->
-                        <div id="tv-right-panel" class="hidden flex-col justify-center items-center bg-white/5 rounded-3xl border border-white/10 p-8 backdrop-blur-sm">
-                            <div class="text-pink-400 text-3xl font-bold uppercase tracking-widest mb-4">REMAINING</div>
-                            <div id="tv-game-timer-val" class="text-[12rem] font-black text-white font-mono leading-none">00:00</div>
-                            <div id="tv-clock" class="text-4xl font-bold text-white/50 mt-8 font-mono">00:00:00</div>
+                        <div id="tv-time-col">
+                            <div class="text-pink-400 text-4xl font-bold uppercase tracking-widest mb-10">REMAINING</div>
+                            <div id="tv-game-timer-val" class="text-[15rem] font-black text-white font-mono leading-none drop-shadow-2xl">00:00</div>
+                            <div id="tv-clock" class="text-5xl font-bold text-white/50 mt-20 font-mono">00:00:00</div>
                         </div>
                     </div>
                     
                     <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER -->
                     <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[1000] flex flex-col items-center justify-center hidden">
-                        <div class="text-slate-400 text-6xl mb-10 font-bold uppercase tracking-[1rem]">GAME STARTING IN</div>
+                        <div class="text-slate-400 text-7xl mb-12 font-bold uppercase tracking-[1rem]">GAME STARTING IN</div>
                         <div id="tv-countdown-val" class="countdown-text text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
                     </div>
                     
@@ -1162,29 +1166,41 @@
             let scoreField = '';
             let isPump = false;
 
-            if (categoryName === 'Pump Challenge (กดรัวๆ)') {
-                scoreField = 'cheer_points';
-                isPump = true;
-            } else {
-                scoreField = getScoreField(categoryName);
-            }
+            // Check if it's a Pump Award
+            // Note: We use dynamic fields now, but this specific check is for legacy or specific UI logic if needed
+            // For now, we trust getScoreField logic below or manual check
+            scoreField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            // If it was standard vote, it would be votes_... but we can just use the pattern
+            // Wait, standard votes use getScoreField which returns votes_...
+            // Pump uses cheer_points_...
+            // We need to know WHICH type it is.
+            // Simplified: We try to clear BOTH just in case, or check prefix
             
+            const isPumpLikely = categoryName.includes("(Pump)"); // Just a heuristic if we renamed it
+            
+            // Actually, best way: Update ALL candidates setting both potential fields to 0
+            const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
             // Reset Candidate Scores
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
-            candSnap.forEach(doc => batch.update(doc.ref, { [scoreField]: 0 }));
+            candSnap.forEach(doc => {
+                batch.update(doc.ref, { [voteField]: 0, [pumpField]: 0 }); // Clear both potential fields
+            });
 
             // Delete Vote History for this category
-            if(!isPump) {
-                const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
-                const votesSnap = await votesRef.where('awardCategory', '==', categoryName).get();
-                votesSnap.forEach(doc => batch.delete(doc.ref));
-            } else {
-                // Clear Pump Logs
-                const logsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs');
-                const logsSnap = await logsRef.get();
-                logsSnap.forEach(doc => batch.delete(doc.ref));
-            }
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.where('awardCategory', '==', categoryName).get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+            
+            // Delete Pump Logs
+            const logsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs');
+            // Pump logs don't store Category yet in previous code, adding it now to handlePumpClick
+            // For now, we clear all logs if we can't filter, or filter by what we have
+            // Let's assume we add category to pump logs
+            const logsSnap = await logsRef.where('awardCategory', '==', categoryName).get();
+            logsSnap.forEach(doc => batch.delete(doc.ref));
 
             const configRef = getConfigRef();
             batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
@@ -1205,19 +1221,28 @@
             showToast('กำลังลบทัวข้อรางวัล...', 'info');
             
             const batch = db.batch();
-            const scoreField = getScoreField(categoryName);
+            const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
             // 1. Remove score field from ALL candidates
             const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candRef.get();
             candSnap.forEach(doc => {
-                batch.update(doc.ref, { [scoreField]: firebase.firestore.FieldValue.delete() });
+                batch.update(doc.ref, { 
+                    [voteField]: firebase.firestore.FieldValue.delete(),
+                    [pumpField]: firebase.firestore.FieldValue.delete()
+                });
             });
 
             // 2. Delete ALL votes records for this category
             const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
             const votesSnap = await votesRef.where('awardCategory', '==', categoryName).get();
             votesSnap.forEach(doc => batch.delete(doc.ref));
+
+            // 3. Delete Pump Logs
+            const logsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs');
+            const logsSnap = await logsRef.where('awardCategory', '==', categoryName).get();
+            logsSnap.forEach(doc => batch.delete(doc.ref));
 
             await batch.commit();
             showToast(`ลบหัวข้อ "${categoryName}" แล้ว`, 'success');
@@ -1232,7 +1257,7 @@
             
             const batch = db.batch();
             
-            // 1. Reset all candidates fields starting with votes_
+            // 1. Reset all candidates fields starting with votes_ or cheer_points_
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
             
@@ -1240,7 +1265,7 @@
                 const data = doc.data();
                 const updates = { votes: 0 };
                 Object.keys(data).forEach(key => {
-                    if (key.startsWith('votes_')) updates[key] = 0;
+                    if (key.startsWith('votes_') || key.startsWith('cheer_points_')) updates[key] = 0;
                 });
                 batch.update(doc.ref, updates);
             });
@@ -1249,6 +1274,11 @@
             const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
             const votesSnap = await votesRef.get();
             votesSnap.forEach(doc => batch.delete(doc.ref));
+            
+            // 3. Delete ALL Pump logs
+            const logsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs');
+            const logsSnap = await logsRef.get();
+            logsSnap.forEach(doc => batch.delete(doc.ref));
 
             const configRef = getConfigRef();
             batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
@@ -1326,6 +1356,11 @@
                 const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
                 const voteSnap = await voteRef.get();
                 voteSnap.forEach(doc => batch.delete(doc.ref));
+                
+                // 3.1 Delete Pump Logs
+                const logsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs');
+                const logsSnap = await logsRef.get();
+                logsSnap.forEach(doc => batch.delete(doc.ref));
 
                 // 4. Update Config
                 const configRef = getConfigRef();
@@ -1598,8 +1633,9 @@
             candidates.forEach(c => {
                 Object.keys(c).forEach(k => {
                     if (k.startsWith('votes_')) categories.add(k);
+                    if (k.startsWith('cheer_points_')) categories.add(k);
                 });
-                if(c.cheer_points > 0) categories.add('cheer_points');
+                if(c.cheer_points > 0) categories.add('cheer_points'); // Legacy check
             });
             return Array.from(categories);
         }
@@ -1613,8 +1649,7 @@
             const historicalOpts = cats
                 .filter(c => c !== currentKey)
                 .map(c => {
-                    let label = c.replace('votes_', '').replace(/_/g, ' ');
-                    if(c === 'cheer_points') label = "Pump Challenge (กดรัวๆ)";
+                    let label = c.replace(/^(votes_|cheer_points_)/, '').replace(/_/g, ' ');
                     return `<option value="${c}" class="text-slate-800 bg-white">${label}</option>`
                 })
                 .join('');
@@ -1782,10 +1817,14 @@
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
+            const btnContainer = el.parentElement.querySelector('.text-center.pb-10'); // Hide buttons
+            if(btnContainer) btnContainer.style.display = 'none';
             try {
                 showToast('กำลังสร้างรูปภาพ...', 'info');
-                const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' });
+                const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
                 const image = canvas.toDataURL("image/png");
+                
+                // Create Download Link
                 const link = document.createElement('a');
                 link.download = `Christmas-Vote-${Date.now()}.png`;
                 link.href = image;
@@ -1794,7 +1833,33 @@
             } catch (err) {
                 console.error(err);
                 showToast('บันทึกรูปไม่สำเร็จ', 'error');
+            } finally {
+                if(btnContainer) btnContainer.style.display = 'block';
             }
+        }
+
+        async function shareReceipt(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            if (!navigator.share) return showToast("เบราว์เซอร์ไม่รองรับการแชร์", "error");
+
+            try {
+                const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+                canvas.toBlob(async (blob) => {
+                    if (!blob) return;
+                    const file = new File([blob], "vote-receipt.png", { type: "image/png" });
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'My Christmas Vote',
+                            text: 'มาร่วมโหวตงาน Christmas 2025 กัน!'
+                        });
+                        showToast("แชร์สำเร็จ", "success");
+                    } catch (err) {
+                        console.log("Share cancelled/failed", err);
+                    }
+                }, 'image/png');
+            } catch (e) { console.error(e); }
         }
 
         function renderCandidates() {
@@ -1811,10 +1876,10 @@
                 listContainer.classList.add('hidden');
                 votedContainer.classList.remove('hidden');
                 votedContainer.innerHTML = `
-                    <div class="px-6 py-4 animate-fade-in" id="voted-card-content">
-                        <div class="receipt-card p-6 rounded-lg shadow-2xl mx-auto max-w-xs text-center">
+                    <div id="voted-card-content" class="px-4 py-4 animate-fade-in bg-white rounded-xl">
+                        <div class="receipt-card p-6 rounded-lg shadow-xl mx-auto max-w-xs text-center border border-gray-100">
                             <div class="mb-4">
-                                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-check"></i></div>
+                                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-check"></i></div>
                             </div>
                             <h2 class="text-xl font-bold text-slate-800 tracking-tight">บัตรบันทึกคะแนน</h2>
                             <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6">OFFICIAL VOTE RECORD</p>
@@ -1833,12 +1898,13 @@
                                     <span class="text-xs font-bold text-slate-700 text-right">${votedTime}</span>
                                 </div>
                             </div>
-                            <div class="text-[10px] text-slate-400 mb-4">ขอบคุณที่ร่วมกิจกรรม<br>Christmas 2025</div>
+                            <div class="text-[10px] text-slate-400 mb-2">ขอบคุณที่ร่วมกิจกรรม<br>Christmas 2025</div>
                         </div>
-                    </div>
-                    <div class="text-center pb-10">
-                        <button onclick="captureReceipt('voted-card-content')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700"><i class="fa-solid fa-download mr-1"></i> บันทึกเป็นรูปภาพ</button>
-                        <div class="mt-4"><button onclick="recheckVoteStatus()" class="text-[10px] text-red-400 hover:text-red-600 underline">โหลดหน้าโหวตใหม่</button></div>
+                        <div class="text-center pt-6 pb-4 space-x-2">
+                            <button onclick="captureReceipt('voted-card-content')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 inline-flex items-center"><i class="fa-solid fa-download mr-1"></i> บันทึกรูป</button>
+                            <button onclick="shareReceipt('voted-card-content')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 inline-flex items-center"><i class="fa-solid fa-share-nodes mr-1"></i> แชร์</button>
+                        </div>
+                        <div class="text-center"><button onclick="recheckVoteStatus()" class="text-[10px] text-red-400 hover:text-red-600 underline">โหลดหน้าโหวตใหม่</button></div>
                     </div>`;
             } else {
                 listContainer.classList.remove('hidden');
@@ -1914,8 +1980,7 @@
                     listContainer.innerHTML = '<div class="text-center text-gray-400 text-xs">ยังไม่มีข้อมูลการโหวต</div>';
                 } else {
                     listContainer.innerHTML = cats.map(cat => {
-                        let name = cat.replace('votes_', '').replace(/_/g, ' ');
-                        if(cat === 'cheer_points') name = "Pump Challenge (กดรัวๆ)";
+                        let name = cat.replace(/^(votes_|cheer_points_)/, '').replace(/_/g, ' ');
                         return `
                         <div class="flex gap-2 items-center mb-2">
                             <div onclick="openAdminSummaryModal('${cat}', '${name}')" class="flex-1 p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:bg-blue-50 transition">
@@ -2007,27 +2072,32 @@
             title.innerHTML = `ผู้โหวตให้: <b>${candidateName}</b><br>รางวัล: ${awardName}`;
             list.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลด...</div>';
             
-            let isPump = (awardName === 'Pump Challenge (กดรัวๆ)');
-            let collectionName = isPump ? 'pump_logs' : 'votes';
+            // Determine if this is a pump category
+            // We can detect by checking if awardName is part of a cheer_points field or just pass a flag
+            // For simplicity, we assume if awardName starts with "votes_" it's vote, else check logic
+            // But here we pass human readable awardName.
+            // Let's rely on finding where the data is.
+            
+            // Try to find if this category maps to a pump field
+            const isPump = Object.keys(candidates[0] || {}).some(k => k === `cheer_points_${awardName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            const collectionName = isPump ? 'pump_logs' : 'votes';
 
             try {
                 let snapshot;
                 if(isPump) {
-                    snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName).where('candidateId', '==', candidateId).get();
+                    snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName)
+                        .where('candidateId', '==', candidateId)
+                        .where('awardCategory', '==', awardName).get();
                 } else {
-                     // For Votes, we fetch all (due to limited filtering in demo) then filter
-                     // In production, better to use compound query
-                     snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName).get();
+                     snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName)
+                        .where('candidateId', '==', candidateId)
+                        .where('awardCategory', '==', awardName).get();
                 }
 
                 const votes = [];
                 snapshot.forEach(doc => {
                     const d = doc.data();
-                    if(isPump) {
-                        votes.push({ voterId: d.voterId, count: d.count || 1 });
-                    } else {
-                        if (d.candidateId === candidateId && d.awardCategory === awardName) votes.push(d);
-                    }
+                    votes.push({ voterId: d.voterId, count: d.count || 1, voterName: d.voterName || '-' });
                 });
 
                 if (votes.length === 0) list.innerHTML = '<div class="text-center py-4 text-gray-400">ไม่มีข้อมูลผู้โหวต</div>';
@@ -2043,7 +2113,7 @@
                         list.innerHTML = votes.map(v => `
                             <div class="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100 text-xs">
                                 <span class="font-mono text-blue-600">${v.voterId}</span>
-                                <span class="text-gray-600">${v.voterName || '-'}</span>
+                                <span class="text-gray-600">${v.voterName}</span>
                             </div>
                         `).join('');
                     }
@@ -2184,7 +2254,7 @@
             const userGame = document.getElementById('pump-game-container');
             const userWaiting = document.getElementById('pump-waiting-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
-            const tvTimerPanel = document.getElementById('tv-right-panel');
+            const tvTimerPanel = document.getElementById('tv-time-col');
             const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
 
@@ -2226,9 +2296,10 @@
                 if(document.getElementById('tv-countdown-val')) document.getElementById('tv-countdown-val').innerText = countVal;
                 
                 // Hide Timer Panel on TV
-                const tvMain = document.getElementById('tv-main-grid');
-                if(tvMain) { tvMain.classList.remove('tv-grid-active'); tvMain.classList.add('tv-grid-full'); }
-                if(tvTimerPanel) { tvTimerPanel.classList.add('hidden'); tvTimerPanel.classList.remove('flex'); }
+                const tvMain = document.getElementById('tv-main-container');
+                if(tvMain) { tvMain.classList.remove('tv-cols-2'); }
+                const tvPanel = document.getElementById('view-tv-result');
+                if(tvPanel) tvPanel.classList.remove('tv-mode-active');
 
                 // VOICE TRIGGER (ONLY ON TV)
                 if(diff <= 3 && diff > 0 && lastCountVal !== diff) {
@@ -2262,9 +2333,11 @@
                 if(tvCountdown) tvCountdown.classList.add('hidden');
                 
                 // Show Timer Side Panel on TV (2 Columns)
-                const tvMain = document.getElementById('tv-main-grid');
-                if(tvMain) { tvMain.classList.remove('tv-grid-full'); tvMain.classList.add('tv-grid-active'); }
-                if(tvTimerPanel) { tvTimerPanel.classList.remove('hidden'); tvTimerPanel.classList.add('flex'); }
+                const tvMain = document.getElementById('tv-main-container');
+                // Not using classes anymore, pure flex
+                const tvPanel = document.getElementById('view-tv-result');
+                if(tvPanel) tvPanel.classList.add('tv-mode-active');
+                
                 if(document.getElementById('tv-game-timer-val')) document.getElementById('tv-game-timer-val').innerText = timeStr;
 
                 if(lastPlayedState === 'countdown') {
@@ -2276,10 +2349,10 @@
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userCountdown) userCountdown.classList.add('hidden');
                 
-                // Hide Timer on TV, expand list back to full
-                const tvMain = document.getElementById('tv-main-grid');
-                if(tvMain) { tvMain.classList.remove('tv-grid-active'); tvMain.classList.add('tv-grid-full'); }
-                if(tvTimerPanel) { tvTimerPanel.classList.add('hidden'); tvTimerPanel.classList.remove('flex'); }
+                // Hide Timer on TV
+                const tvPanel = document.getElementById('view-tv-result');
+                if(tvPanel) tvPanel.classList.remove('tv-mode-active');
+                
                 if(tvCountdown) tvCountdown.classList.add('hidden');
 
                 if(lastPlayedState === 'active') {
@@ -2333,23 +2406,38 @@
             `}).join('');
         }
 
-        function enterPumpMode() {
+        async function enterPumpMode() {
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
-            pumpVoterId = id;
             
-            // Check if user is registered (optional but good)
-            if(!attendees.some(a => a.studentId === id)) {
-                 showToast('ไม่พบรหัสลงทะเบียน (บันทึกประวัติไม่ได้)', 'info');
+            // Check if user is registered (Mandatory)
+            if(!db) return;
+            const btn = document.querySelector('#pump-gate-container button');
+            if(btn) { btn.disabled = true; btn.innerText = "กำลังตรวจสอบ..."; }
+
+            try {
+                const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
+                if(!doc.exists) {
+                    showToast('ไม่พบรหัสลงทะเบียน กรุณาลงทะเบียนก่อน', 'error');
+                    setTimeout(() => {
+                        window.location.hash = '#register-attend';
+                    }, 1500);
+                    return;
+                }
+                pumpVoterId = id;
+                renderPumpCandidates();
+                syncPumpGame(); 
+                showToast('เตรียมพร้อม...', 'success');
+            } catch(e) {
+                console.error(e);
+                showToast('เกิดข้อผิดพลาด', 'error');
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerText = "พร้อมลุย!"; }
             }
-            
-            renderPumpCandidates();
-            syncPumpGame(); // Re-sync to apply logic
-            showToast('เตรียมพร้อม...', 'success');
         }
 
         function handlePumpClick(e, cid) {
-            if(!pumpVoterId) return; // Should be blocked by UI, but double check
+            if(!pumpVoterId) return; 
             
             // Visual Effect
             const heart = document.createElement('div');
@@ -2368,19 +2456,22 @@
             // Persist locally
             safeSetStorage(`pump_points_${appId}_${pumpVoterId}`, JSON.stringify(pumpSessionPoints));
 
-            // Immediate Send (Increment in Firestore - Candidate Score)
+            // Immediate Send - Increment Dynamic Field
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            const field = `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
             const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid);
             candidateRef.update({
-                cheer_points: firebase.firestore.FieldValue.increment(1)
+                [field]: firebase.firestore.FieldValue.increment(1)
             }).catch(err => console.error(err));
 
-            // **NEW: HISTORY LOGGING (Debounced/Throttled is better but direct per request)**
-            // Writing to pump_logs for history tracking
-            const logId = `${pumpVoterId}_${cid}`;
+            // Log History
+            const logId = `${pumpVoterId}_${cid}_${field}`; // Unique per voter-candidate-award
             const logRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').doc(logId);
             logRef.set({
                 voterId: pumpVoterId,
                 candidateId: cid,
+                awardCategory: currentAward,
                 count: firebase.firestore.FieldValue.increment(1),
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true }).catch(err => console.error("Log error", err));
@@ -2398,10 +2489,11 @@
             const topCand = candidates.find(c => c.id === topId);
             const cName = topCand ? topCand.name : (totalClicks > 0 ? "Multiple" : "-");
             const nowTime = new Date().toLocaleTimeString('th-TH');
+            const currentAward = systemConfig.awardName || 'Pump Challenge';
 
             container.innerHTML = `
-                <div class="px-6 py-4 animate-fade-in" id="pump-summary-content">
-                    <div class="receipt-card p-6 rounded-lg shadow-2xl mx-auto max-w-xs text-center">
+                <div class="px-6 py-4 animate-fade-in bg-white rounded-xl" id="pump-receipt-content">
+                    <div class="receipt-card p-6 rounded-lg shadow-xl mx-auto max-w-xs text-center border border-gray-100">
                         <div class="mb-4">
                             <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-flag-checkered"></i></div>
                         </div>
@@ -2413,6 +2505,10 @@
                                 <div class="font-black text-4xl text-pink-600">${totalClicks}</div>
                                 <div class="text-xs text-pink-400 font-medium">ครั้ง</div>
                             </div>
+                             <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                <span class="text-xs text-slate-500">รางวัล</span>
+                                <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span>
+                            </div>
                             <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
                                 <span class="text-xs text-slate-500">เชียร์เยอะสุด</span>
                                 <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(cName)}</span>
@@ -2422,11 +2518,12 @@
                                 <span class="text-xs font-bold text-slate-700 text-right">${nowTime}</span>
                             </div>
                         </div>
-                        <div class="text-[10px] text-slate-400 mb-4">ขอบคุณที่ร่วมสนุก<br>Christmas 2025</div>
+                        <div class="text-[10px] text-slate-400 mb-2">ขอบคุณที่ร่วมสนุก<br>Christmas 2025</div>
                     </div>
-                </div>
-                <div class="text-center pb-10">
-                    <button onclick="captureReceipt('pump-summary-content')" class="bg-pink-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-pink-700"><i class="fa-solid fa-download mr-1"></i> บันทึกเป็นรูปภาพ</button>
+                    <div class="text-center pt-6 pb-4 space-x-2">
+                         <button onclick="captureReceipt('pump-receipt-content')" class="bg-pink-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-pink-700 inline-flex items-center"><i class="fa-solid fa-download mr-1"></i> บันทึกรูป</button>
+                         <button onclick="shareReceipt('pump-receipt-content')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 inline-flex items-center"><i class="fa-solid fa-share-nodes mr-1"></i> แชร์</button>
+                    </div>
                 </div>
             `;
             container.classList.remove('hidden');
@@ -2443,13 +2540,21 @@
             const currentAward = systemConfig.awardName || 'Popular Vote';
             
             if(isPump) {
-                cat.innerText = `CHALLENGE: ${currentAward} (PUMP MODE)`; syncPumpGame();
+                cat.innerText = `CHALLENGE: ${currentAward}`; 
+                syncPumpGame();
             } else {
                 cat.innerText = `AWARD: ${currentAward}`;
             }
 
-            const field = isPump ? 'cheer_points' : getScoreField(currentAward);
-            const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 7); // Show top 7
+            // Correct field selection based on mode and award name
+            let field = '';
+            if (isPump) {
+                 field = `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            } else {
+                 field = getScoreField(currentAward);
+            }
+            
+            const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 10); // Top 10 for TV
 
             if(sorted.length === 0) {
                 container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING FOR DATA ---</div>';
@@ -2477,6 +2582,7 @@
                     </div>
                     <div class="text-right" style="flex-shrink: 0; margin-left: 20px;">
                         <div class="tv-score">${(c[field]||0).toLocaleString()}</div>
+                        <span class="tv-label">${isPump?'Clicks':'Votes'}</span>
                     </div>
                 </div>`;
             }).join('');
