@@ -385,10 +385,11 @@
                             </div>
 
                             <div class="p-4 bg-red-50 rounded-xl border border-red-200 mt-6">
-                                <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (สำหรับรางวัลปัจจุบัน)</h3>
+                                <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (Danger Zone)</h3>
                                 <div class="grid grid-cols-1 gap-2">
-                                    <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (เฉพาะรางวัลนี้)</button>
-                                    <button onclick="resetAttendees()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-user-xmark mr-1"></i> ล้างรายชื่อผู้ลงทะเบียน (Reset ทั้งหมด)</button>
+                                    <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (เฉพาะรางวัลปัจจุบัน)</button>
+                                    <button onclick="resetAttendees()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold"><i class="fa-solid fa-user-xmark mr-1"></i> ล้างรายชื่อผู้ลงทะเบียน (Reset Attendees)</button>
+                                    <button onclick="resetAllSystem()" class="w-full py-3 bg-red-600 border border-red-700 text-white rounded-lg hover:bg-red-700 transition text-xs font-bold shadow-sm"><i class="fa-solid fa-bomb mr-1"></i> ล้างข้อมูลทั้งระบบ (Factory Reset)</button>
                                 </div>
                             </div>
                         </div>
@@ -833,6 +834,48 @@
 
             await batch.commit();
             showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
+        }
+
+        async function resetAllSystem() {
+            if (!confirm('⚠️ คำเตือนรุนแรง! ⚠️\n\nคุณกำลังจะ "ล้างข้อมูลทั้งระบบ" ประกอบด้วย:\n1. รายชื่อผู้ลงทะเบียนเข้างานทั้งหมด\n2. รายชื่อผู้เข้าประกวดทั้งหมด\n3. คะแนนโหวตและประวัติการโหวตทั้งหมด\n\nข้อมูลจะหายถาวร กู้คืนไม่ได้! ยืนยันหรือไม่?')) return;
+            if (!confirm('ยืนยันครั้งที่ 2: ต้องการล้างข้อมูลทั้งหมดจริงๆ ใช่ไหม?')) return;
+            
+            if (!db) return;
+            showToast('กำลังล้างข้อมูลทั้งระบบ...', 'info');
+            
+            try {
+                // 1. Delete Attendees
+                const attRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
+                const attSnap = await attRef.get();
+                const batch1 = db.batch();
+                attSnap.forEach(doc => batch1.delete(doc.ref));
+                await batch1.commit();
+                
+                // 2. Delete Candidates
+                const candRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
+                const candSnap = await candRef.get();
+                const batch2 = db.batch();
+                candSnap.forEach(doc => batch2.delete(doc.ref));
+                await batch2.commit();
+                
+                // 3. Delete Votes (History)
+                const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+                const voteSnap = await voteRef.get();
+                const batch3 = db.batch();
+                voteSnap.forEach(doc => batch3.delete(doc.ref));
+                await batch3.commit();
+
+                // 4. Update Config to reset local storage on clients
+                await getConfigRef().set({ 
+                    voteResetVersion: Date.now(),
+                    attendeeResetVersion: Date.now()
+                }, { merge: true });
+
+                showToast('ล้างข้อมูลระบบทั้งหมดเรียบร้อยแล้ว', 'success');
+            } catch(e) {
+                console.error(e);
+                showToast('เกิดข้อผิดพลาดในการล้างข้อมูล (อาจมีข้อมูลเยอะเกินไป)', 'error');
+            }
         }
 
         async function saveAwardConfig() {
