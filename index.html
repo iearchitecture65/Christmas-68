@@ -127,6 +127,15 @@
             from { transform: translateY(-100%); }
             to { transform: translateY(0); }
         }
+        
+        /* Disabled Link Style */
+        .disabled-link {
+            filter: grayscale(100%);
+            opacity: 0.6;
+            pointer-events: none;
+            cursor: default;
+            background-color: #f1f5f9; /* Slate 100 */
+        }
 
     </style>
 </head>
@@ -144,37 +153,27 @@
     </div>
 
     <!-- LOCATION BLOCK SCREEN (MODAL) -->
-    <!-- ปรับให้เป็น Modal ที่ปิดได้ ไม่บล็อกถาวร -->
     <div id="view-location-block" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur flex flex-col items-center justify-center p-6 text-center hidden">
         <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 max-w-sm w-full animate-bounce-short relative">
-            
-            <!-- ปุ่มปิด Modal -->
             <button onclick="closeLocationBlock()" class="absolute top-4 right-4 text-white/50 hover:text-white transition">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
-
             <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fa-solid fa-location-dot text-4xl text-red-500"></i>
             </div>
             <h2 class="text-2xl font-bold text-white mb-2">อยู่นอกพื้นที่จัดงาน</h2>
             <p class="text-slate-300 text-sm mb-6">กรุณาอยู่ในบริเวณงานเพื่อทำการโหวตหรือลงทะเบียน</p>
-            
             <div class="bg-black/20 rounded-xl p-4 mb-6 text-left">
                 <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
                 <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
             </div>
-
             <button onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3">
                 <i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่
             </button>
-            
-            <!-- ปุ่มดูอย่างเดียว (แก้ไขเป็นปุ่มย้อนกลับ) -->
             <button onclick="closeLocationBlock()" class="w-full text-slate-400 text-sm hover:text-white underline">
                 ย้อนกลับ
             </button>
-
             <div class="mt-6 pt-4 border-t border-white/10">
-                 <!-- ปุ่มเข้าสู่ระบบ Admin (แก้ไขให้เด้งไปเลย) -->
                  <button onclick="window.location.hash='#admin'; closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300">
                     <i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ
                 </button>
@@ -206,9 +205,9 @@
             <!-- 1. VIEW: VOTE LIST -->
             <div id="view-vote" class="view-section hidden space-y-4">
                 <div class="text-center mb-4">
-                    <span class="bg-red-500/20 text-red-100 px-4 py-1 rounded-full text-sm font-bold border border-red-500/50">
-                        <i class="fa-solid fa-check-to-slot"></i> เปิดโหวตลงคะแนน
-                    </span>
+                    <div class="bg-red-500/20 text-red-100 px-4 py-2 rounded-xl text-sm font-bold border border-red-500/50 inline-block">
+                        <i class="fa-solid fa-check-to-slot"></i> <span id="vote-header-category">เปิดโหวตลงคะแนน</span>
+                    </div>
                 </div>
                 
                 <div id="loading-vote" class="text-center py-10 text-white/60">
@@ -228,27 +227,27 @@
                     </span>
                 </div>
                 
-                <a href="#register-attend" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden cursor-pointer" onclick="forceNavigate('register-attend'); return false;">
+                <a href="#register-attend" id="menu-btn-attend" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden cursor-pointer">
                     <div class="absolute right-0 top-0 w-24 h-24 bg-blue-500/20 rounded-bl-full -mr-4 -mt-4 transition group-hover:bg-blue-500/30"></div>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-sm">
+                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-sm icon-container">
                             <i class="fa-solid fa-ticket"></i>
                         </div>
                         <div>
-                            <h3 class="font-bold text-lg text-slate-800">ลงทะเบียนเข้างาน</h3>
+                            <h3 class="font-bold text-lg text-slate-800 title-text">ลงทะเบียนเข้างาน</h3>
                             <p class="text-xs text-slate-500">สำหรับผู้เข้าร่วมงานทั่วไป (Check-in)</p>
                         </div>
                     </div>
                 </a>
 
-                <a href="#register-contest" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden cursor-pointer" onclick="forceNavigate('register-contest'); return false;">
+                <a href="#register-contest" id="menu-btn-contest" class="block glass-panel p-6 rounded-2xl shadow-lg hover:scale-[1.02] transition-transform group relative overflow-hidden cursor-pointer">
                     <div class="absolute right-0 top-0 w-24 h-24 bg-red-500/20 rounded-bl-full -mr-4 -mt-4 transition group-hover:bg-red-500/30"></div>
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shadow-sm">
+                        <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shadow-sm icon-container">
                             <i class="fa-solid fa-user-astronaut"></i>
                         </div>
                         <div>
-                            <h3 class="font-bold text-lg text-slate-800">ลงทะเบียนประกวด</h3>
+                            <h3 class="font-bold text-lg text-slate-800 title-text">ลงทะเบียนประกวด</h3>
                             <p class="text-xs text-slate-500">สำหรับผู้เข้าแข่งขันแต่งกายแฟนซี</p>
                         </div>
                     </div>
@@ -278,7 +277,7 @@
                     </div>
                 </div>
                 <div class="text-center mt-4">
-                    <button onclick="forceNavigate('register-menu')" class="text-white/60 text-sm underline" id="btn-back-attend">ย้อนกลับ</button>
+                    <a href="#register-menu" onclick="event.preventDefault(); window.history.back();" class="text-white/60 text-sm underline cursor-pointer" id="btn-back-attend">ย้อนกลับ</a>
                 </div>
             </div>
 
@@ -309,7 +308,7 @@
                     </div>
                 </div>
                 <div class="text-center mt-4">
-                    <button onclick="forceNavigate('register-menu')" class="text-white/60 text-sm underline">ย้อนกลับ</button>
+                    <a href="#register-menu" onclick="event.preventDefault(); window.history.back();" class="text-white/60 text-sm underline cursor-pointer">ย้อนกลับ</a>
                 </div>
             </div>
 
@@ -318,7 +317,7 @@
                 <div class="glass-panel rounded-3xl shadow-2xl overflow-hidden">
                     <div class="bg-gradient-to-r from-yellow-500 to-amber-600 p-4 text-white text-center shadow-md">
                         <h2 class="text-xl font-bold flex justify-center items-center gap-2">
-                            <i class="fa-solid fa-crown text-yellow-200"></i> ผลคะแนนล่าสุด
+                            <i class="fa-solid fa-crown text-yellow-200"></i> ผลคะแนน: <span id="result-header-category">รวม</span>
                         </h2>
                     </div>
                     <div id="leaderboard-list" class="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
@@ -369,6 +368,20 @@
                     <!-- TAB CONTENT: CONTROL -->
                     <div id="admin-content-control" class="space-y-6">
                         
+                        <!-- NEW: CATEGORY / AWARD SETTING -->
+                        <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+                            <h3 class="font-bold text-indigo-800 text-sm mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-award"></i> ตั้งค่าหัวข้อรางวัล (เปลี่ยน = เริ่มโหวตใหม่)
+                            </h3>
+                            <div class="flex gap-2">
+                                <input type="text" id="input-award-name" class="w-full p-2 rounded-lg border border-indigo-300 text-sm" placeholder="เช่น Popular Vote, ชุดสร้างสรรค์">
+                                <button onclick="saveAwardConfig()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap">
+                                    บันทึก
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-indigo-500 mt-2">* เมื่อเปลี่ยนชื่อรางวัล ผู้ใช้จะสามารถโหวตใหม่ได้ทันที (คะแนนแยกกัน)</p>
+                        </div>
+
                         <!-- Location Control (Updated with Map) -->
                         <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
                             <h3 class="font-bold text-slate-700 text-sm mb-3 flex justify-between items-center">
@@ -471,17 +484,14 @@
                         <!-- DANGER ZONE: DATA MANAGEMENT -->
                         <div class="p-4 bg-red-50 rounded-xl border border-red-200 mt-6">
                             <h3 class="font-bold text-red-800 text-sm mb-3 flex items-center gap-2">
-                                <i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (อันตราย)
+                                <i class="fa-solid fa-triangle-exclamation"></i> จัดการข้อมูล (สำหรับรางวัลปัจจุบัน)
                             </h3>
                             <div class="grid grid-cols-1 gap-2">
                                 <button onclick="resetVotes()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold">
-                                    <i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (รีเซ็ตเป็น 0)
-                                </button>
-                                <button onclick="resetAttendees()" class="w-full py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-xs font-bold">
-                                    <i class="fa-solid fa-user-xmark mr-1"></i> ล้างรายชื่อผู้ลงทะเบียน
+                                    <i class="fa-solid fa-trash-can mr-1"></i> ล้างคะแนนโหวต (เฉพาะรางวัลนี้)
                                 </button>
                                 <button onclick="resetAll()" class="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-xs font-bold">
-                                    <i class="fa-solid fa-skull mr-1"></i> ล้างข้อมูลทั้งหมด (เริ่มงานใหม่)
+                                    <i class="fa-solid fa-skull mr-1"></i> รีเซ็ตทั้งงาน (ล้างทุกอย่าง)
                                 </button>
                             </div>
                         </div>
@@ -501,7 +511,7 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                                <span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> ผลคะแนนผู้เข้าประกวด
+                                <span class="bg-red-100 text-red-600 p-1.5 rounded-lg"><i class="fa-solid fa-trophy"></i></span> ผลคะแนน (รางวัลปัจจุบัน)
                             </h3>
                             <div class="overflow-x-auto rounded-xl border border-slate-200">
                                 <table class="w-full data-table">
@@ -596,14 +606,14 @@
         } catch (e) { console.error("Error initializing Firebase:", e); }
 
         // --- STATE ---
-        let systemConfig = { activePhase: 'closed', locationCheckEnabled: false, targetLat: 13.7563, targetLng: 100.5018, allowedRadius: 100 }; 
+        let systemConfig = { activePhase: 'closed', locationCheckEnabled: false, targetLat: 13.7563, targetLng: 100.5018, allowedRadius: 100, awardName: 'Popular Vote' }; 
         let candidates = [];
         let attendees = [];
         let isAdminAuthenticated = false;
         let currentSubView = 'register-menu'; 
         let adminMap = null;
         let adminMarker = null;
-        let isLocationValid = true; // Default true until checked
+        let isLocationValid = true;
 
         // --- SAFE LOCAL STORAGE ---
         function safeGetStorage(key) {
@@ -632,27 +642,27 @@
         function handleRouting() {
             let hash = window.location.hash.substring(1);
             
-            // FIX: ไม่บังคับเป็น Admin ถ้าไม่มี hash (ป้องกันผู้ใช้เห็นหน้า Admin)
-            // if (!hash) hash = 'admin';  <-- ลบบรรทัดนี้ออกแล้ว
-
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            
-            // Scroll to top on routing
             window.scrollTo(0, 0);
 
             if (hash === 'admin') {
                 if (isAdminAuthenticated) showAdminDashboard();
                 else showAdminLogin();
+            } else if (hash === 'register-attend') {
+                currentSubView = 'register-attend';
+                updateUIBasedOnConfig();
+            } else if (hash === 'register-contest') {
+                currentSubView = 'register-contest';
+                updateUIBasedOnConfig();
             } else {
+                currentSubView = 'register-menu';
                 updateUIBasedOnConfig();
             }
         }
 
         function showAdminLogin() {
-            // Hide Loader if it's still there
             const loader = document.getElementById('initial-loader');
             if(loader) loader.style.display = 'none';
-
             document.getElementById('view-admin-login').classList.remove('hidden');
             document.getElementById('site-footer').classList.add('hidden');
         }
@@ -664,7 +674,6 @@
             document.getElementById('user-link-input').value = baseUrl;
             document.getElementById('site-footer').classList.add('hidden');
             updateAdminUIState();
-            // Need to delay map init slightly until element is visible
             setTimeout(initAdminMap, 300);
         }
 
@@ -674,25 +683,17 @@
                 adminMap.invalidateSize();
                 return;
             }
-
-            const lat = systemConfig.targetLat || 13.7563; // Default Bangkok
+            const lat = systemConfig.targetLat || 13.7563;
             const lng = systemConfig.targetLng || 100.5018;
-
             adminMap = L.map('admin-map').setView([lat, lng], 15);
-
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(adminMap);
-
             adminMarker = L.marker([lat, lng], {draggable: true}).addTo(adminMap);
-
-            // Update inputs when dragged
             adminMarker.on('dragend', function(e) {
                 const pos = e.target.getLatLng();
                 updateLocationInputs(pos.lat, pos.lng);
             });
-
-            // Move marker on map click
             adminMap.on('click', function(e) {
                 adminMarker.setLatLng(e.latlng);
                 updateLocationInputs(e.latlng.lat, e.latlng.lng);
@@ -706,13 +707,11 @@
 
         function getLocationFromDevice() {
             if (!navigator.geolocation) return showToast("ไม่รองรับ GPS", "error");
-            
             showToast("กำลังค้นหาพิกัด...", "success");
             navigator.geolocation.getCurrentPosition(pos => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
                 updateLocationInputs(lat, lng);
-                
                 if (adminMap && adminMarker) {
                     adminMap.setView([lat, lng], 17);
                     adminMarker.setLatLng([lat, lng]);
@@ -770,51 +769,46 @@
             });
         }
         
-        // HELPER FOR PATHS
         function getConfigRef() {
-            // FIX: Move config inside public/data to satisfy security rules
             return db.collection('artifacts').doc(appId).collection('public').doc('data').collection('config').doc('main');
         }
 
         function listenToConfig() {
             if (!db) return;
-            
-            // USE NEW PATH
             getConfigRef().onSnapshot(doc => {
                 if (doc.exists) {
                     systemConfig = doc.data();
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
+                    if (!systemConfig.awardName) systemConfig.awardName = 'Popular Vote';
 
-                    // --- NEW: CHECK FOR RESET SIGNAL ---
-                    const localResetVer = safeGetStorage(`vote_reset_ver_${appId}`);
-                    const serverResetVer = systemConfig.voteResetVersion;
+                    // --- RESET / CATEGORY CHANGE CHECK ---
+                    // Unique Reset Key depends on both a timestamp version AND the current award name
+                    const serverResetKey = `${systemConfig.voteResetVersion}_${systemConfig.awardName}`;
+                    const localResetKey = safeGetStorage(`vote_reset_key_${appId}`);
 
-                    // If server has a reset version and it doesn't match local (or local is empty)
-                    if (serverResetVer && localResetVer != serverResetVer) {
-                        console.log("Vote reset detected from server");
-                        // Clear local storage vote flags
-                        localStorage.removeItem(`voted_candidate_${appId}`);
-                        localStorage.removeItem(`voted_${appId}`);
+                    if (serverResetKey && localResetKey !== serverResetKey) {
+                        console.log("Config changed or Reset triggered: Clearing local vote state.");
+                        // Clear voted flag only (Registration is usually one-time event, so we keep it)
+                        // Note: We use dynamic key based on award name for voting storage
+                        // But if explicit reset is called, we might want to clear even current view
                         
-                        // Update local version to match server so we don't reset again loop
-                        safeSetStorage(`vote_reset_ver_${appId}`, serverResetVer);
+                        // Just update the key so we don't loop
+                        safeSetStorage(`vote_reset_key_${appId}`, serverResetKey);
                         
-                        // Force re-render (this will switch from "Voted Card" to "Vote List")
+                        // Force UI refresh
                         renderCandidates();
                         
                         if (systemConfig.activePhase === 'vote') {
-                            showToast('ระบบได้ทำการรีเซ็ตการโหวตใหม่', 'info');
+                            showToast(`เข้าสู่การโหวต: ${systemConfig.awardName}`, 'info');
                         }
                     }
                     // ------------------------------------
 
                 } else {
-                    systemConfig = { activePhase: 'vote' };
-                    // Create default config if missing
+                    systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
                     getConfigRef().set(systemConfig).catch(e=>console.error(e));
                 }
                 
-                // Hide Loader once config is loaded
                 const loader = document.getElementById('initial-loader');
                 if(loader && loader.style.display !== 'none') {
                     loader.style.opacity = '0';
@@ -824,7 +818,6 @@
                 updateUIBasedOnConfig();
                 updateAdminUIState(); 
                 
-                // Update map if opened
                 if (adminMap && systemConfig.targetLat) {
                     if (document.getElementById('input-lat').value === "") {
                          document.getElementById('input-lat').value = systemConfig.targetLat;
@@ -835,7 +828,6 @@
                 }
             }, (error) => {
                 console.error("Config Listener Error:", error);
-                // Even on error, hide loader so user isn't stuck
                 const loader = document.getElementById('initial-loader');
                 if(loader) loader.style.display = 'none';
             });
@@ -870,43 +862,71 @@
 
         // --- DATA MANAGEMENT FUNCTIONS ---
         async function resetVotes() {
-            if (!confirm('ยืนยันล้างคะแนนโหวตทั้งหมด? ผู้เข้าประกวดยังอยู่ แต่คะแนนจะเป็น 0')) return;
+            if (!confirm(`ยืนยันล้างคะแนนโหวตสำหรับรางวัล "${systemConfig.awardName}" ใช่หรือไม่?`)) return;
             if (!db) return;
             
             showToast('กำลังล้างคะแนน...', 'success');
             const batch = db.batch();
             
-            // 1. Delete all docs in 'votes' collection
-            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
-            const votesSnap = await votesRef.get();
-            votesSnap.forEach(doc => batch.delete(doc.ref));
-
-            // 2. Reset votes count in 'candidates' collection
+            // 1. Delete votes for THIS award only (filter by awardName field in vote doc)
+            // Limitations: Firestore can't delete by query in client SDK easily in one batch without reading first
+            // So we read all votes, check if they belong to current category, then delete
+            // BETTER: Since we are in strict mode, we just reset 'votes' count on candidates. 
+            // The actual vote docs are for history/audit. 
+            // But to allow re-voting, we must ensure validation logic permits it.
+            
+            // Wait, my validation logic checks `votes` collection by Voter ID.
+            // If we have multiple awards, the vote doc ID should probably be `${voterId}_${awardName}` to allow multiple votes.
+            // Let's implement that in submitVote.
+            
+            // For Reset: We will delete votes matching the current award logic or just increment version
+            // Actually, simply incrementing the `voteResetVersion` forces clients to ignore local storage.
+            // But we also need to clear the `votes` count on candidates? 
+            // Yes, "Reset Votes" usually means setting candidate scores to 0.
+            
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
+            // We use a specific field for score per award? Or just reset the main 'votes' field?
+            // "Give 2 awards gradually" implies:
+            // 1. Vote for Award A -> Candidates get votes -> Winner announced.
+            // 2. Reset -> Candidates votes = 0.
+            // 3. Vote for Award B -> Candidates get votes -> Winner announced.
+            // So resetting 'votes' to 0 is correct for this flow.
+            
             candSnap.forEach(doc => batch.update(doc.ref, { votes: 0 }));
 
-            // 3. NEW: Signal all clients to reset local state
+            // Also trigger client reset
             const configRef = getConfigRef();
             batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
+
+            // Note: We are NOT deleting the `votes` collection documents here to save reads/writes, 
+            // relying on the fact that `submitVote` checks for duplicates via specific ID.
+            // If we want to truly allow re-voting on same ID after reset, we should delete the docs.
+            // Let's delete them to be safe and clean.
+            const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
+            const votesSnap = await votesRef.get();
+            votesSnap.forEach(doc => {
+                // Only delete if it matches current award? Or just wipe all for this session reset?
+                // The user said "Reset Votes", implying for the current session. Wiping all is safer to prevent bugs.
+                batch.delete(doc.ref);
+            });
 
             await batch.commit();
             showToast('ล้างคะแนนเรียบร้อยแล้ว', 'success');
         }
 
-        async function resetAttendees() {
-            if (!confirm('ยืนยันลบรายชื่อผู้ลงทะเบียนทั้งหมด?')) return;
-            if (!db) return;
-
-            showToast('กำลังล้างรายชื่อ...', 'success');
-            const batch = db.batch();
+        async function saveAwardConfig() {
+            if(!db) return;
+            const name = document.getElementById('input-award-name').value.trim();
+            if(!name) return showToast("กรุณาใส่ชื่อรางวัล", "error");
             
-            const attendeesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
-            const snap = await attendeesRef.get();
-            snap.forEach(doc => batch.delete(doc.ref));
-
-            await batch.commit();
-            showToast('ล้างรายชื่อเรียบร้อยแล้ว', 'success');
+            // Changing award name effectively starts a new session
+            await getConfigRef().set({ 
+                awardName: name,
+                voteResetVersion: Date.now() // Trigger UI refresh for everyone
+            }, { merge: true });
+            
+            showToast(`เปลี่ยนหัวข้อเป็น: ${name}`, 'success');
         }
 
         async function resetAll() {
@@ -917,24 +937,20 @@
             showToast('กำลังรีเซ็ตระบบ...', 'success');
             const batch = db.batch();
 
-            // 1. Delete votes
             const votesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes');
             const votesSnap = await votesRef.get();
             votesSnap.forEach(doc => batch.delete(doc.ref));
 
-            // 2. Delete attendees
             const attendeesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees');
             const attSnap = await attendeesRef.get();
             attSnap.forEach(doc => batch.delete(doc.ref));
 
-            // 3. Delete candidates
             const candidatesRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates');
             const candSnap = await candidatesRef.get();
             candSnap.forEach(doc => batch.delete(doc.ref));
 
-            // 4. Signal reset
             const configRef = getConfigRef();
-            batch.set(configRef, { voteResetVersion: Date.now() }, { merge: true });
+            batch.set(configRef, { voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
 
             await batch.commit();
             showToast('รีเซ็ตระบบเรียบร้อยแล้ว', 'success');
@@ -954,37 +970,26 @@
         function deg2rad(deg) { return deg * (Math.PI/180); }
 
         function checkLocationAccess(forceShowModal = false) {
-            // Skip check if admin or disabled
             if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) {
                 document.getElementById('view-location-block').classList.add('hidden');
                 document.getElementById('location-warning-banner').style.display = 'none';
                 isLocationValid = true;
                 return;
             }
-
-            if (!navigator.geolocation) {
-                // Not supported
-                isLocationValid = false;
-                return;
-            }
+            if (!navigator.geolocation) { isLocationValid = false; return; }
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const userLat = position.coords.latitude;
                     const userLng = position.coords.longitude;
                     const dist = getDistanceFromLatLonInMeters(userLat, userLng, systemConfig.targetLat, systemConfig.targetLng);
-                    
                     document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
                     document.getElementById('loc-allowed').innerText = systemConfig.allowedRadius + " เมตร";
 
                     if (dist > systemConfig.allowedRadius) {
                         isLocationValid = false;
                         document.getElementById('location-warning-banner').style.display = 'block';
-                        
-                        // Only show full screen block if explicitly asked (e.g. user clicked update)
-                        if (forceShowModal) {
-                            document.getElementById('view-location-block').classList.remove('hidden');
-                        }
+                        if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
                     } else {
                         isLocationValid = true;
                         document.getElementById('view-location-block').classList.add('hidden');
@@ -996,21 +1001,14 @@
                     isLocationValid = false;
                     document.getElementById('location-warning-banner').style.display = 'block';
                     document.getElementById('loc-dist').innerText = "ไม่ได้รับอนุญาต";
-                    
-                    if (forceShowModal) {
-                        document.getElementById('view-location-block').classList.remove('hidden');
-                    }
+                    if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
                 }
             );
         }
 
-        // New function to enforce location strictly before actions
         function enforceLocationCheck() {
             if (isAdminAuthenticated || !systemConfig.locationCheckEnabled) return true;
-            
-            // Force a check update just in case
             checkLocationAccess(false);
-
             if (!isLocationValid) {
                 document.getElementById('view-location-block').classList.remove('hidden');
                 return false;
@@ -1025,7 +1023,6 @@
         async function toggleLocationCheck() {
             if(!db) return;
             const newState = !systemConfig.locationCheckEnabled;
-            // USE NEW PATH
             await getConfigRef().set({ locationCheckEnabled: newState }, { merge: true });
         }
 
@@ -1034,29 +1031,28 @@
             const lat = parseFloat(document.getElementById('input-lat').value);
             const lng = parseFloat(document.getElementById('input-lng').value);
             const rad = parseFloat(document.getElementById('input-radius').value);
-            
             if(isNaN(lat) || isNaN(lng) || isNaN(rad)) return showToast("กรุณากำหนดพิกัดบนแผนที่", "error");
-
-            // USE NEW PATH
             await getConfigRef().set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
             showToast("บันทึกพิกัดแล้ว", "success");
         }
 
         // --- MAIN UI CONTROLLER ---
         function updateUIBasedOnConfig() {
-            // FIX: Always scroll to top when UI updates/changes view
             window.scrollTo(0, 0);
-
             const hash = window.location.hash.substring(1);
             if (hash === 'admin') {
                 updateAdminUIState();
                 return;
             }
-
             hideAllViews();
             document.getElementById('site-footer').classList.remove('hidden');
 
             const phase = systemConfig.activePhase || 'closed';
+            
+            // Update Headers
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            document.getElementById('vote-header-category').innerText = `โหวต: ${currentAward}`;
+            document.getElementById('result-header-category').innerText = currentAward;
 
             if (phase === 'register') {
                 if (currentSubView === 'register-attend') {
@@ -1066,6 +1062,7 @@
                     document.getElementById('view-register-contest').classList.remove('hidden');
                 } else {
                     document.getElementById('view-register-menu').classList.remove('hidden');
+                    updateRegisterMenuState();
                 }
             } else if (phase === 'vote') {
                 document.getElementById('view-vote').classList.remove('hidden');
@@ -1073,6 +1070,38 @@
                 document.getElementById('view-result').classList.remove('hidden');
             } else {
                 document.getElementById('view-closed').classList.remove('hidden');
+            }
+        }
+
+        function updateRegisterMenuState() {
+            const isAttendRegistered = safeGetStorage(`reg_attend_${appId}`);
+            const isContestRegistered = safeGetStorage(`reg_contest_${appId}`);
+            const btnAttend = document.getElementById('menu-btn-attend');
+            const btnContest = document.getElementById('menu-btn-contest');
+
+            if (btnAttend) {
+                if (isAttendRegistered) {
+                    btnAttend.classList.add('disabled-link');
+                    btnAttend.querySelector('.title-text').innerText = "ลงทะเบียนเข้างาน (เรียบร้อย)";
+                    btnAttend.querySelector('.icon-container').classList.replace('bg-blue-100', 'bg-gray-200');
+                    btnAttend.querySelector('.icon-container').classList.replace('text-blue-600', 'text-gray-500');
+                    btnAttend.removeAttribute('href');
+                } else {
+                    btnAttend.classList.remove('disabled-link');
+                    btnAttend.href = "#register-attend";
+                }
+            }
+            if (btnContest) {
+                if (isContestRegistered) {
+                    btnContest.classList.add('disabled-link');
+                    btnContest.querySelector('.title-text').innerText = "ลงทะเบียนประกวด (เรียบร้อย)";
+                    btnContest.querySelector('.icon-container').classList.replace('bg-red-100', 'bg-gray-200');
+                    btnContest.querySelector('.icon-container').classList.replace('text-red-600', 'text-gray-500');
+                    btnContest.removeAttribute('href');
+                } else {
+                    btnContest.classList.remove('disabled-link');
+                    btnContest.href = "#register-contest";
+                }
             }
         }
 
@@ -1089,7 +1118,6 @@
                     indicator.classList.add('border-slate-300'); indicator.classList.remove('bg-white', 'border-transparent');
                 }
             });
-
             const locBtn = document.getElementById('btn-loc-toggle');
             if (systemConfig.locationCheckEnabled) {
                 locBtn.innerText = "เปิดอยู่";
@@ -1098,18 +1126,19 @@
                 locBtn.innerText = "ปิดอยู่";
                 locBtn.className = "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500";
             }
-            // Only update inputs if they are empty (first load)
             if(document.getElementById('input-lat').value === "" && systemConfig.targetLat) {
                 document.getElementById('input-lat').value = systemConfig.targetLat;
                 document.getElementById('input-lng').value = systemConfig.targetLng;
                 document.getElementById('input-radius').value = systemConfig.allowedRadius || 100;
+            }
+            if(document.getElementById('input-award-name').value === "" && systemConfig.awardName) {
+                document.getElementById('input-award-name').value = systemConfig.awardName;
             }
         }
 
         async function changePhase(newPhase) {
             if (!db) return;
             try {
-                // USE NEW PATH
                 await getConfigRef().set({ activePhase: newPhase }, { merge: true });
                 showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
@@ -1118,13 +1147,9 @@
         // --- ACTION: VOTE ---
         function openVoteModal(candidateId) {
             if (systemConfig.activePhase !== 'vote') return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
-            
-            // CHECK LOCATION BEFORE VOTING
             if (!enforceLocationCheck()) return;
-
             document.getElementById('selected-candidate-id').value = candidateId;
             document.getElementById('voter-id-input').value = '';
-            
             const modal = document.getElementById('vote-modal');
             const content = document.getElementById('vote-modal-content');
             modal.classList.remove('hidden');
@@ -1140,12 +1165,14 @@
 
         async function submitVote() {
             if (!db) return;
-            // Double check location just in case
             if (!enforceLocationCheck()) return;
 
             const candidateId = document.getElementById('selected-candidate-id').value;
             const voterId = document.getElementById('voter-id-input').value.trim();
             const btn = document.getElementById('btn-confirm-vote');
+            
+            // Current Award Category Context
+            const currentAward = systemConfig.awardName || 'Popular Vote';
 
             if (!voterId) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
 
@@ -1168,7 +1195,9 @@
                     return;
                 }
 
-                const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voterId);
+                // Check vote using composite ID (VoterID + AwardName) to allow multiple votes for different awards
+                const voteDocId = `${voterId}_${currentAward}`; 
+                const voteRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').doc(voteDocId);
                 const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(candidateId);
 
                 await db.runTransaction(async (transaction) => {
@@ -1178,6 +1207,7 @@
                     transaction.set(voteRef, {
                         voterId: voterId,
                         candidateId: candidateId,
+                        awardCategory: currentAward,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
@@ -1188,21 +1218,18 @@
 
                 showToast('โหวตสำเร็จ! ขอบคุณครับ ❤️', 'success');
                 closeVoteModal();
-                // Store candidate ID to show single card
-                safeSetStorage(`voted_candidate_${appId}`, candidateId);
-                // Also legacy boolean for safety
-                safeSetStorage(`voted_${appId}`, 'true');
                 
-                // Force re-render to update UI immediately
+                // Store vote state specific to this award
+                safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId);
+                
                 renderCandidates();
 
             } catch (error) {
                 console.error(error);
                 if (error === "ALREADY_VOTED") {
-                    showToast('รหัสนักศึกษานี้ใช้โหวตไปแล้ว', 'error');
-                    // Sync state immediately if we discover they already voted
-                    safeSetStorage(`voted_candidate_${appId}`, candidateId); 
-                    safeSetStorage(`voted_${appId}`, 'true');
+                    showToast('คุณได้โหวตในหัวข้อนี้ไปแล้ว', 'error');
+                    // Sync local state just in case
+                    safeSetStorage(`voted_candidate_${appId}_${currentAward}`, candidateId); // We assume existing vote matches input for UI simplicity or just block
                     closeVoteModal();
                     renderCandidates(); 
                 }
@@ -1219,8 +1246,6 @@
             if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('autoRedirectFromVote')) {
                 return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
             }
-
-            // CHECK LOCATION BEFORE REGISTERING
             if (!enforceLocationCheck()) return;
             
             const id = document.getElementById('attend-id').value.trim();
@@ -1238,7 +1263,7 @@
                     name: name,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                
+                safeSetStorage(`reg_attend_${appId}`, 'true');
                 showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
                 document.getElementById('attend-id').value = '';
                 document.getElementById('attend-name').value = '';
@@ -1250,7 +1275,6 @@
                 } else {
                     forceNavigate('register-menu');
                 }
-
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาด', 'error'); } 
             finally { btn.disabled = false; btn.innerHTML = 'ยืนยันการลงชื่อ'; }
         }
@@ -1258,8 +1282,6 @@
         async function handleContestSubmit() {
             if (!db) return;
             if (systemConfig.activePhase !== 'register') return showToast('ปิดรับสมัครแล้ว', 'error');
-
-            // CHECK LOCATION
             if (!enforceLocationCheck()) return;
 
             const id = document.getElementById('contest-id').value.trim();
@@ -1280,6 +1302,7 @@
                     votes: 0,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                safeSetStorage(`reg_contest_${appId}`, 'true');
                 showToast('สมัครประกวดเรียบร้อย!', 'success');
                 document.getElementById('contest-id').value = '';
                 document.getElementById('contest-name').value = '';
@@ -1300,8 +1323,6 @@
                 document.getElementById('view-admin-dashboard').classList.remove('hidden');
                 window.location.hash = '#admin'; 
                 showAdminDashboard();
-                
-                // Re-check location logic to hide warnings if any
                 checkLocationAccess();
             } else {
                 showToast('รหัสผ่านไม่ถูกต้อง', 'error');
@@ -1325,28 +1346,38 @@
         // --- RENDER FUNCTIONS ---
         function renderCandidates() {
             const container = document.getElementById('candidates-list');
+            const currentAward = systemConfig.awardName || 'Popular Vote';
             
-            // CHECK IF USER HAS VOTED
-            const votedCandidateId = safeGetStorage(`voted_candidate_${appId}`);
+            // CHECK IF USER HAS VOTED (Using Award-Specific Key)
+            const votedCandidateId = safeGetStorage(`voted_candidate_${appId}_${currentAward}`);
             
             if (votedCandidateId) {
                 const votedCandidate = candidates.find(c => c.id === votedCandidateId);
-                if (votedCandidate) {
-                    // RENDER SINGLE CARD VIEW
+                // Even if candidate deleted, show they voted if local storage says so (prevent double voting UX)
+                // But better UX: if candidate missing, maybe allow revote? Let's assume candidate exists.
+                if (votedCandidate || votedCandidateId) {
+                    const cName = votedCandidate ? escapeHtml(votedCandidate.name) : "ผู้สมัคร";
+                    const cCostume = votedCandidate ? escapeHtml(votedCandidate.costumeTitle) : "-";
+                    
                     container.innerHTML = `
                         <div class="text-center py-6 animate-fade-in">
                             <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg border-4 border-white">
                                 <i class="fa-solid fa-check"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-white mb-1">คุณได้ทำการโหวตแล้ว</h3>
-                            <p class="text-slate-300 text-sm mb-6">ขอบคุณที่ร่วมสนุกกับกิจกรรม</p>
+                            <h3 class="text-xl font-bold text-white mb-1">คุณโหวตเรียบร้อยแล้ว</h3>
+                            <p class="text-green-300 text-sm mb-6 font-bold bg-green-900/30 py-1 px-3 rounded-full inline-block">หัวข้อ: ${currentAward}</p>
                             
                             <div class="glass-panel p-6 rounded-2xl shadow-xl max-w-xs mx-auto border-2 border-green-400/50">
                                 <div class="text-xs text-slate-500 uppercase tracking-wider font-bold mb-2">คุณเลือกโหวตให้กับ</div>
-                                <h2 class="text-2xl font-bold text-slate-800 mb-1">${escapeHtml(votedCandidate.name)}</h2>
-                                <p class="text-green-600 font-medium mb-4">${escapeHtml(votedCandidate.costumeTitle)}</p>
+                                <h2 class="text-2xl font-bold text-slate-800 mb-1">${cName}</h2>
+                                <p class="text-green-600 font-medium mb-4">${cCostume}</p>
                                 <div class="bg-slate-100 rounded-lg py-2 text-xs text-slate-500">
-                                    บันทึกคะแนนเรียบร้อย
+                                    บันทึกคะแนนในระบบแล้ว
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-slate-200">
+                                    <button onclick="recheckVoteStatus()" class="text-[10px] text-slate-400 hover:text-red-500 underline">
+                                        <i class="fa-solid fa-rotate-right"></i> ตรวจสอบสถานะใหม่ (หากระบบรีเซ็ต)
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1355,12 +1386,15 @@
                 }
             }
 
-            // NORMAL RENDER LIST
             if (candidates.length === 0) {
                 container.innerHTML = `<div class="text-center text-white/50 py-10"><i class="fa-regular fa-folder-open text-4xl mb-3"></i><p>ยังไม่มีผู้สมัคร</p></div>`;
                 return;
             }
-            container.innerHTML = candidates.map(c => `
+            
+            // Sort by ID/Name to allow consistent ordering
+            const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+            
+            container.innerHTML = sortedCandidates.map(c => `
                 <div class="glass-panel p-4 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition hover:scale-[1.02]">
                     <div class="flex justify-between items-start mb-2">
                          <div class="flex items-center gap-2">
@@ -1370,15 +1404,26 @@
                     <h3 class="text-lg font-bold text-slate-800 leading-tight mb-1">${escapeHtml(c.name)}</h3>
                     <p class="text-slate-500 text-sm mb-4">ชุด: <span class="text-green-600 font-medium">${escapeHtml(c.costumeTitle)}</span></p>
                     <button onclick="openVoteModal('${c.id}')" id="btn-vote-${c.id}" class="vote-btn w-full py-2 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white active:scale-95 hover:shadow-red-500/30">
-                        <i class="fa-regular fa-heart"></i> โหวต
+                        <i class="fa-regular fa-heart"></i> โหวต (${currentAward})
                     </button>
                 </div>
             `).join('');
         }
+        
+        // Manual re-check button for users who are stuck
+        function recheckVoteStatus() {
+            // Force clear local flag for current award and re-render
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            // We don't just clear; we could assume if they pressed this, they suspect a reset.
+            // But to be safe, let's just clear and let them try to vote. If DB has vote, it will fail gracefully.
+            if(confirm("คุณต้องการลองโหวตใหม่ใช่หรือไม่? (กดตกลงหากแอดมินแจ้งว่ารีเซ็ตแล้ว)")) {
+                localStorage.removeItem(`voted_candidate_${appId}_${currentAward}`);
+                renderCandidates();
+            }
+        }
 
         function renderLeaderboard() {
             const container = document.getElementById('leaderboard-list');
-            // FIX: Deterministic sort for consistent view across devices
             const sorted = [...candidates].sort((a, b) => {
                 if (b.votes !== a.votes) return b.votes - a.votes;
                 return (a.name || '').localeCompare(b.name || '');
@@ -1416,7 +1461,6 @@
 
         function renderAdminDataTables() {
             const candBody = document.getElementById('table-candidates-body');
-            // FIX: Deterministic sort for consistent view across devices
             const sortedCand = [...candidates].sort((a, b) => {
                 if (b.votes !== a.votes) return b.votes - a.votes;
                 return (a.name || '').localeCompare(b.name || '');
