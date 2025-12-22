@@ -91,22 +91,21 @@
             padding: 8px;
         }
 
-        /* --- NEW PUMP & TV STYLES (UPDATED) --- */
+        /* --- NEW PUMP & TV STYLES --- */
         .pump-heart { position: absolute; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 50; }
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
         }
         .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; flex-direction: column; }
-        /* Adjusted TV sizes per request */
-        .tv-rank { font-size: 2.5rem; font-weight: 800; line-height: 1; }
-        .tv-name { font-size: 2rem; font-weight: 700; line-height: 1.2; }
-        .tv-points { font-size: 3rem; font-weight: 900; color: #ef4444; }
+        
+        .tv-row { background: rgba(255, 255, 255, 0.9); margin-bottom: 1.5rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease; }
+        .tv-row-1 { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color: #451a03; transform: scale(1.02); border: 4px solid #fff; }
+        .tv-row-2 { background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%); color: #1e293b; }
+        .tv-row-3 { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #fff; }
         
         .countdown-text { font-size: 15rem; font-weight: 900; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        .tv-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; }
-        .tv-card-top { background: linear-gradient(90deg, rgba(239,68,68,0.2) 0%, rgba(255,255,255,0.05) 100%); border: 2px solid rgba(239,68,68,0.4); }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -543,7 +542,7 @@
                     </div>
 
                     <!-- TV LEADERBOARD CONTAINER (CARD STYLE) -->
-                    <div id="tv-leaderboard-container" class="flex-1 grid grid-cols-1 gap-6 overflow-hidden py-6 relative z-10">
+                    <div id="tv-leaderboard-container" class="flex-1 overflow-hidden py-6 relative z-10">
                         <!-- TV Scores (Optimized Leaderboard Style) -->
                     </div>
                     
@@ -2152,14 +2151,13 @@
             grid.classList.add('grid-cols-2');
 
             const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+            // Use different style from Vote Cards to avoid confusion
             grid.innerHTML = sortedCandidates.map(c => `
-                <div class="glass-panel p-3 rounded-xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition active:scale-95 border-2 border-transparent active:border-pink-400 h-44 items-center justify-center text-center" onclick="handlePumpClick(event, '${c.id}')">
-                    <div class="absolute top-2 left-2"><span class="bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
-                    <div class="text-pink-500 text-4xl mb-2"><i class="fa-solid fa-heart"></i></div>
-                    <h3 class="text-sm font-bold text-slate-800 leading-tight line-clamp-1">${escapeHtml(c.name)}</h3>
-                    <p class="text-[10px] text-slate-500 line-clamp-1 mt-1">${escapeHtml(c.costumeTitle)}</p>
-                    <div class="mt-2 text-[10px] text-pink-400 font-bold uppercase tracking-tighter animate-pulse">Tap rัวๆ!</div>
-                    <div id="pump-score-${c.id}" class="absolute bottom-2 right-2 bg-pink-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">+0</div>
+                <div class="bg-gradient-to-br from-pink-500 to-rose-600 p-2 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition active:scale-90 h-48 items-center justify-center text-center cursor-pointer select-none border-4 border-white/20 active:border-white" onclick="handlePumpClick(event, '${c.id}')">
+                    <div class="absolute top-2 left-2"><span class="bg-black/20 text-white px-2 py-1 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
+                    <div class="text-white text-6xl mb-2 drop-shadow-md"><i class="fa-solid fa-hand-pointer"></i></div>
+                    <h3 class="text-lg font-bold text-white leading-tight line-clamp-1 drop-shadow-md">${escapeHtml(c.name)}</h3>
+                    <div id="pump-score-${c.id}" class="absolute bottom-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+0</div>
                 </div>
             `).join('');
         }
@@ -2175,20 +2173,21 @@
         function handlePumpClick(e, cid) {
             if(!pumpVoterId) return showToast('กรุณาเข้าระบบก่อน', 'error');
             
+            // Visual Effect
             const heart = document.createElement('div');
-            heart.className = 'pump-heart text-pink-500 text-3xl';
-            heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
+            heart.className = 'pump-heart text-white text-4xl font-bold drop-shadow-md';
+            heart.innerText = '+1';
             heart.style.left = (e.clientX || (e.touches ? e.touches[0].clientX : 0)) + 'px';
             heart.style.top = (e.clientY || (e.touches ? e.touches[0].clientY : 0)) + 'px';
             document.body.appendChild(heart);
-            setTimeout(() => heart.remove(), 1000);
+            setTimeout(() => heart.remove(), 800);
 
-            // Local Feedback
+            // Local Feedback (Keep adding up)
             pumpSessionPoints[cid] = (pumpSessionPoints[cid] || 0) + 1;
             const badge = document.getElementById(`pump-score-${cid}`);
             if(badge) badge.innerText = `+${pumpSessionPoints[cid]}`;
 
-            // Immediate Send (No Batching per requirement)
+            // Immediate Send (Increment in Firestore)
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid).update({
                 cheer_points: firebase.firestore.FieldValue.increment(1)
             }).catch(err => console.error(err));
@@ -2218,26 +2217,34 @@
                 return;
             }
 
-            // TV LEADERBOARD - CARD STYLE (COPIED FROM LEADERBOARD BUT BIGGER)
+            // TV LEADERBOARD - LIST STYLE (MATCHING RESULT PAGE BUT BIGGER)
             container.innerHTML = sorted.map((c, i) => {
-                const rankClass = i === 0 ? 'tv-card-top scale-105 z-10' : 'tv-card';
-                const rankColor = i === 0 ? 'bg-yellow-400 text-yellow-900' : (i === 1 ? 'bg-slate-300 text-slate-800' : (i === 2 ? 'bg-amber-600 text-white' : 'bg-white/10 text-slate-400'));
-                const scoreColor = i === 0 ? 'text-yellow-400' : 'text-red-500';
+                let rowClass = 'tv-row';
+                let rankDisplay = `<div class="w-20 h-20 rounded-full bg-slate-700/50 flex items-center justify-center font-bold text-4xl text-white border-2 border-white/20">${i + 1}</div>`;
                 
+                if (i === 0) { 
+                    rowClass += ' tv-row-1'; 
+                    rankDisplay = `<div class="w-24 h-24 rounded-full bg-yellow-300 text-yellow-800 flex items-center justify-center font-black text-5xl shadow-lg border-4 border-white"><i class="fa-solid fa-crown"></i></div>`;
+                } else if (i === 1) { 
+                    rowClass += ' tv-row-2'; 
+                    rankDisplay = `<div class="w-20 h-20 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-4xl shadow border-2 border-white">${i + 1}</div>`;
+                } else if (i === 2) { 
+                    rowClass += ' tv-row-3'; 
+                    rankDisplay = `<div class="w-20 h-20 rounded-full bg-amber-700 text-amber-100 flex items-center justify-center font-bold text-4xl shadow border-2 border-white">${i + 1}</div>`;
+                }
+
                 return `
-                <div class="${rankClass} p-10 rounded-[3rem] flex items-center justify-between mb-2 shadow-2xl transition-all duration-500">
-                    <div class="flex items-center gap-12">
-                        <div class="w-28 h-28 rounded-full ${rankColor} flex items-center justify-center font-black text-6xl shadow-inner">
-                            ${i === 0 ? '<i class="fa-solid fa-crown"></i>' : (i + 1)}
-                        </div>
+                <div class="${rowClass} p-6 flex items-center justify-between">
+                    <div class="flex items-center gap-8">
+                        ${rankDisplay}
                         <div>
-                            <div class="tv-name text-white drop-shadow-sm">${escapeHtml(c.name)}</div>
-                            <div class="text-4xl text-slate-400 font-bold uppercase mt-2 tracking-widest">${escapeHtml(c.costumeTitle)}</div>
+                            <div class="tv-name drop-shadow-sm">${escapeHtml(c.name)}</div>
+                            <div class="text-2xl opacity-80 uppercase tracking-widest">${escapeHtml(c.costumeTitle)}</div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <div class="tv-points ${scoreColor} drop-shadow-[0_0_20px_rgba(239,68,68,0.3)]">${(c[field]||0).toLocaleString()}</div>
-                        <div class="text-3xl text-slate-500 uppercase font-black tracking-[0.5rem] mt-1">${isPump?'Cheers':'Votes'}</div>
+                        <div class="tv-points drop-shadow-sm">${(c[field]||0).toLocaleString()}</div>
+                        <div class="text-lg opacity-60 uppercase font-bold tracking-widest mt-1">${isPump?'Cheers':'Votes'}</div>
                     </div>
                 </div>`;
             }).join('');
