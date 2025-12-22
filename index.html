@@ -1490,7 +1490,12 @@
 
         async function submitVote() {
             if (!db) return;
-            if (!enforceLocationCheck()) return;
+            // Force close modal if location check fails to show warning
+            if (!enforceLocationCheck()) {
+                closeVoteModal();
+                return;
+            }
+            
             const candidateId = document.getElementById('selected-candidate-id').value;
             const voterId = document.getElementById('voter-id-input').value.trim();
             const currentAward = systemConfig.awardName || 'Popular Vote';
