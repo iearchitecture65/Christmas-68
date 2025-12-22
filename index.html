@@ -91,7 +91,7 @@
             padding: 8px;
         }
 
-        /* --- NEW PUMP & TV STYLES --- */
+        /* --- NEW PUMP & TV STYLES (Adjusted for TV scaling and User UI) --- */
         .pump-heart { position: absolute; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 50; }
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
@@ -99,13 +99,21 @@
         }
         .tv-layout { background: #0f172a; color: white; height: 100vh; width: 100vw; overflow: hidden; position: fixed; inset: 0; z-index: 999999; display: flex; flex-direction: column; }
         
-        .tv-row { background: rgba(255, 255, 255, 0.9); margin-bottom: 1.5rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease; }
-        .tv-row-1 { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color: #451a03; transform: scale(1.02); border: 4px solid #fff; }
+        /* Adjusted TV sizes: Smaller padding, Bigger text */
+        .tv-row { background: rgba(255, 255, 255, 0.9); margin-bottom: 1rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease; padding: 1.5rem !important; }
+        .tv-row-1 { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color: #451a03; border: 4px solid #fff; margin-left: 1rem; margin-right: 1rem; }
         .tv-row-2 { background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%); color: #1e293b; }
         .tv-row-3 { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #fff; }
         
+        .tv-name { font-size: 3.5rem; font-weight: 800; line-height: 1.1; } /* Bigger name */
+        .tv-sub { font-size: 2rem; } /* Bigger subtext */
+        .tv-points { font-size: 4rem; font-weight: 900; } /* Bigger points */
+
         .countdown-text { font-size: 15rem; font-weight: 900; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        
+        /* Pump Button Grayscale */
+        .pump-disabled { filter: grayscale(100%); opacity: 0.7; pointer-events: none; transform: scale(0.95); }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -515,6 +523,9 @@
                         <h3 class="text-2xl font-bold text-white">รอ Admin เริ่มเกม</h3>
                         <p class="text-sm text-slate-300">เตรียมตัวกดรัวๆ เมื่อสัญญาณเริ่ม!</p>
                     </div>
+                    
+                    <!-- PUMP SUMMARY (RECEIPT) CONTAINER -->
+                    <div id="pump-summary-container" class="hidden pb-20"></div>
                 </div>
 
                 <!-- NEW VIEW: TV DISPLAY (UPDATED TO LEADERBOARD STYLE) -->
@@ -2005,6 +2016,7 @@
 
         // SOUND SYNTHESIZER (WEB AUDIO API)
         function playSfx(type) {
+            if(window.location.hash !== '#tv-result') return; // SOUND ONLY ON TV
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
@@ -2035,6 +2047,7 @@
 
         // TEXT TO SPEECH (VOICE)
         function sayWord(text) {
+            if(window.location.hash !== '#tv-result') return; // VOICE ONLY ON TV
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US'; utterance.rate = 1.2;
@@ -2066,12 +2079,26 @@
             const userWaiting = document.getElementById('pump-waiting-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
             const tvTimerContainer = document.getElementById('tv-game-timer-container');
+            const summaryContainer = document.getElementById('pump-summary-container');
 
             if (now < startAt) {
+                // COUNTDOWN PHASE
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userCountdown) userCountdown.classList.remove('hidden');
                 if(userGame) userGame.classList.add('hidden');
+                if(summaryContainer) summaryContainer.classList.add('hidden');
                 
+                // Show grid but grayed out
+                const grid = document.getElementById('pump-candidates-grid');
+                if(grid) {
+                    grid.classList.remove('hidden');
+                    // Add grayscale/disable class if ID entered
+                    if(pumpVoterId) {
+                        const buttons = grid.querySelectorAll('.pump-btn-wrapper');
+                        buttons.forEach(btn => btn.classList.add('pump-disabled'));
+                    }
+                }
+
                 const diff = Math.ceil((startAt - now) / 1000);
                 const countVal = diff > 3 ? "Ready" : diff;
                 
@@ -2080,7 +2107,7 @@
                 if(document.getElementById('tv-countdown-val')) document.getElementById('tv-countdown-val').innerText = countVal;
                 if(tvTimerContainer) tvTimerContainer.classList.add('hidden');
 
-                // VOICE TRIGGER (ONLY ON TV/ADMIN)
+                // VOICE TRIGGER (ONLY ON TV)
                 if(diff <= 3 && diff > 0 && lastCountVal !== diff) {
                     lastCountVal = diff;
                     sayWord(diff.toString());
@@ -2088,10 +2115,19 @@
 
                 lastPlayedState = 'countdown';
             } else if (now < endAt) {
+                // GAME ACTIVE PHASE
                 if(userCountdown) userCountdown.classList.add('hidden');
                 if(userGame) userGame.classList.remove('hidden');
                 if(userWaiting) userWaiting.classList.add('hidden');
+                if(summaryContainer) summaryContainer.classList.add('hidden');
                 
+                // Enable buttons
+                const grid = document.getElementById('pump-candidates-grid');
+                if(grid && pumpVoterId) {
+                    const buttons = grid.querySelectorAll('.pump-btn-wrapper');
+                    buttons.forEach(btn => btn.classList.remove('pump-disabled'));
+                }
+
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const m = Math.floor(remaining / 60); const s = remaining % 60;
                 const timeStr = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
@@ -2105,22 +2141,21 @@
                     lastPlayedState = 'active'; sayWord("Start!"); playSfx('whistle');
                 }
             } else {
-                // Game Over - Switch to Result Page immediately
+                // END PHASE
                 if(userGame) userGame.classList.add('hidden');
                 if(userWaiting) userWaiting.classList.add('hidden');
+                if(userCountdown) userCountdown.classList.add('hidden');
+                
                 if(tvTimerContainer) tvTimerContainer.classList.add('hidden');
                 if(tvCountdown) tvCountdown.classList.add('hidden');
 
                 if(lastPlayedState === 'active') {
                     lastPlayedState = 'finished'; sayWord("Time's up!"); playSfx('whistle'); setTimeout(() => playSfx('end'), 500);
+                    renderPumpSummary(); // Show Receipt on End
                 }
-
-                // Force switch view locally if still on pump view
-                if (document.getElementById('view-pump') && !document.getElementById('view-pump').classList.contains('hidden')) {
-                    document.getElementById('view-pump').classList.add('hidden');
-                    document.getElementById('view-result').classList.remove('hidden');
-                    renderLeaderboard();
-                }
+                
+                // Ensure summary is visible
+                if(summaryContainer) summaryContainer.classList.remove('hidden');
             }
         }
 
@@ -2151,23 +2186,34 @@
             grid.classList.add('grid-cols-2');
 
             const sortedCandidates = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
-            // Use different style from Vote Cards to avoid confusion
-            grid.innerHTML = sortedCandidates.map(c => `
-                <div class="bg-gradient-to-br from-pink-500 to-rose-600 p-2 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition active:scale-90 h-48 items-center justify-center text-center cursor-pointer select-none border-4 border-white/20 active:border-white" onclick="handlePumpClick(event, '${c.id}')">
+            
+            // Render grid but keep existing points if available in local memory
+            grid.innerHTML = sortedCandidates.map(c => {
+                const currentPoints = pumpSessionPoints[c.id] || 0;
+                return `
+                <div class="pump-btn-wrapper bg-gradient-to-br from-pink-500 to-rose-600 p-2 rounded-2xl flex flex-col shadow-lg animate-fade-in relative overflow-hidden transform transition active:scale-90 h-48 items-center justify-center text-center cursor-pointer select-none border-4 border-white/20 active:border-white" onclick="handlePumpClick(event, '${c.id}')">
                     <div class="absolute top-2 left-2"><span class="bg-black/20 text-white px-2 py-1 rounded text-[10px] font-mono">${c.studentId || '?'}</span></div>
                     <div class="text-white text-6xl mb-2 drop-shadow-md"><i class="fa-solid fa-hand-pointer"></i></div>
                     <h3 class="text-lg font-bold text-white leading-tight line-clamp-1 drop-shadow-md">${escapeHtml(c.name)}</h3>
-                    <div id="pump-score-${c.id}" class="absolute bottom-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+0</div>
+                    <div id="pump-score-${c.id}" class="absolute bottom-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function enterPumpMode() {
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
             pumpVoterId = id;
+            
+            // Check if user is registered (optional but good)
+            if(!attendees.some(a => a.studentId === id)) {
+                 // Relaxed rule: Just warn but let them play or block? Let's just warn.
+                 showToast('ไม่พบรหัสลงทะเบียน (เล่นได้แต่ไม่มีชื่อ)', 'info');
+            }
+            
             renderPumpCandidates();
-            showToast('พร้อมกดแล้ว!', 'success');
+            syncPumpGame(); // Re-sync to apply grayscale if needed
+            showToast('พร้อมกดแล้ว! รอสัญญาณ...', 'success');
         }
 
         function handlePumpClick(e, cid) {
@@ -2182,15 +2228,62 @@
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
 
-            // Local Feedback (Keep adding up)
+            // Local Feedback (Accumulate)
             pumpSessionPoints[cid] = (pumpSessionPoints[cid] || 0) + 1;
             const badge = document.getElementById(`pump-score-${cid}`);
             if(badge) badge.innerText = `+${pumpSessionPoints[cid]}`;
+            
+            // Persist locally
+            safeSetStorage(`pump_points_${appId}_${pumpVoterId}`, JSON.stringify(pumpSessionPoints));
 
             // Immediate Send (Increment in Firestore)
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid).update({
                 cheer_points: firebase.firestore.FieldValue.increment(1)
             }).catch(err => console.error(err));
+        }
+        
+        function renderPumpSummary() {
+            const container = document.getElementById('pump-summary-container');
+            const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
+            
+            // Find top clicked candidate by this user
+            let topId = null; let max = -1;
+            for(const [cid, pts] of Object.entries(pumpSessionPoints)) {
+                if(pts > max) { max = pts; topId = cid; }
+            }
+            const topCand = candidates.find(c => c.id === topId);
+            const cName = topCand ? topCand.name : (totalClicks > 0 ? "Multiple" : "-");
+            const cCostume = topCand ? topCand.costumeTitle : "-";
+            const nowTime = new Date().toLocaleTimeString('th-TH');
+
+            container.innerHTML = `
+                <div class="px-6 py-4 animate-fade-in">
+                    <div class="receipt-card p-6 rounded-lg shadow-2xl mx-auto max-w-xs text-center">
+                        <div class="mb-4">
+                            <div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-flag-checkered"></i></div>
+                        </div>
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight">จบเกมแล้ว!</h2>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6">PUMP MODE SUMMARY</p>
+                        <div class="space-y-4 mb-6">
+                            <div class="bg-pink-50 p-3 rounded-lg border border-pink-100">
+                                <div class="text-[10px] text-slate-400 mb-1">ยอดกดทั้งหมดของคุณ</div>
+                                <div class="font-black text-4xl text-pink-600">${totalClicks}</div>
+                                <div class="text-xs text-pink-400 font-medium">ครั้ง</div>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                <span class="text-xs text-slate-500">เชียร์เยอะสุด</span>
+                                <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(cName)}</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                <span class="text-xs text-slate-500">เวลาจบ</span>
+                                <span class="text-xs font-bold text-slate-700 text-right">${nowTime}</span>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-400">ขอบคุณที่ร่วมสนุก<br>Christmas 2025</div>
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
         }
 
         function updateTVDisplay() {
@@ -2220,31 +2313,31 @@
             // TV LEADERBOARD - LIST STYLE (MATCHING RESULT PAGE BUT BIGGER)
             container.innerHTML = sorted.map((c, i) => {
                 let rowClass = 'tv-row';
-                let rankDisplay = `<div class="w-20 h-20 rounded-full bg-slate-700/50 flex items-center justify-center font-bold text-4xl text-white border-2 border-white/20">${i + 1}</div>`;
+                let rankDisplay = `<div class="w-24 h-24 rounded-full bg-slate-700/50 flex items-center justify-center font-bold text-5xl text-white border-2 border-white/20">${i + 1}</div>`;
                 
                 if (i === 0) { 
                     rowClass += ' tv-row-1'; 
-                    rankDisplay = `<div class="w-24 h-24 rounded-full bg-yellow-300 text-yellow-800 flex items-center justify-center font-black text-5xl shadow-lg border-4 border-white"><i class="fa-solid fa-crown"></i></div>`;
+                    rankDisplay = `<div class="w-32 h-32 rounded-full bg-yellow-300 text-yellow-800 flex items-center justify-center font-black text-7xl shadow-lg border-4 border-white"><i class="fa-solid fa-crown"></i></div>`;
                 } else if (i === 1) { 
                     rowClass += ' tv-row-2'; 
-                    rankDisplay = `<div class="w-20 h-20 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-4xl shadow border-2 border-white">${i + 1}</div>`;
+                    rankDisplay = `<div class="w-24 h-24 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-5xl shadow border-2 border-white">${i + 1}</div>`;
                 } else if (i === 2) { 
                     rowClass += ' tv-row-3'; 
-                    rankDisplay = `<div class="w-20 h-20 rounded-full bg-amber-700 text-amber-100 flex items-center justify-center font-bold text-4xl shadow border-2 border-white">${i + 1}</div>`;
+                    rankDisplay = `<div class="w-24 h-24 rounded-full bg-amber-700 text-amber-100 flex items-center justify-center font-bold text-5xl shadow border-2 border-white">${i + 1}</div>`;
                 }
 
                 return `
-                <div class="${rowClass} p-6 flex items-center justify-between">
-                    <div class="flex items-center gap-8">
+                <div class="${rowClass} flex items-center justify-between">
+                    <div class="flex items-center gap-10">
                         ${rankDisplay}
                         <div>
                             <div class="tv-name drop-shadow-sm">${escapeHtml(c.name)}</div>
-                            <div class="text-2xl opacity-80 uppercase tracking-widest">${escapeHtml(c.costumeTitle)}</div>
+                            <div class="tv-sub opacity-80 uppercase tracking-widest">${escapeHtml(c.costumeTitle)}</div>
                         </div>
                     </div>
                     <div class="text-right">
                         <div class="tv-points drop-shadow-sm">${(c[field]||0).toLocaleString()}</div>
-                        <div class="text-lg opacity-60 uppercase font-bold tracking-widest mt-1">${isPump?'Cheers':'Votes'}</div>
+                        <div class="text-xl opacity-60 uppercase font-bold tracking-widest mt-1">${isPump?'Cheers':'Votes'}</div>
                     </div>
                 </div>`;
             }).join('');
