@@ -30,16 +30,16 @@
 
     <style>
         /* CORE LAYOUT LOCK & ZOOM LOCK */
-       html, body { 
-           height: 100%; 
-           overflow: hidden; 
-           font-family: 'Kanit', sans-serif; 
-           -webkit-tap-highlight-color: transparent;
-           touch-action: none; /* ล็อกซูมถาวรเพื่อการกดรัวๆ */
-           user-select: none; /* ป้องกันการคลุมดำข้อความขณะกด */
-           -webkit-user-select: none;
-           overscroll-behavior: none; 
-       }
+        html, body { 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: 'Kanit', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none; /* ล็อกซูมถาวรเพื่อการกดรัวๆ */
+            user-select: none; /* ป้องกันการคลุมดำข้อความขณะกด */
+            -webkit-user-select: none;
+            overscroll-behavior: none; 
+        }
         
         /* SCROLL CONTAINER */
         #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; }
@@ -649,12 +649,12 @@
                     </div>
                 </div>
             </div>
-
-            <!-- TOAST -->
-            <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[99999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
-                <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
-            </div>
         </div>
+    </div>
+
+    <!-- TOAST (YANKED OUT TO BODY ROOT FOR VISIBILITY) -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[99999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
+        <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
     </div>
 
     <!-- JAVASCRIPT LOGIC -->
