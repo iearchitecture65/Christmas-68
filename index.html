@@ -467,7 +467,7 @@
                                 <div onclick="openCandidateListModal()" class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group cursor-pointer hover:bg-red-100 transition shadow-sm">
                                     <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
                                     <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
-                                    <p class="text-[9px] text-red-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
+                                    <p class="text-[9px] text-blue-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
                                 </div>
                             </div>
                             
@@ -1692,8 +1692,12 @@
             const isTV = hash === 'tv-result';
             const isPumpPhase = systemConfig.activePhase === 'pump';
 
-            // Guard: Close Pump UI if not in pump phase OR in admin/vote screens
-            if (hash === 'admin' || (hash !== 'tv-result' && !isPumpPhase)) {
+            // --- FIXED: REDIRECT OVERRIDE GUARD ---
+            // If the user is on a registration sub-view, we must force the Pump UI to hide.
+            const isOverridingView = currentSubView === 'register-attend' || currentSubView === 'register-contest';
+
+            // Guard: Close Pump UI if not in pump phase OR in admin/vote screens OR in an overriding registration view
+            if (hash === 'admin' || (hash !== 'tv-result' && !isPumpPhase) || isOverridingView) {
                 document.getElementById('view-pump')?.classList.add('hidden');
                 return;
             }
@@ -1822,7 +1826,9 @@
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
                 if(!doc.exists) {
                     showToast('ไม่พบรหัสลงทะเบียน', 'error');
-                    setTimeout(() => window.location.hash = '#register-attend', 1500);
+                    setTimeout(() => {
+                        window.location.hash = '#register-attend';
+                    }, 1500);
                     return;
                 }
                 const currentAward = systemConfig.awardName || 'Popular Vote';
