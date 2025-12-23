@@ -1968,6 +1968,9 @@
         }
 
         async function enterPumpMode() {
+            // 1. ตรวจสอบพื้นที่ก่อนเป็นอันดับแรก
+            if (!enforceLocationCheck()) return;
+
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
     
