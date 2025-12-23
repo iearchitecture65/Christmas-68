@@ -193,10 +193,20 @@
 
         /* --- BIG COUNTDOWN OVERLAY --- */
         #tv-countdown-val {
-            font-size: 20rem; /* ปรับให้ใหญ่ขึ้นเป็นพิเศษ */
+            font-size: 40vw; /* ปรับขนาดตามความกว้างหน้าจอเพื่อให้ตัวเลขไม่ล้น */
+            max-font-size: 20rem; 
             font-weight: 900;
             line-height: 1;
-            text-shadow: 0 0 100px rgba(255,255,255,0.5);
+            text-align: center;
+            display: block;
+            text-shadow: 0 0 50px rgba(255,255,255,0.5);
+        }
+
+        /* สำหรับจอคอมพิวเตอร์หรือจอใหญ่ให้ปรับขนาดกลับเป็นปกติ */
+        @media (min-width: 1024px) {
+            #tv-countdown-val {
+                font-size: 30rem;
+            }
         }
         @media (min-width: 1024px) {
             #tv-countdown-val {
@@ -1749,9 +1759,16 @@
 
         function syncPumpGame() {
             const hash = window.location.hash.substring(1);
-            const isTV = hash === 'tv-result';
+            const tvCountdown = document.getElementById('tv-pump-countdown');
+    
+            // ถ้าอยู่หน้าแอดมิน ให้ปิด Overlay นับถอยหลังเสมอ
+            if (hash === 'admin') {
+                if (tvCountdown) tvCountdown.classList.add('hidden');
+                return; 
+            }
 
-            const gateContainer = document.getElementById('pump-gate-container');
+            const isTV = hash === 'tv-result';
+            const gateContainer = document.getElementById('pump-gate-container');;
             const userGame = document.getElementById('pump-game-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
             const statusBadge = document.getElementById('pump-status-badge');
