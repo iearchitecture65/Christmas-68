@@ -561,9 +561,9 @@
                         </div>
                     </div>
                     
-                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER -->
+                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER (v4: Fixed for all screens) -->
                     <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[1000] flex flex-col items-center justify-center hidden">
-                        <div class="text-slate-400 text-7xl mb-12 font-bold uppercase tracking-[1rem]">GAME STARTING IN</div>
+                        <div class="text-slate-400 text-4xl md:text-7xl mb-12 font-bold uppercase tracking-[0.5rem] md:tracking-[1rem]">GAME STARTING IN</div>
                         <div id="tv-countdown-val" class="countdown-text text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
                     </div>
                     
@@ -719,7 +719,8 @@
 
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
-            setInterval(() => { if(systemConfig.activePhase === 'pump') syncPumpGame(); }, 500);
+            // v4: Global Sync Timer
+            setInterval(() => { if(systemConfig.activePhase === 'pump') syncPumpGame(); }, 1000);
         });
 
         function handleRouting() {
@@ -1103,8 +1104,7 @@
                 updateResultDropdown();
             } else if (phase === 'pump') {
                 document.getElementById('view-pump').classList.remove('hidden');
-                renderPumpCandidates();
-                syncPumpGame();
+                syncPumpGame(); // v4: This handles showing sub-sections inside view-pump
             }
             else { document.getElementById('view-closed').classList.remove('hidden'); }
         }
@@ -1334,12 +1334,13 @@
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
-            const btnContainer = el.parentElement.querySelector('.text-center.pb-4'); 
+            const originalDisplay = el.parentElement.querySelector('button')?.style.display;
+            const btnContainer = el.parentElement.querySelector('.mt-4'); 
             if(btnContainer) btnContainer.style.display = 'none';
             try {
                 const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
                 const link = document.createElement('a');
-                link.download = `Christmas-Vote-${Date.now()}.png`; link.href = canvas.toDataURL("image/png"); link.click();
+                link.download = `Christmas-Pump-${Date.now()}.png`; link.href = canvas.toDataURL("image/png"); link.click();
                 showToast('บันทึกรูปเรียบร้อย!', 'success');
             } catch (err) { showToast('บันทึกรูปไม่สำเร็จ', 'error'); } 
             finally { if(btnContainer) btnContainer.style.display = 'block'; }
@@ -1674,49 +1675,63 @@
         }
 
         function syncPumpGame() {
-            if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) return;
+            // v4: Main logic for Pump Mode Display
+            if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
+                if (pumpVoterId && window.location.hash !== '#tv-result') {
+                    // v4: If Logged in but game not started, show gate or wait msg
+                    document.getElementById('pump-gate-container').classList.add('hidden');
+                    document.getElementById('pump-waiting-container').classList.remove('hidden');
+                    document.getElementById('pump-game-container').classList.add('hidden');
+                    document.getElementById('pump-summary-container').classList.add('hidden');
+                }
+                return;
+            }
+            
             const config = systemConfig.pumpConfig;
             const now = Date.now();
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
+            const isTV = window.location.hash === '#tv-result';
+            const pumpView = document.getElementById('view-pump');
             const gateContainer = document.getElementById('pump-gate-container');
             const userGame = document.getElementById('pump-game-container');
             const userWaiting = document.getElementById('pump-waiting-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
             const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
-            
-            const isTV = window.location.hash === '#tv-result';
 
+            // 1. Initial State Check (Player needs to Login)
             if (!pumpVoterId && !isTV) {
+                if(pumpView) pumpView.classList.remove('hidden');
                 if(gateContainer) gateContainer.classList.remove('hidden');
                 [userGame, userWaiting, summaryContainer].forEach(el => el && el.classList.add('hidden'));
                 return;
             } else { if(gateContainer) gateContainer.classList.add('hidden'); }
 
+            // 2. Countdown Phase
             if (now < startAt) {
-                // v4: Waiting mode grayscale for player
-                if(userWaiting) userWaiting.classList.add('hidden');
-                if(userGame) userGame.classList.remove('hidden');
-                if(summaryContainer) summaryContainer.classList.add('hidden'); // v4: Ensure summary hidden during countdown
-                if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.className="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-pulse"; statusBadge.classList.remove('hidden'); }
-                
-                const grid = document.getElementById('pump-candidates-grid');
-                if(grid) { 
-                    grid.classList.remove('hidden'); 
-                    grid.classList.add('game-waiting-mode'); 
-                }
-
-                // v4: Synchronized countdown with server time
                 const diff = Math.ceil((startAt - now) / 1000);
                 
+                // Show Countdown Overlay for both TV and User
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
                 }
 
-                if (isTV) {
+                if (!isTV) {
+                    // User: Prepare game container in grayscale
+                    if(pumpView) pumpView.classList.remove('hidden');
+                    if(userGame) {
+                        userGame.classList.remove('hidden');
+                        userGame.classList.add('game-waiting-mode'); // Color gray
+                    }
+                    if(userWaiting) userWaiting.classList.add('hidden');
+                    if(summaryContainer) summaryContainer.classList.add('hidden');
+                    if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.classList.remove('hidden'); }
+                    renderPumpCandidates();
+                } else {
+                    // TV: Sound only
                     if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
                         lastCountVal = diff; 
                         playSfx('whistle'); 
@@ -1728,29 +1743,30 @@
                 if(tvPanel) tvPanel.classList.remove('tv-mode-active');
                 lastPlayedState = 'countdown';
                 
-            } else if (now < endAt) {
-                // GAME ACTIVE
-                if(userWaiting) userWaiting.classList.add('hidden');
-                if(userGame) userGame.classList.remove('hidden');
-                if(summaryContainer) summaryContainer.classList.add('hidden');
-                if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
+            } 
+            // 3. Active Phase
+            else if (now < endAt) {
+                if (tvCountdown) tvCountdown.classList.add('hidden');
                 
-                const grid = document.getElementById('pump-candidates-grid');
-                if(grid) { 
-                    grid.classList.remove('hidden'); 
-                    grid.classList.remove('game-waiting-mode'); 
-                    grid.querySelectorAll('.pump-btn-wrapper').forEach(btn => btn.classList.remove('pump-disabled')); 
+                if (!isTV) {
+                    if(pumpView) pumpView.classList.remove('hidden');
+                    if(userGame) {
+                        userGame.classList.remove('hidden');
+                        userGame.classList.remove('game-waiting-mode'); // Remove gray
+                    }
+                    if(userWaiting) userWaiting.classList.add('hidden');
+                    if(summaryContainer) summaryContainer.classList.add('hidden');
+                    if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
                 }
 
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
                 
-                document.getElementById('pump-game-timer').innerText = timeStr;
-                if(tvCountdown) tvCountdown.classList.add('hidden');
+                if(document.getElementById('pump-game-timer')) document.getElementById('pump-game-timer').innerText = timeStr;
                 
                 const tvPanel = document.getElementById('view-tv-result');
                 if(tvPanel) tvPanel.classList.add('tv-mode-active'); 
-                document.getElementById('tv-game-timer-val').innerText = timeStr;
+                if(document.getElementById('tv-game-timer-val')) document.getElementById('tv-game-timer-val').innerText = timeStr;
 
                 if(lastPlayedState === 'countdown') { 
                     lastPlayedState = 'active'; 
@@ -1759,32 +1775,38 @@
                         sayWord("Start!");
                     }
                 }
-            } else {
-                // v4: Game End Flow
-                if(userGame) userGame.classList.add('hidden');
-                if(userWaiting) userWaiting.classList.add('hidden');
-                const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.remove('tv-mode-active');
-                if(tvCountdown) tvCountdown.classList.add('hidden');
-
-                if(lastPlayedState === 'active') { 
-                    lastPlayedState = 'finished'; 
-                    if(isTV) {
+            } 
+            // 4. Finished Phase
+            else {
+                if (tvCountdown) tvCountdown.classList.add('hidden');
+                
+                if (!isTV) {
+                    if(userGame) userGame.classList.add('hidden');
+                    if(summaryContainer) summaryContainer.classList.remove('hidden');
+                    if(lastPlayedState === 'active') { 
+                        lastPlayedState = 'finished'; 
+                        renderPumpSummary(); 
+                    }
+                } else {
+                    const tvPanel = document.getElementById('view-tv-result');
+                    if(tvPanel) tvPanel.classList.remove('tv-mode-active');
+                    if(lastPlayedState === 'active') { 
+                        lastPlayedState = 'finished'; 
                         playSfx('end'); 
                         sayWord("Time's up!");
                     }
-                    renderPumpSummary(); 
                 }
-                if(summaryContainer) summaryContainer.classList.remove('hidden');
             }
         }
         
         function showPumpWaiting() {}
 
         function renderPumpCandidates() {
+            // v4: Render only if voter logged in
             if (!pumpVoterId) return;
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
+            grid.classList.remove('hidden');
             if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
             grid.innerHTML = candidates.sort((a,b) => (a.studentId||'').localeCompare(b.studentId||'')).map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
@@ -1825,10 +1847,9 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // v4: Immediately transition to waiting mode
-                renderPumpCandidates();
-                syncPumpGame(); 
-                showToast('เข้าสู่ระบบสำเร็จ กำลังรอสัญญาณเริ่มเกม...', 'success');
+                // v4: Force update UI to jump to waiting screen
+                updateUIBasedOnConfig(); 
+                showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณเริ่มเกม', 'success');
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
@@ -1838,7 +1859,7 @@
         }
 
         function handlePumpClick(e, cid) {
-            if(!pumpVoterId) return; 
+            if(!pumpVoterId || lastPlayedState !== 'active') return; 
             
             const heart = document.createElement('div');
             heart.className = 'pump-heart text-pink-400 text-5xl font-bold drop-shadow-md';
@@ -1863,12 +1884,11 @@
         }
         
         function renderPumpSummary() {
-            // v4: Redesigned summary as a receipt card
+            // v4: Final Summary - Receipt Style
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             
-            // v4: Find top picked candidate
-            let topPickName = "-";
+            let topPickName = "ไม่ระบุ";
             const sortedEntries = Object.entries(pumpSessionPoints).sort((a,b) => b[1] - a[1]);
             if (sortedEntries.length > 0) {
                 const topCandidate = candidates.find(c => c.id === sortedEntries[0][0]);
@@ -1876,7 +1896,8 @@
             }
 
             const now = new Date();
-            const timeStr = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
+            const dateStr = now.toLocaleDateString('th-TH');
+            const timeStr = now.toLocaleTimeString('th-TH');
             const currentAward = systemConfig.awardName || 'Popular Vote';
 
             container.innerHTML = `
@@ -1884,42 +1905,46 @@
                     <div id="pump-receipt-card" class="receipt-card p-6 bg-white border-t-8 border-pink-500 rounded-b-lg">
                         <div class="mb-4">
                             <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm animate-bounce">
-                                <i class="fa-solid fa-bolt"></i>
+                                <i class="fa-solid fa-flag-checkered"></i>
                             </div>
                         </div>
-                        <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">จบกิจกรรม</h2>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL CHEER RECORD</p>
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">บันทึกคะแนนรัว</h2>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL CHALLENGE RECORD</p>
                         
                         <div class="space-y-4 mb-6">
                             <div class="bg-pink-50 p-4 rounded-xl border border-pink-100 text-center">
-                                <div class="text-[10px] text-pink-400 mb-1 uppercase font-bold">Your Favorite</div>
+                                <div class="text-[10px] text-pink-400 mb-1 uppercase font-bold tracking-wider">Top Cheer For</div>
                                 <div class="font-bold text-lg text-slate-800">${escapeHtml(topPickName)}</div>
-                                <div class="text-xs text-pink-600 font-medium">กดให้ทั้งหมด ${pumpSessionPoints[sortedEntries[0][0]] || 0} ครั้ง</div>
+                                <div class="text-xs text-pink-600 font-medium">คะแนนจากคุณ ${pumpSessionPoints[sortedEntries[0]?.[0]] || 0} แต้ม</div>
                             </div>
                             
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">กิจกรรม</span>
+                                    <span class="text-xs text-slate-500">หัวข้อรายการ</span>
                                     <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span>
                                 </div>
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">ยอดกดรวมของคุณ</span>
-                                    <span class="text-sm font-black text-pink-600">${totalClicks} ครั้ง</span>
+                                    <span class="text-xs text-slate-500">ยอดรวมทั้งหมด</span>
+                                    <span class="text-sm font-black text-pink-600">${totalClicks.toLocaleString()} ครั้ง</span>
                                 </div>
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">วันที่ / เวลา</span>
-                                    <span class="text-xs font-bold text-slate-700 text-right">${timeStr}</span>
+                                    <span class="text-xs text-slate-500">วันที่</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${dateStr}</span>
+                                </div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">เวลาบันทึก</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${timeStr} น.</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="text-[10px] text-slate-400 text-center leading-relaxed">
-                            ขอบคุณที่ร่วมเป็นส่วนหนึ่งในกิจกรรม<br>
+                            ขอบคุณที่ร่วมสนุกและส่งกำลังใจให้ผู้เข้าประกวด<br>
                             <span class="font-bold text-slate-500">CHRISTMAS 2025</span>
                         </div>
                     </div>
                     <div class="mt-4 text-center">
-                        <button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto">
+                        <button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto active:scale-95 shadow-lg">
                             <i class="fa-solid fa-download"></i> บันทึกบัตรคะแนน
                         </button>
                     </div>
