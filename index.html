@@ -625,7 +625,8 @@
             </div>
 
             <!-- TOAST (High Z-Index) -->
-            <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[9999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
+            <!-- v4: Adjusted Toast z-index to be extremely high -->
+            <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[99999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
                 <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
             </div>
         </div>
@@ -1591,7 +1592,8 @@
                 const batch = db.batch();
                 const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                
+                const awardKey = categoryName.replace(/[^a-zA-Z0-9]/g, '_'); // v4: Key matching pump_sessions
+
                 // Remove fields STRICTLY BOTH
                 const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
                 candSnap.forEach(doc => {
@@ -1606,6 +1608,14 @@
                 votesSnap.forEach(doc => batch.delete(doc.ref));
                 const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
                 pumpSnap.forEach(doc => batch.delete(doc.ref));
+
+                // v4: Fix bug "Code Already Used" when deleting award - delete pump_sessions with awardId
+                const sessionsSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').get();
+                sessionsSnap.forEach(doc => {
+                    if (doc.id.endsWith(`_${awardKey}`)) {
+                        batch.delete(doc.ref);
+                    }
+                });
                 
                 await batch.commit();
                 showToast('ลบหัวข้อเรียบร้อย', 'success');
@@ -1615,19 +1625,22 @@
         async function resetAllSystem() {
             showCustomConfirm('Factory Reset', '⚠️ ยืนยันล้างข้อมูลทั้งระบบ? (พิมพ์ CONFIRM)', async () => {
                 const batch = db.batch();
-                ['attendees','candidates','votes','pump_logs','pump_sessions'].forEach(async col => {
+                // v4: Corrected collection list for thorough wipe
+                const targetCollections = ['attendees','candidates','votes','pump_logs','pump_sessions','awards']; 
+                for (const col of targetCollections) {
                     const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
                     snap.forEach(doc => batch.delete(doc.ref));
-                });
+                }
                 await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
                 await batch.commit();
-                showToast('ล้างข้อมูลทั้งระบบเรียบร้อย', 'success');
+                showToast('ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว', 'success'); // v4: Show toast as requested
             });
         }
 
         /* --- PUMP GAME & SOUND --- */
         function playSfx(type) {
-            if(window.location.hash !== '#tv-result') return;
+            // v4: Audio MUST only be called on TV screen
+            if(window.location.hash !== '#tv-result') return; 
             if (audioCtx.state === 'suspended') audioCtx.resume(); 
             try {
                 const osc = audioCtx.createOscillator();
@@ -1655,6 +1668,7 @@
         }
         
         function sayWord(text) {
+            // v4: Speech MUST only be called on TV screen
             if(window.location.hash !== '#tv-result') return;
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -1667,6 +1681,7 @@
             if(!db) return;
             const duration = parseInt(document.getElementById('pump-duration').value) || 1;
             const startTime = Date.now() + 5000;
+            // v4: Centralized Game Control from Admin
             await getConfigRef().set({ pumpConfig: { startTime, durationMinutes: duration, isStarted: true } }, { merge: true });
             showToast("ส่งสัญญาณเริ่มเกมแล้ว!", "success");
         }
@@ -1684,50 +1699,63 @@
             const tvCountdown = document.getElementById('tv-pump-countdown');
             const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
+            
+            // v4: Check screens
+            const isTV = window.location.hash === '#tv-result';
 
-            if (!pumpVoterId) {
+            if (!pumpVoterId && !isTV) {
                 if(gateContainer) gateContainer.classList.remove('hidden');
                 [userGame, userWaiting, summaryContainer].forEach(el => el && el.classList.add('hidden'));
                 return;
             } else { if(gateContainer) gateContainer.classList.add('hidden'); }
 
             if (now < startAt) {
-                // WAITING (Shows Grayed Out Game)
+                // v4: Waiting Mode (Players see grayscale screen)
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userGame) userGame.classList.remove('hidden');
-                if(statusBadge) { statusBadge.innerText = "รอสัญญาณ..."; statusBadge.className="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-pulse"; statusBadge.classList.remove('hidden'); }
+                if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.className="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-pulse"; statusBadge.classList.remove('hidden'); }
                 
-                // Gray out grid
+                // v4: Apply Waiting Mode Grayscale to Player
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) { 
                     grid.classList.remove('hidden'); 
                     grid.classList.add('game-waiting-mode'); 
                 }
 
-                // TV Countdown
+                // v4: Separate TV vs User Countdown
                 const diff = Math.ceil((startAt - now) / 1000);
-                if(tvCountdown) {
-                    tvCountdown.classList.remove('hidden');
-                    document.getElementById('tv-countdown-val').innerText = diff > 3 ? "Ready" : diff;
+                
+                if (isTV) {
+                    // v4.1: TV Countdown with Audio
+                    if(tvCountdown) {
+                        tvCountdown.classList.remove('hidden');
+                        document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
+                    }
+                    if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
+                        lastCountVal = diff; 
+                        playSfx('whistle'); // v4: Sound beep
+                        sayWord(diff.toString());
+                    }
+                } else {
+                    // v4.2: User Countdown - NO AUDIO CALLS
+                    if(tvCountdown) { // Reuse TV UI elements but ensure no audio
+                        tvCountdown.classList.remove('hidden');
+                        document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
+                    }
                 }
+                
                 const tvPanel = document.getElementById('view-tv-result');
                 if(tvPanel) tvPanel.classList.remove('tv-mode-active');
-                
-                if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
-                    lastCountVal = diff; 
-                    playSfx('whistle'); 
-                    sayWord(diff.toString());
-                }
                 lastPlayedState = 'countdown';
                 
             } else if (now < endAt) {
-                // GAME ACTIVE
+                // v4: GAME ACTIVE - REMOVE WAITING MODE
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userGame) userGame.classList.remove('hidden');
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
                 
-                // Enable Buttons
+                // v4: Unlock Player Interaction
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) { 
                     grid.classList.remove('hidden'); 
@@ -1742,13 +1770,15 @@
                 if(tvCountdown) tvCountdown.classList.add('hidden');
                 
                 const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.add('tv-mode-active'); 
+                if(tvPanel) tvPanel.classList.add('tv-mode-active'); // v4: Ensure Time Remaining shows on TV
                 document.getElementById('tv-game-timer-val').innerText = timeStr;
 
                 if(lastPlayedState === 'countdown') { 
                     lastPlayedState = 'active'; 
-                    playSfx('whistle'); 
-                    sayWord("Start!");
+                    if(isTV) {
+                        playSfx('whistle'); // v4: Whistle at start
+                        sayWord("Start!");
+                    }
                 }
             } else {
                 // END
@@ -1760,8 +1790,10 @@
 
                 if(lastPlayedState === 'active') { 
                     lastPlayedState = 'finished'; 
-                    playSfx('end'); 
-                    sayWord("Time's up!");
+                    if(isTV) {
+                        playSfx('end'); 
+                        sayWord("Time's up!");
+                    }
                     renderPumpSummary(); 
                 }
                 if(summaryContainer) summaryContainer.classList.remove('hidden');
@@ -1824,7 +1856,7 @@
                 safeSetStorage("pump_id", id);
                 renderPumpCandidates();
                 syncPumpGame(); 
-                showToast('เข้าสู่ระบบสำเร็จ', 'success');
+                showToast('เข้าสู่หน้าจอเกมสำเร็จ เตรียมพร้อมเล่น!', 'success'); // v4: Go to game screen directly
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") {
@@ -1895,14 +1927,20 @@
 
             if(sorted.length === 0) { container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; return; }
 
-            // Sound Logic Check
-            let hasChange = false;
+            // v4: Sound Pop logic - Play N times for N added points
             sorted.forEach(c => {
                 const score = c[field] || 0;
-                if (lastScores[c.id] !== undefined && score > lastScores[c.id]) hasChange = true;
+                const prevScore = lastScores[c.id] || 0;
+                const diff = score - prevScore;
+                
+                if (diff > 0) {
+                    // v4: Play pop N times consecutively
+                    for(let i=0; i<Math.min(diff, 10); i++) { // Limit 10 to prevent overload
+                        setTimeout(() => playSfx('pop'), i * 50);
+                    }
+                }
                 lastScores[c.id] = score;
             });
-            if (hasChange) playSfx('pop');
 
             container.innerHTML = sorted.map((c, i) => {
                 let rowClass = 'tv-row'; let rankClass = 'tv-rank-box tv-rank-other'; let icon = '';
