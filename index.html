@@ -1694,15 +1694,15 @@
 
             // Phase 1: ต้องกรอกรหัสก่อน (เฉพาะ User)
             if (!pumpVoterId && !isTV) {
-                gateContainer.classList.remove('hidden');
-                userGame.classList.add('hidden');
+                if (gateContainer) gateContainer.classList.remove('hidden');
+                if (userGame) userGame.classList.add('hidden');
                 return;
             } 
             
             // เมื่อผ่านด่านกรอกรหัสมาแล้ว ให้โชว์หน้าจอเกมทันที
             if (!isTV) {
-                gateContainer.classList.add('hidden');
-                userGame.classList.remove('hidden');
+                if (gateContainer) gateContainer.classList.add('hidden');
+                if (userGame) userGame.classList.remove('hidden');
             }
 
             const config = systemConfig.pumpConfig || { isStarted: false };
@@ -1710,13 +1710,14 @@
 
             // Phase 2: หลัง Login แต่ Admin "ยังไม่กดเริ่ม"
             if (!config.isStarted) {
-                userGame.classList.add('game-waiting-mode'); // หน้าจอสีเทา
+                if (tvCountdown) tvCountdown.classList.add('hidden'); // Ensure hidden
+                if (userGame) userGame.classList.add('game-waiting-mode'); // หน้าจอสีเทา
                 if (statusBadge) {
                     statusBadge.innerText = "เตรียมตัวให้พร้อม...";
                     statusBadge.className = "inline-block bg-slate-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2";
                 }
                 if (timerDisplay) timerDisplay.innerText = "00:00";
-                renderPumpCandidates(); // โชว์รายชื่อผู้สมัคร (แต่กดไม่ได้เพราะติดคลาสสีเทา)
+                renderPumpCandidates(); // FIX: Call render here
                 return;
             }
 
@@ -1734,7 +1735,7 @@
                     if (valEl) valEl.innerText = diff;
                 }
 
-                userGame.classList.add('game-waiting-mode'); // ยังเป็นสีเทาอยู่
+                if (userGame) userGame.classList.add('game-waiting-mode'); // ยังเป็นสีเทาอยู่
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
                 // ระบบเสียงและ Voice (เฉพาะหน้า TV)
@@ -1743,13 +1744,14 @@
                     playSfx('whistle');
                     sayWord(diff.toString());
                 }
+                renderPumpCandidates(); // FIX: Call render here
                 lastPlayedState = 'countdown';
             } 
             // Phase 4: เริ่มวินาทีที่ 0 "เริ่มเกม!"
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
 
-                userGame.classList.remove('game-waiting-mode'); // กลายเป็นสีปกติ + ปลดล็อคการกด
+                if (userGame) userGame.classList.remove('game-waiting-mode'); // กลายเป็นสีปกติ + ปลดล็อคการกด
                 
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
@@ -1760,16 +1762,19 @@
                     statusBadge.className = "inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce";
                 }
 
-                if (lastPlayedState === 'countdown' || lastPlayedState === 'waiting') {
+                if (lastPlayedState === 'countdown' || lastPlayedState === 'waiting' || lastPlayedState === 'active') {
+                    if (lastPlayedState !== 'active' && isTV) { playSfx('whistle'); sayWord("Start!"); }
                     lastPlayedState = 'active';
-                    if (isTV) { playSfx('whistle'); sayWord("Start!"); }
                 }
+                renderPumpCandidates(); // FIX: Call render here
             } 
             // เกมจบ
             else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-                userGame.classList.add('hidden');
-                document.getElementById('pump-summary-container').classList.remove('hidden');
+                if (userGame) userGame.classList.add('hidden');
+                const summaryContainer = document.getElementById('pump-summary-container');
+                if (summaryContainer) summaryContainer.classList.remove('hidden');
+                
                 if (lastPlayedState === 'active') {
                     lastPlayedState = 'finished';
                     if (isTV) { playSfx('end'); sayWord("Time's up!"); }
@@ -1782,9 +1787,11 @@
             if (!pumpVoterId) return;
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
-            if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
+            if(candidates.length === 0) { 
+                grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; 
+                return; 
+            }
             
-            // Only update innerHTML if it's different to avoid layout flickering
             const content = candidates.sort((a,b) => (a.studentId||'').localeCompare(b.studentId||'')).map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
                 return `
@@ -1822,6 +1829,11 @@
                 });
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
+                
+                // Clear any leftover summary from previous rounds
+                const summaryContainer = document.getElementById('pump-summary-container');
+                if(summaryContainer) summaryContainer.classList.add('hidden');
+                
                 updateUIBasedOnConfig(); 
                 showToast('เข้าสู่โหมดกดรัวๆ สำเร็จ!', 'success');
             } catch(e) { 
@@ -1855,6 +1867,7 @@
         
         function renderPumpSummary() {
             const container = document.getElementById('pump-summary-container');
+            if(!container) return;
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             let topPickName = "ไม่ระบุ";
             const sortedEntries = Object.entries(pumpSessionPoints).sort((a,b) => b[1] - a[1]);
@@ -1906,7 +1919,10 @@
             
             const field = isPump ? `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}` : getScoreField(currentAward);
             const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); 
-            if(sorted.length === 0) { container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; return; }
+            if(sorted.length === 0) { 
+                container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; 
+                return; 
+            }
             
             sorted.forEach(c => {
                 const score = c[field] || 0;
