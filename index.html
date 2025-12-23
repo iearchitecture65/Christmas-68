@@ -561,7 +561,7 @@
                         </div>
                     </div>
                     
-                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER -->
+                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER (v4: Fixed for all screens) -->
                     <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[1000] flex flex-col items-center justify-center hidden">
                         <div class="text-slate-400 text-4xl md:text-7xl mb-12 font-bold uppercase tracking-[0.5rem] md:tracking-[1rem]">GAME STARTING IN</div>
                         <div id="tv-countdown-val" class="countdown-text text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
@@ -720,7 +720,7 @@
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
             // v4: Global Sync Timer
-            setInterval(() => { if(systemConfig.activePhase === 'pump') syncPumpGame(); }, 1000);
+            setInterval(() => { syncPumpGame(); }, 1000);
         });
 
         function handleRouting() {
@@ -1103,8 +1103,9 @@
                 document.getElementById('view-result').classList.remove('hidden'); 
                 updateResultDropdown();
             } else if (phase === 'pump') {
+                // v4: Only show pump view if in pump phase
                 document.getElementById('view-pump').classList.remove('hidden');
-                syncPumpGame(); // v4: This handles showing sub-sections inside view-pump
+                syncPumpGame(); 
             }
             else { document.getElementById('view-closed').classList.remove('hidden'); }
         }
@@ -1677,15 +1678,18 @@
         function syncPumpGame() {
             // v4: Main logic for Pump Mode Display
             const hash = window.location.hash.substring(1);
-            if (hash === 'admin') {
-                // If on Admin page, strictly stop all Pump UI manipulation to prevent overlap
+            const isTV = hash === 'tv-result';
+            const isPumpPhase = systemConfig.activePhase === 'pump';
+
+            // v4: Prevent showing pump UI if not in pump phase or in admin screen
+            if (hash === 'admin' || (!isPumpPhase && !isTV)) {
                 document.getElementById('view-pump')?.classList.add('hidden');
                 return;
             }
 
             if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
-                if (pumpVoterId && hash !== 'tv-result') {
-                    // v4: If Logged in but game not started, show gate or wait msg
+                if (pumpVoterId && !isTV) {
+                    // v4: Logged in but game not started by admin yet
                     document.getElementById('pump-gate-container').classList.add('hidden');
                     document.getElementById('pump-waiting-container').classList.remove('hidden');
                     document.getElementById('pump-game-container').classList.add('hidden');
@@ -1699,7 +1703,6 @@
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            const isTV = hash === 'tv-result';
             const pumpView = document.getElementById('view-pump');
             const gateContainer = document.getElementById('pump-gate-container');
             const userGame = document.getElementById('pump-game-container');
@@ -1727,7 +1730,7 @@
                 }
 
                 if (!isTV) {
-                    // User: Prepare game container in waiting (gray) mode
+                    // User screen waiting logic
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
@@ -1738,7 +1741,7 @@
                     if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.classList.remove('hidden'); }
                     renderPumpCandidates();
                 } else {
-                    // TV: Sound only
+                    // TV: Sound logic
                     if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
                         lastCountVal = diff; 
                         playSfx('whistle'); 
@@ -1759,7 +1762,7 @@
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.remove('game-waiting-mode'); // Unlock grayscale for gameplay
+                        userGame.classList.remove('game-waiting-mode'); // Unlock grayscale
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
@@ -1854,7 +1857,7 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // v4: Force update UI to jump to waiting screen immediately after login
+                // v4: Force update UI state to show waiting containers correctly
                 updateUIBasedOnConfig(); 
                 showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณเริ่มเกม', 'success');
             } catch(e) { 
@@ -1891,7 +1894,7 @@
         }
         
         function renderPumpSummary() {
-            // v4: Detailed Receipt-style summary as requested
+            // v4: Redesigned summary as a receipt card
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             
