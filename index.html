@@ -145,7 +145,7 @@
         .pump-btn-wrapper { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
         .pump-disabled { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: not-allowed; }
         
-        /* Pump Waiting Mode (Grayed Out) */
+        /* Pump Waiting Mode (Grayed Out & Unclickable) */
         .game-waiting-mode { 
             filter: grayscale(100%); 
             opacity: 0.7; 
@@ -516,16 +516,16 @@
                         </div>
                     </div>
 
-                    <!-- GAME CONTAINER (Used for both waiting and playing) -->
+                    <!-- GAME CONTAINER (Waiting & Playing Page) -->
                     <div id="pump-game-container" class="w-full text-center hidden relative px-2">
-                        <!-- FLOATING GAME TIMER ON USER SCREEN (UPDATED) -->
+                        <!-- FLOATING GAME TIMER -->
                         <div id="pump-user-timer-wrapper" class="sticky top-0 z-[60] bg-slate-900/80 backdrop-blur-lg p-3 rounded-b-3xl border-b border-white/10 mb-6 shadow-2xl -mx-4 flex flex-col items-center justify-center transition-all duration-300">
                             <div id="pump-status-badge" class="inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1">เตรียมตัวให้พร้อม...</div>
                             <div id="pump-game-timer" class="text-white text-5xl font-black font-mono leading-none tracking-tight">00:00</div>
                             <div class="text-pink-400 text-[9px] font-bold uppercase tracking-widest mt-1">Time Remaining</div>
                         </div>
 
-                        <!-- PUMP GRID -->
+                        <!-- PUMP GRID (Grayed out in Waiting state) -->
                         <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24">
                             <!-- Candidates for Pumping injected here -->
                         </div>
@@ -534,7 +534,7 @@
                     <div id="pump-summary-container" class="hidden pb-20"></div>
                 </div>
 
-                <!-- VIEW: TV DISPLAY (CORRECTED) -->
+                <!-- VIEW: TV DISPLAY -->
                 <div id="view-tv-result" class="tv-layout hidden overflow-hidden">
                     
                     <!-- AUDIO UNLOCK BUTTON -->
@@ -558,7 +558,7 @@
                             </div>
                         </div>
 
-                        <!-- Right Panel (Timer) - Repositioned to Top Right -->
+                        <!-- Right Panel (Timer) -->
                         <div id="tv-time-col">
                             <div class="text-pink-400 text-4xl font-bold uppercase tracking-widest mb-4 text-center">TIME</div>
                             <div id="tv-game-timer-val" class="font-black text-white font-mono leading-none drop-shadow-2xl text-center">00:00</div>
@@ -622,7 +622,7 @@
                 </div>
             </div>
 
-            <!-- TOAST (High Z-Index) -->
+            <!-- TOAST -->
             <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[99999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
                 <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
             </div>
@@ -1691,13 +1691,14 @@
             const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
             const tvPanel = document.getElementById('view-tv-result');
 
-            // Phase 1: ต้องกรอกรหัสก่อน (เฉพาะ User)
+            // Phase 1: ล็อกอิน (เฉพาะ User)
             if (!pumpVoterId && !isTV) {
                 if (gateContainer) gateContainer.classList.remove('hidden');
                 if (userGame) userGame.classList.add('hidden');
                 return;
             } 
             
+            // เมื่อ Login แล้ว ให้โชว์หน้าจอเกมทันที (แต่จะล็อกใน Phase 2)
             if (!isTV) {
                 if (gateContainer) gateContainer.classList.add('hidden');
                 if (userGame) userGame.classList.remove('hidden');
@@ -1706,24 +1707,28 @@
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
 
-            // Phase 2: หลัง Login แต่ Admin "ยังไม่กดเริ่ม"
+            // Phase 2: หลัง Login แต่ Admin "ยังไม่กดเริ่ม" (หน้าเตรียมพร้อม)
             if (!config.isStarted) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-                if (userGame) userGame.classList.add('game-waiting-mode');
+                if (userGame) {
+                    userGame.classList.add('game-waiting-mode'); // ล็อคปุ่มเป็นสีเทา
+                    userGame.classList.remove('hidden');
+                }
                 if (statusBadge) {
                     statusBadge.innerText = "เตรียมตัวให้พร้อม...";
                     statusBadge.className = "inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1";
                 }
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
-                renderPumpCandidates();
+                
+                renderPumpCandidates(); // วาดรายชื่อผู้สมัคร (ในสถานะล็อค)
                 return;
             }
 
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            // เมื่อ Admin กดเริ่มกิจกรรมแล้ว ให้แสดง Panel เวลาที่หน้า TV
+            // เมื่อ Admin กดเริ่มกิจกรรมแล้ว แสดงตัวจับเวลาหน้า TV
             if (isTV && tvPanel) {
                 tvPanel.classList.add('tv-mode-active');
             }
@@ -1738,7 +1743,10 @@
                     if (valEl) valEl.innerText = diff;
                 }
 
-                if (userGame) userGame.classList.add('game-waiting-mode');
+                if (userGame) {
+                    userGame.classList.add('game-waiting-mode'); // ยังคงล็อคอยู่
+                    userGame.classList.remove('hidden');
+                }
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
@@ -1753,7 +1761,10 @@
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
 
-                if (userGame) userGame.classList.remove('game-waiting-mode');
+                if (userGame) {
+                    userGame.classList.remove('game-waiting-mode'); // ปลดล็อคสีปกติ
+                    userGame.classList.remove('hidden');
+                }
                 
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
@@ -1837,7 +1848,7 @@
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 
                 updateUIBasedOnConfig(); 
-                showToast('เข้าสู่โหมดกดรัวๆ สำเร็จ!', 'success');
+                showToast('เข้าสู่โหมดเตรียมพร้อม!', 'success');
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
