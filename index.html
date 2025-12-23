@@ -1971,21 +1971,16 @@
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
     
-            // 1. สร้าง ID ประจำเครื่องนี้ขึ้นมาใหม่
             const myDeviceId = crypto.randomUUID(); 
-    
             const btn = document.querySelector('#pump-gate-container button');
             if(btn) { btn.disabled = true; btn.innerText = "กำลังตรวจสอบ..."; }
     
             try {
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
         
-                // --- ส่วนที่ปรับปรุง: หากไม่พบข้อมูล ให้พาไปหน้าลงทะเบียน ---
                 if(!doc.exists) {
                     showToast('ไม่พบข้อมูลลงทะเบียนเข้างาน กำลังพาไปหน้าลงทะเบียน...', 'error');
-                    setTimeout(() => { 
-                        window.location.hash = '#register-attend'; 
-                    }, 2000); // รอ 2 วินาทีเพื่อให้ผู้ใช้รอดู Toast แจ้งเตือนก่อน
+                    setTimeout(() => { window.location.hash = '#register-attend'; }, 2000); 
                     return;
                 }
 
@@ -1993,14 +1988,28 @@
                 const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; 
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
 
-                // 2. บันทึก ID เครื่องเราลง Server
-                await sessionRef.set({ 
+                // --- ส่วนที่แก้ไข: คำนวณเวลาหมดเวลาจากรอบการเล่นจริงของแอดมิน ---
+                const config = systemConfig.pumpConfig || {};
+                // ถ้าแอดมินตั้งเวลาไว้ ให้ใช้เวลานั้น (เริ่ม + ระยะเวลา) แต่ถ้าไม่มีให้ใช้เวลาปัจจุบันเป็นทางเลือกสุดท้าย
+                const gameEndTime = config.startTime ? (config.startTime + (config.durationMinutes * 60 * 1000)) : Date.now();
+
+                // ตรวจสอบข้อมูลเดิมในฐานข้อมูล
+                const existingSession = await sessionRef.get();
+        
+                const dataToSave = { 
                     used: true, 
                     deviceId: myDeviceId, 
-                    ts: firebase.firestore.FieldValue.serverTimestamp() 
-                }, { merge: true });
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp() 
+                };
 
-                // 3. บันทึก ID ลงในเครื่องเราเองด้วย
+                // ตรวจสอบ: ถ้ายังไม่เคยบันทึกเวลาจบเกม (recordedTime) ในหัวข้อนี้เลย ให้บันทึกครั้งแรกครั้งเดียว
+                if (!existingSession.exists || !existingSession.data().recordedTime) {
+                    dataToSave.recordedTime = gameEndTime;
+                }
+
+                // บันทึกข้อมูลแบบ Merge (เพื่อไม่ให้ไปทับ recordedTime เดิมที่เคยบันทึกไว้แล้ว)
+                await sessionRef.set(dataToSave, { merge: true });
+
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 safeSetStorage("pump_device_id", myDeviceId); 
