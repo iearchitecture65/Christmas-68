@@ -1801,17 +1801,17 @@
             const currentAward = systemConfig.awardName || 'Popular Vote';
             const gameEndTime = config.startTime + (config.durationMinutes * 60 * 1000);
             
-            // เช็กจาก "ชื่อรางวัล": ถ้าชื่อในรอบนี้ ไม่ตรงกับชื่อที่บันทึกไว้ใน config 
-            // แปลว่าเป็นข้อมูลเก่าของรอบก่อน ให้ถือว่า stale (ใช้ไม่ได้)
+            // เช็กว่ารางวัลปัจจุบันตรงกับที่ตั้งค่าในเกมไหม หรือเกมจบไปนานแล้ว (5 นาที) หรือยังไม่ได้กดเริ่ม
             const isDifferentAward = config.targetAward && config.targetAward !== currentAward;
             const isStale = config.isStarted && (now > gameEndTime + 300000 || isDifferentAward);
 
             // --- สถานะที่ 1: เตรียมตัว (ยังไม่กดเริ่ม / ชื่อรางวัลไม่ตรง / ข้อมูลเก่าค้าง) ---
+            // ถ้ายังไม่เริ่ม หรือข้อมูลเก่าเกินไป ให้ค้างหน้าเตรียมพร้อม และล้างหน้าสรุปผลทิ้ง
             if (!config.isStarted || isStale) {
-                if (summaryContainer) summaryContainer.classList.add('hidden'); // ล้างหน้าสรุปผลของรอบเก่าทิ้ง
+                if (summaryContainer) summaryContainer.classList.add('hidden'); 
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // แสดงหน้าการ์ดสีเทา (Ready)
+                    userGame.classList.add('game-waiting-mode');
                     userGame.classList.remove('hidden');
                 }
                 if (statusBadge) {
