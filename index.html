@@ -187,6 +187,18 @@
         
         /* Scrollbar hide for TV */
         #tv-list-col::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        /* BIG COUNTDOWN OVERLAY */
+        #tv-countdown-val {
+            font-size: 15rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+        @media (min-width: 768px) {
+            #tv-countdown-val {
+                font-size: 25rem;
+            }
+        }
     </style>
 </head>
 <body class="snow-bg text-gray-800">
@@ -1752,7 +1764,7 @@
                     userGame.classList.add('game-waiting-mode'); // บัตรสีเทา + บล็อกคลิก
                     userGame.classList.remove('hidden');
                 }
-                if (summaryContainer) summaryContainer.classList.add('hidden'); // ซ่อนหน้าสรุปผลถ้ามีการรีเซ็ต
+                if (summaryContainer) summaryContainer.classList.add('hidden'); // บังคับซ่อนหน้าสรุปทันที
                 
                 if (statusBadge) {
                     statusBadge.innerText = "เตรียมตัวให้พร้อม...";
@@ -1761,7 +1773,7 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                renderPumpCandidates(); 
+                renderPumpCandidates(); // ดึงรายชื่อมาใช้ในหน้า Ready ทันที
                 return;
             }
 
@@ -1785,7 +1797,7 @@
                     userGame.classList.add('game-waiting-mode'); // ยังกดไม่ได้
                     userGame.classList.remove('hidden');
                 }
-                if (summaryContainer) summaryContainer.classList.add('hidden'); // มั่นใจว่าหน้าสรุปถูกซ่อน
+                if (summaryContainer) summaryContainer.classList.add('hidden'); // บังคับซ่อนหน้าสรุปทันที
                 
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
@@ -1794,7 +1806,7 @@
                     playSfx('whistle');
                     sayWord(diff.toString());
                 }
-                renderPumpCandidates();
+                renderPumpCandidates(); // แสดงรายชื่อสีเทาในช่วงนับถอยหลัง
                 lastPlayedState = 'countdown';
             } 
             // --- สถานะที่ 3: เริ่มเกม (บัตรสีปกติ + กดได้!) ---
@@ -1804,7 +1816,7 @@
                     userGame.classList.remove('game-waiting-mode'); // ปลดล็อกสีและให้กดได้
                     userGame.classList.remove('hidden');
                 }
-                if (summaryContainer) summaryContainer.classList.add('hidden');
+                if (summaryContainer) summaryContainer.classList.add('hidden'); // บังคับซ่อนหน้าสรุปทันที
                 
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
@@ -1828,7 +1840,7 @@
                 
                 if (summaryContainer && summaryContainer.classList.contains('hidden')) {
                      summaryContainer.classList.remove('hidden');
-                     renderPumpSummary(); // This is now an async call internally
+                     renderPumpSummary(); // เรียกสรุปคะแนนจริงเมื่อจบเกม
                 }
                 
                 if (lastPlayedState === 'active') {
@@ -1845,7 +1857,7 @@
             const grid = document.getElementById('pump-candidates-grid');
             if (!grid) return;
 
-            // ป้องกันการวาดซ้ำถ้าข้อมูลเหมือนเดิม (เพื่อความลื่นไหล)
+            // --- ระบบ Hash ป้องกันการวาดซ้ำเพื่อความลื่นไหล ---
             const currentContentHash = (candidates ? candidates.length : 0) + "_" + lastPlayedState;
             if (grid.dataset.lastHash === currentContentHash) return;
             grid.dataset.lastHash = currentContentHash;
@@ -1901,7 +1913,7 @@
                 pumpSessionPoints = {};
                 safeRemoveStorage("pump_session_points_" + appId);
                 
-                // --- สั่งวาดหน้าจอใหม่ทันที ---
+                // --- สั่งเปลี่ยนหน้าอย่างเด็ดขาดและจัดการ Z-index ---
                 const gate = document.getElementById('pump-gate-container');
                 const game = document.getElementById('pump-game-container');
                 if(gate) gate.classList.add('hidden');
@@ -1911,7 +1923,7 @@
                 if(summary) summary.classList.add('hidden');
                 
                 showToast('เตรียมตัวให้พร้อม!', 'success');
-                syncPumpGame(); 
+                syncPumpGame(); // เรียกซิงค์ทันทีเพื่อให้รายชื่อปรากฏ
                 
             } catch(e) { 
                 console.error(e); 
