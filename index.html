@@ -30,14 +30,16 @@
 
     <style>
         /* CORE LAYOUT LOCK & ZOOM LOCK */
-        html, body { 
-            height: 100%; 
-            overflow: hidden; 
-            font-family: 'Kanit', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation; /* Disable double-tap zoom */
-            overscroll-behavior: none; /* Prevent bounce scrolling */
-        }
+       html, body { 
+           height: 100%; 
+           overflow: hidden; 
+           font-family: 'Kanit', sans-serif; 
+           -webkit-tap-highlight-color: transparent;
+           touch-action: none; /* ล็อกซูมถาวรเพื่อการกดรัวๆ */
+           user-select: none; /* ป้องกันการคลุมดำข้อความขณะกด */
+           -webkit-user-select: none;
+           overscroll-behavior: none; 
+       }
         
         /* SCROLL CONTAINER */
         #app-scroll-wrapper { height: 100%; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; position: relative; }
@@ -140,11 +142,12 @@
         
         /* Pump Waiting Mode (Grayed Out & Unclickable) */
         .game-waiting-mode .pump-candidate-card { 
-            filter: grayscale(100%); 
-            opacity: 0.6; 
-            pointer-events: none; /* ห้ามคลิก */
-            transform: scale(0.98);
+            filter: grayscale(100%) brightness(0.3); /* มืดลงและเทากว่าเดิม */
+            opacity: 0.8; 
+            pointer-events: none;
+            transform: scale(0.95);
         }
+
 
         /* เอฟเฟกต์เมื่อกดได้แล้ว */
         .pump-candidate-card {
