@@ -240,7 +240,7 @@
                 <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
                 <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
             </div>
-            <!-- แก้ไข: เพิ่ม id เพื่อควบคุมปุ่มตรวจสอบพิกัดใหม่ -->
+            <!-- ปุ่มตรวจสอบพิกัดใหม่ -->
             <button id="btn-recheck-loc" onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3">
                 <i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่
             </button>
@@ -655,7 +655,7 @@
         </div>
     </div>
 
-    <!-- TOAST (YANKED OUT TO BODY ROOT FOR VISIBILITY) -->
+    <!-- TOAST -->
     <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[99999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
         <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
     </div>
@@ -1092,57 +1092,64 @@
         function deg2rad(deg) { return deg * (Math.PI/180); }
 
         function checkLocationAccess(forceShowModal = false) {
-            // แก้ไข: เพิ่มการแสดงสถานะ Loading บนปุ่มเมื่อมีการกดจาก Modal
             const btn = document.getElementById('btn-recheck-loc');
+            
+            // ฟังก์ชันหลักในการตรวจสอบพิกัด
+            const executeCheck = () => {
+                if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) {
+                    document.getElementById('view-location-block').classList.add('hidden');
+                    document.getElementById('location-warning-banner').style.display = 'none';
+                    isLocationValid = true; 
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                    return;
+                }
+                if (!navigator.geolocation) { 
+                    isLocationValid = false; 
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                    return; 
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude; const userLng = position.coords.longitude;
+                        const targetLat = parseFloat(systemConfig.targetLat);
+                        const targetLng = parseFloat(systemConfig.targetLng);
+                        const allowedRad = parseFloat(systemConfig.allowedRadius || 100);
+                        const dist = getDistanceFromLatLonInMeters(userLat, userLng, targetLat, targetLng);
+                        document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
+                        document.getElementById('loc-allowed').innerText = allowedRad + " เมตร";
+                        if (dist > allowedRad) {
+                            isLocationValid = false;
+                            document.getElementById('location-warning-banner').style.display = 'block';
+                            if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
+                        } else {
+                            isLocationValid = true;
+                            document.getElementById('view-location-block').classList.add('hidden');
+                            document.getElementById('location-warning-banner').style.display = 'none';
+                            showToast("ยืนยันพิกัดสำเร็จ!", "success");
+                        }
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                    },
+                    (error) => { 
+                        isLocationValid = false; 
+                        if (forceShowModal) {
+                            document.getElementById('view-location-block').classList.remove('hidden');
+                            showToast("ไม่สามารถเข้าถึงพิกัดได้ กรุณาเปิด GPS", "error");
+                        }
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            };
+
+            // หากกดปุ่มจาก Modal ให้แสดง Loading และหน่วงเวลา 2 วินาที
             if (forceShowModal && btn) {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังตรวจสอบพิกัด...';
+                setTimeout(executeCheck, 2000);
+            } else {
+                executeCheck();
             }
-
-            if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) {
-                document.getElementById('view-location-block').classList.add('hidden');
-                document.getElementById('location-warning-banner').style.display = 'none';
-                isLocationValid = true; 
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
-                return;
-            }
-            if (!navigator.geolocation) { 
-                isLocationValid = false; 
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
-                return; 
-            }
-            
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userLat = position.coords.latitude; const userLng = position.coords.longitude;
-                    const targetLat = parseFloat(systemConfig.targetLat);
-                    const targetLng = parseFloat(systemConfig.targetLng);
-                    const allowedRad = parseFloat(systemConfig.allowedRadius || 100);
-                    const dist = getDistanceFromLatLonInMeters(userLat, userLng, targetLat, targetLng);
-                    document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
-                    document.getElementById('loc-allowed').innerText = allowedRad + " เมตร";
-                    if (dist > allowedRad) {
-                        isLocationValid = false;
-                        document.getElementById('location-warning-banner').style.display = 'block';
-                        if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden');
-                    } else {
-                        isLocationValid = true;
-                        document.getElementById('view-location-block').classList.add('hidden');
-                        document.getElementById('location-warning-banner').style.display = 'none';
-                        showToast("ยืนยันพิกัดสำเร็จ!", "success");
-                    }
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
-                },
-                (error) => { 
-                    isLocationValid = false; 
-                    if (forceShowModal) {
-                        document.getElementById('view-location-block').classList.remove('hidden');
-                        showToast("ไม่สามารถเข้าถึงพิกัดได้ กรุณาเปิด GPS", "error");
-                    }
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
         }
 
         function enforceLocationCheck() {
