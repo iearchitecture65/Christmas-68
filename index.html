@@ -625,7 +625,6 @@
             </div>
 
             <!-- TOAST (High Z-Index) -->
-            <!-- v4: Adjusted Toast z-index to be extremely high -->
             <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[99999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
                 <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
             </div>
@@ -1234,8 +1233,6 @@
                     window.location.hash = ''; 
                     setTimeout(() => {
                         window.location.hash = 'vote';
-                        // Ideally trigger modal again if we knew the candidate, 
-                        // but redirecting to vote list is good enough UX
                         if (pendingCandidate) {
                             setTimeout(() => openVoteModal(pendingCandidate), 500);
                             sessionStorage.removeItem('pendingVoteCandidate');
@@ -1302,7 +1299,6 @@
                 const attendeeRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(voterId);
                 const attendeeDoc = await attendeeRef.get();
                 
-                // AUTO-REDIRECT Logic
                 if (!attendeeDoc.exists) {
                     showToast('ไม่พบข้อมูลลงทะเบียน กำลังพาไปลงทะเบียน...', 'error');
                     sessionStorage.setItem('pendingVoteId', voterId);
@@ -1481,12 +1477,10 @@
             title.innerHTML = `ผู้โหวตให้: <b>${candidateName}</b><br>รางวัล: ${awardName}`;
             list.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลด...</div>';
             
-            // Check prefix to determine collection
             const isPump = Object.keys(candidates[0] || {}).some(k => k === `cheer_points_${awardName.replace(/[^a-zA-Z0-9]/g, '_')}`);
             const collectionName = isPump ? 'pump_logs' : 'votes';
 
             try {
-                // IMPORTANT: For Pump Logs, we keyed by specific logic, verify field names in FS
                 const snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName)
                         .where('candidateId', '==', candidateId)
                         .where('awardCategory', '==', awardName).get();
@@ -1592,9 +1586,8 @@
                 const batch = db.batch();
                 const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                const awardKey = categoryName.replace(/[^a-zA-Z0-9]/g, '_'); // v4: Key matching pump_sessions
+                const awardKey = categoryName.replace(/[^a-zA-Z0-9]/g, '_'); 
 
-                // Remove fields STRICTLY BOTH
                 const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
                 candSnap.forEach(doc => {
                     batch.update(doc.ref, { 
@@ -1603,13 +1596,11 @@
                     });
                 });
                 
-                // Delete logs
                 const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
                 votesSnap.forEach(doc => batch.delete(doc.ref));
                 const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
                 pumpSnap.forEach(doc => batch.delete(doc.ref));
 
-                // v4: Fix bug "Code Already Used" when deleting award - delete pump_sessions with awardId
                 const sessionsSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').get();
                 sessionsSnap.forEach(doc => {
                     if (doc.id.endsWith(`_${awardKey}`)) {
@@ -1625,7 +1616,6 @@
         async function resetAllSystem() {
             showCustomConfirm('Factory Reset', '⚠️ ยืนยันล้างข้อมูลทั้งระบบ? (พิมพ์ CONFIRM)', async () => {
                 const batch = db.batch();
-                // v4: Corrected collection list for thorough wipe
                 const targetCollections = ['attendees','candidates','votes','pump_logs','pump_sessions','awards']; 
                 for (const col of targetCollections) {
                     const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
@@ -1633,13 +1623,12 @@
                 }
                 await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
                 await batch.commit();
-                showToast('ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว', 'success'); // v4: Show toast as requested
+                showToast('ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว', 'success'); 
             });
         }
 
         /* --- PUMP GAME & SOUND --- */
         function playSfx(type) {
-            // v4: Audio MUST only be called on TV screen
             if(window.location.hash !== '#tv-result') return; 
             if (audioCtx.state === 'suspended') audioCtx.resume(); 
             try {
@@ -1668,7 +1657,6 @@
         }
         
         function sayWord(text) {
-            // v4: Speech MUST only be called on TV screen
             if(window.location.hash !== '#tv-result') return;
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
@@ -1681,7 +1669,6 @@
             if(!db) return;
             const duration = parseInt(document.getElementById('pump-duration').value) || 1;
             const startTime = Date.now() + 5000;
-            // v4: Centralized Game Control from Admin
             await getConfigRef().set({ pumpConfig: { startTime, durationMinutes: duration, isStarted: true } }, { merge: true });
             showToast("ส่งสัญญาณเริ่มเกมแล้ว!", "success");
         }
@@ -1700,7 +1687,6 @@
             const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
             
-            // v4: Check screens
             const isTV = window.location.hash === '#tv-result';
 
             if (!pumpVoterId && !isTV) {
@@ -1710,37 +1696,31 @@
             } else { if(gateContainer) gateContainer.classList.add('hidden'); }
 
             if (now < startAt) {
-                // v4: Waiting Mode (Players see grayscale screen)
+                // v4: Waiting mode grayscale for player
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userGame) userGame.classList.remove('hidden');
+                if(summaryContainer) summaryContainer.classList.add('hidden'); // v4: Ensure summary hidden during countdown
                 if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.className="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-pulse"; statusBadge.classList.remove('hidden'); }
                 
-                // v4: Apply Waiting Mode Grayscale to Player
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) { 
                     grid.classList.remove('hidden'); 
                     grid.classList.add('game-waiting-mode'); 
                 }
 
-                // v4: Separate TV vs User Countdown
+                // v4: Synchronized countdown with server time
                 const diff = Math.ceil((startAt - now) / 1000);
                 
+                if (tvCountdown) {
+                    tvCountdown.classList.remove('hidden');
+                    document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
+                }
+
                 if (isTV) {
-                    // v4.1: TV Countdown with Audio
-                    if(tvCountdown) {
-                        tvCountdown.classList.remove('hidden');
-                        document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
-                    }
                     if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
                         lastCountVal = diff; 
-                        playSfx('whistle'); // v4: Sound beep
+                        playSfx('whistle'); 
                         sayWord(diff.toString());
-                    }
-                } else {
-                    // v4.2: User Countdown - NO AUDIO CALLS
-                    if(tvCountdown) { // Reuse TV UI elements but ensure no audio
-                        tvCountdown.classList.remove('hidden');
-                        document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
                     }
                 }
                 
@@ -1749,13 +1729,12 @@
                 lastPlayedState = 'countdown';
                 
             } else if (now < endAt) {
-                // v4: GAME ACTIVE - REMOVE WAITING MODE
+                // GAME ACTIVE
                 if(userWaiting) userWaiting.classList.add('hidden');
                 if(userGame) userGame.classList.remove('hidden');
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
                 
-                // v4: Unlock Player Interaction
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) { 
                     grid.classList.remove('hidden'); 
@@ -1770,18 +1749,18 @@
                 if(tvCountdown) tvCountdown.classList.add('hidden');
                 
                 const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.add('tv-mode-active'); // v4: Ensure Time Remaining shows on TV
+                if(tvPanel) tvPanel.classList.add('tv-mode-active'); 
                 document.getElementById('tv-game-timer-val').innerText = timeStr;
 
                 if(lastPlayedState === 'countdown') { 
                     lastPlayedState = 'active'; 
                     if(isTV) {
-                        playSfx('whistle'); // v4: Whistle at start
+                        playSfx('whistle'); 
                         sayWord("Start!");
                     }
                 }
             } else {
-                // END
+                // v4: Game End Flow
                 if(userGame) userGame.classList.add('hidden');
                 if(userWaiting) userWaiting.classList.add('hidden');
                 const tvPanel = document.getElementById('view-tv-result');
@@ -1803,11 +1782,7 @@
         function showPumpWaiting() {}
 
         function renderPumpCandidates() {
-            if (!pumpVoterId) {
-                const grid = document.getElementById('pump-candidates-grid');
-                if(!grid) return;
-                return;
-            }
+            if (!pumpVoterId) return;
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
             if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
@@ -1830,7 +1805,6 @@
             if(btn) { btn.disabled = true; btn.innerText = "กำลังตรวจสอบ..."; }
 
             try {
-                // 1. Check Registration
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
                 if(!doc.exists) {
                     showToast('ไม่พบรหัสลงทะเบียน', 'error');
@@ -1838,32 +1812,27 @@
                     return;
                 }
                 
-                // 2. STRICT DEVICE LOCK (TRANSACTION)
                 const currentAward = systemConfig.awardName || 'Popular Vote';
-                const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; // BIND SESSION TO AWARD
+                const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; 
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
                 
                 await db.runTransaction(async (transaction) => {
                     const sessionDoc = await transaction.get(sessionRef);
-                    if (sessionDoc.exists) {
-                        throw "SESSION_EXISTS";
-                    }
+                    if (sessionDoc.exists) throw "SESSION_EXISTS";
                     transaction.set(sessionRef, { used: true, ts: firebase.firestore.FieldValue.serverTimestamp() });
                 });
 
-                // Success
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
+                
+                // v4: Immediately transition to waiting mode
                 renderPumpCandidates();
                 syncPumpGame(); 
-                showToast('เข้าสู่หน้าจอเกมสำเร็จ เตรียมพร้อมเล่น!', 'success'); // v4: Go to game screen directly
+                showToast('เข้าสู่ระบบสำเร็จ กำลังรอสัญญาณเริ่มเกม...', 'success');
             } catch(e) { 
                 console.error(e); 
-                if (e === "SESSION_EXISTS") {
-                    showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้ (ล็อก 1 เครื่อง)", "error");
-                } else {
-                    showToast('เกิดข้อผิดพลาด', 'error'); 
-                }
+                if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
+                else showToast('เกิดข้อผิดพลาด', 'error'); 
             } 
             finally { if(btn) { btn.disabled = false; btn.innerText = "พร้อมลุย!"; } }
         }
@@ -1887,7 +1856,6 @@
             const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid);
             candidateRef.update({ [field]: firebase.firestore.FieldValue.increment(1) }).catch(err => console.error(err));
             
-            // Log for admin detail view
             const logId = `${pumpVoterId}_${cid}_${field}`;
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').doc(logId).set({
                 voterId: pumpVoterId, candidateId: cid, awardCategory: currentAward, count: firebase.firestore.FieldValue.increment(1)
@@ -1895,18 +1863,65 @@
         }
         
         function renderPumpSummary() {
+            // v4: Redesigned summary as a receipt card
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
+            
+            // v4: Find top picked candidate
+            let topPickName = "-";
+            const sortedEntries = Object.entries(pumpSessionPoints).sort((a,b) => b[1] - a[1]);
+            if (sortedEntries.length > 0) {
+                const topCandidate = candidates.find(c => c.id === sortedEntries[0][0]);
+                if (topCandidate) topPickName = topCandidate.name;
+            }
+
+            const now = new Date();
+            const timeStr = now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH');
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+
             container.innerHTML = `
-                <div class="px-6 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
-                    <div class="receipt-card p-6 border-t-8 border-pink-500 rounded-b-lg">
-                        <div class="mb-4"><div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-flag-checkered"></i></div></div>
-                        <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">จบเกมแล้ว!</h2>
-                        <div class="bg-pink-50 p-3 rounded-lg border border-pink-100 mt-4 text-center">
-                            <div class="text-[10px] text-slate-400 mb-1">ยอดกดทั้งหมดของคุณ</div>
-                            <div class="font-black text-4xl text-pink-600">${totalClicks}</div>
-                            <div class="text-xs text-pink-400 font-medium">ครั้ง</div>
+                <div class="px-4 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
+                    <div id="pump-receipt-card" class="receipt-card p-6 bg-white border-t-8 border-pink-500 rounded-b-lg">
+                        <div class="mb-4">
+                            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm animate-bounce">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
                         </div>
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">จบกิจกรรม</h2>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL CHEER RECORD</p>
+                        
+                        <div class="space-y-4 mb-6">
+                            <div class="bg-pink-50 p-4 rounded-xl border border-pink-100 text-center">
+                                <div class="text-[10px] text-pink-400 mb-1 uppercase font-bold">Your Favorite</div>
+                                <div class="font-bold text-lg text-slate-800">${escapeHtml(topPickName)}</div>
+                                <div class="text-xs text-pink-600 font-medium">กดให้ทั้งหมด ${pumpSessionPoints[sortedEntries[0][0]] || 0} ครั้ง</div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">กิจกรรม</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span>
+                                </div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">ยอดกดรวมของคุณ</span>
+                                    <span class="text-sm font-black text-pink-600">${totalClicks} ครั้ง</span>
+                                </div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                    <span class="text-xs text-slate-500">วันที่ / เวลา</span>
+                                    <span class="text-xs font-bold text-slate-700 text-right">${timeStr}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-[10px] text-slate-400 text-center leading-relaxed">
+                            ขอบคุณที่ร่วมเป็นส่วนหนึ่งในกิจกรรม<br>
+                            <span class="font-bold text-slate-500">CHRISTMAS 2025</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto">
+                            <i class="fa-solid fa-download"></i> บันทึกบัตรคะแนน
+                        </button>
                     </div>
                 </div>`;
             container.classList.remove('hidden');
@@ -1923,19 +1938,17 @@
             if(isPump) syncPumpGame();
 
             const field = isPump ? `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}` : getScoreField(currentAward);
-            const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); // Show Top 5 for cleaner TV
+            const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); 
 
             if(sorted.length === 0) { container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; return; }
 
-            // v4: Sound Pop logic - Play N times for N added points
             sorted.forEach(c => {
                 const score = c[field] || 0;
                 const prevScore = lastScores[c.id] || 0;
                 const diff = score - prevScore;
                 
                 if (diff > 0) {
-                    // v4: Play pop N times consecutively
-                    for(let i=0; i<Math.min(diff, 10); i++) { // Limit 10 to prevent overload
+                    for(let i=0; i<Math.min(diff, 10); i++) { 
                         setTimeout(() => playSfx('pop'), i * 50);
                     }
                 }
