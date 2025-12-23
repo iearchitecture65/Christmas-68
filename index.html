@@ -2087,6 +2087,12 @@
             const container = document.getElementById('tv-leaderboard-list');
             const cat = document.getElementById('tv-current-category');
             if(!container) return;
+    
+            // ตรวจสอบว่ารางวัลเปลี่ยนไปจากที่เคยบันทึกใน lastScores หรือไม่
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            if (lastScores._currentAward !== currentAward) {
+                lastScores = { _currentAward: currentAward }; // ล้างคะแนนเก่าออกทั้งหมด
+            }
             const isPump = systemConfig.activePhase === 'pump';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             cat.innerText = isPump ? `CHALLENGE: ${currentAward}` : `AWARD: ${currentAward}`;
