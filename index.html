@@ -146,7 +146,12 @@
         .pump-disabled { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: not-allowed; }
         
         /* Pump Waiting Mode (Grayed Out) */
-        .game-waiting-mode { filter: grayscale(100%) opacity(0.6); pointer-events: none; }
+        .game-waiting-mode { 
+            filter: grayscale(100%); 
+            opacity: 0.7; 
+            pointer-events: none; /* Lock interaction */
+            user-select: none;
+        }
         
         /* TV Layout Grid */
         #tv-main-container { display: flex; height: 100%; width: 100%; position: relative; }
@@ -188,6 +193,12 @@
     <div id="initial-loader">
         <div class="animate-bounce mb-4"><i class="fa-solid fa-tree text-green-400 text-4xl"></i></div>
         <div class="flex items-center gap-2"><i class="fa-solid fa-circle-notch fa-spin"></i><span>กำลังโหลดระบบ...</span></div>
+    </div>
+
+    <!-- GLOBAL COUNTDOWN OVERLAY (User & TV) -->
+    <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[999999] flex flex-col items-center justify-center hidden">
+        <div class="text-slate-400 text-4xl md:text-7xl mb-12 font-bold uppercase tracking-[0.5rem] md:tracking-[1rem]">READY</div>
+        <div id="tv-countdown-val" class="countdown-text text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
     </div>
 
     <!-- LOCATION BLOCK MODAL -->
@@ -505,14 +516,7 @@
                         </div>
                     </div>
 
-                    <div id="pump-waiting-container" class="text-center text-white/50 py-20 hidden">
-                        <div class="bg-white/10 backdrop-blur-md p-10 rounded-3xl border border-white/20 inline-block shadow-2xl">
-                            <i class="fa-solid fa-hourglass-start text-6xl mb-6 animate-spin-slow text-yellow-400"></i>
-                            <h3 class="text-3xl font-bold text-white mb-2">รอสัญญาณเริ่มเกม</h3>
-                            <p class="text-slate-300">รหัสนักศึกษาของคุณผ่านแล้ว<br>เตรียมตัวกดรัวๆ เร็วๆ นี้!</p>
-                        </div>
-                    </div>
-
+                    <!-- GAME CONTAINER (Used for both waiting and playing) -->
                     <div id="pump-game-container" class="w-full text-center space-y-6 hidden relative px-2">
                         <!-- GAME TIMER ON USER SCREEN -->
                         <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 inline-block mb-4 shadow-xl">
@@ -521,10 +525,10 @@
                         </div>
                         
                         <!-- STATUS BADGE -->
-                        <div id="pump-status-badge" class="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 hidden">รอสัญญาณ...</div>
+                        <div id="pump-status-badge" class="inline-block bg-slate-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2">เตรียมตัวให้พร้อม...</div>
 
                         <!-- PUMP GRID -->
-                        <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24 hidden">
+                        <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24">
                             <!-- Candidates for Pumping injected here -->
                         </div>
                     </div>
@@ -532,10 +536,10 @@
                     <div id="pump-summary-container" class="hidden pb-20"></div>
                 </div>
 
-                <!-- NEW VIEW: TV DISPLAY (UPDATED) -->
+                <!-- VIEW: TV DISPLAY -->
                 <div id="view-tv-result" class="tv-layout hidden overflow-hidden">
                     
-                    <!-- AUDIO UNLOCK BUTTON (NEW) -->
+                    <!-- AUDIO UNLOCK BUTTON -->
                     <button id="tv-audio-unlock" class="fixed top-6 right-6 z-[1000000] bg-white text-slate-900 px-6 py-3 rounded-full font-bold shadow-xl animate-pulse hover:bg-slate-100 transition" onclick="unlockAudio()">
                         🔊 คลิกเพื่อเปิดเสียง
                     </button>
@@ -556,17 +560,11 @@
                             </div>
                         </div>
 
-                        <!-- Right Panel (Timer) - Repositioned to Top Right -->
+                        <!-- Right Panel (Timer) -->
                         <div id="tv-time-col">
                             <div class="text-pink-400 text-4xl font-bold uppercase tracking-widest mb-4 text-center">TIME</div>
                             <div id="tv-game-timer-val" class="font-black text-white font-mono leading-none drop-shadow-2xl text-center">00:00</div>
                         </div>
-                    </div>
-                    
-                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER (v4: Fixed for all screens) -->
-                    <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[1000] flex flex-col items-center justify-center hidden">
-                        <div class="text-slate-400 text-4xl md:text-7xl mb-12 font-bold uppercase tracking-[0.5rem] md:tracking-[1rem]">GAME STARTING IN</div>
-                        <div id="tv-countdown-val" class="countdown-text text-white e drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
                     </div>
                     
                     <!-- DECORATIVE BG FOR TV -->
@@ -682,21 +680,22 @@
         let isLocationValid = true;
         let isMapLocked = true;
         let selectedResultCategory = 'current';
-        let pumpVoterId = '';
+        let pumpVoterId = sessionStorage.getItem('pump_id') || '';
         let pumpSessionPoints = {}; 
         let lastPlayedState = 'waiting'; 
         let lastCountVal = null;
         let lastScores = {};
         let currentSessionAward = null;
         
-        // --- AUDIO CONTEXT (FIXED) ---
+        // --- AUDIO CONTEXT ---
         let audioUnlocked = false;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         function unlockAudio() {
             if (audioCtx.state !== 'running') audioCtx.resume();
             audioUnlocked = true;
-            document.getElementById('tv-audio-unlock')?.remove();
+            const btn = document.getElementById('tv-audio-unlock');
+            if(btn) btn.remove();
             console.log("Audio Unlocked");
         }
         document.addEventListener('click', () => { if(!audioUnlocked && window.location.hash === '#tv-result') unlockAudio(); }, { once: true });
@@ -720,7 +719,6 @@
 
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
-            // v4: Main Sync Interval
             setInterval(() => { syncPumpGame(); }, 1000);
         });
 
@@ -919,7 +917,6 @@
                 if (doc.exists) {
                     const newData = doc.data();
                     
-                    // --- RESET SYNC LOGIC ---
                     const serverResetVersion = newData.voteResetVersion || 0;
                     const localResetVersion = parseInt(safeGetStorage(`last_reset_v_${appId}`) || 0);
 
@@ -955,7 +952,8 @@
                         showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
                         pumpVoterId = ''; 
                         pumpSessionPoints = {};
-                        document.getElementById('pump-id-input').value = '';
+                        const inputEl = document.getElementById('pump-id-input');
+                        if(inputEl) inputEl.value = '';
                         if(sessionStorage.getItem('pump_id')) sessionStorage.removeItem('pump_id');
                     }
                     currentSessionAward = newAward;
@@ -1121,7 +1119,6 @@
                 document.getElementById('view-result').classList.remove('hidden'); 
                 updateResultDropdown();
             } else if (phase === 'pump') {
-                // v4: Main Pump View
                 document.getElementById('view-pump').classList.remove('hidden');
                 syncPumpGame(); 
             }
@@ -1230,7 +1227,6 @@
 
         async function handleAttendSubmit() {
             if (!db) return;
-            // FIXED: Removed Phase Check for Attendee Registration to ensure it's always open
             if (!enforceLocationCheck()) return;
             const id = document.getElementById('attend-id').value.trim();
             const name = document.getElementById('attend-name').value.trim();
@@ -1266,7 +1262,6 @@
 
         async function handleContestSubmit() {
             if (!db) return;
-            // FIXED: Removed Phase Check for Contest Registration to ensure it's always open
             if (!enforceLocationCheck()) return;
             const id = document.getElementById('contest-id').value.trim();
             const name = document.getElementById('contest-name').value.trim();
@@ -1687,115 +1682,98 @@
         }
 
         function syncPumpGame() {
-            // v4: Centralized Pump Sync with Strict Phase Checks
             const hash = window.location.hash.substring(1);
+            if (hash === 'admin' || (hash !== 'tv-result' && systemConfig.activePhase !== 'pump')) return;
+
             const isTV = hash === 'tv-result';
-            const isPumpPhase = systemConfig.activePhase === 'pump';
-
-            // --- FIXED: REDIRECT OVERRIDE GUARD ---
-            // If the user is on a registration sub-view, we must force the Pump UI to hide.
-            const isOverridingView = currentSubView === 'register-attend' || currentSubView === 'register-contest';
-
-            // Guard: Close Pump UI if not in pump phase OR in admin/vote screens OR in an overriding registration view
-            if (hash === 'admin' || (hash !== 'tv-result' && !isPumpPhase) || isOverridingView) {
-                document.getElementById('view-pump')?.classList.add('hidden');
-                return;
-            }
-
-            const pumpView = document.getElementById('view-pump');
             const gateContainer = document.getElementById('pump-gate-container');
             const userGame = document.getElementById('pump-game-container');
-            const userWaiting = document.getElementById('pump-waiting-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
-            const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
+            const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
 
-            // 1. STEP 1: Login Gate (Phase 1)
+            // Phase 1: ต้องกรอกรหัสก่อน (เฉพาะ User)
             if (!pumpVoterId && !isTV) {
-                if(pumpView) pumpView.classList.remove('hidden');
-                if(gateContainer) gateContainer.classList.remove('hidden');
-                [userGame, userWaiting, summaryContainer, tvCountdown].forEach(el => el && el.classList.add('hidden'));
+                gateContainer.classList.remove('hidden');
+                userGame.classList.add('hidden');
                 return;
-            } else if (!isTV) { gateContainer.classList.add('hidden'); }
+            } 
+            
+            // เมื่อผ่านด่านกรอกรหัสมาแล้ว ให้โชว์หน้าจอเกมทันที
+            if (!isTV) {
+                gateContainer.classList.add('hidden');
+                userGame.classList.remove('hidden');
+            }
 
-            // 2. STEP 2: Waiting for Signal (Phase 2)
-            if (!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
-                if (!isTV) {
-                    if(pumpView) pumpView.classList.remove('hidden');
-                    if(userWaiting) userWaiting.classList.remove('hidden'); 
-                    [userGame, summaryContainer, tvCountdown].forEach(el => el && el.classList.add('hidden'));
+            const config = systemConfig.pumpConfig || { isStarted: false };
+            const now = Date.now();
+
+            // Phase 2: หลัง Login แต่ Admin "ยังไม่กดเริ่ม"
+            if (!config.isStarted) {
+                userGame.classList.add('game-waiting-mode'); // หน้าจอสีเทา
+                if (statusBadge) {
+                    statusBadge.innerText = "เตรียมตัวให้พร้อม...";
+                    statusBadge.className = "inline-block bg-slate-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2";
                 }
+                if (timerDisplay) timerDisplay.innerText = "00:00";
+                renderPumpCandidates(); // โชว์รายชื่อผู้สมัคร (แต่กดไม่ได้เพราะติดคลาสสีเทา)
                 return;
             }
 
-            const config = systemConfig.pumpConfig;
-            const now = Date.now();
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            // 3. STEP 3: Countdown Phase (Phase 3)
+            // Phase 3: Admin กดเริ่มแล้ว "กำลังนับ 3 2 1"
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
+                
+                // แสดง Overlay นับถอยหลัง (ใช้ได้ทั้ง User และ TV)
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
-                    document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
+                    const valEl = document.getElementById('tv-countdown-val');
+                    if (valEl) valEl.innerText = diff;
                 }
-                if (!isTV) {
-                    if(pumpView) pumpView.classList.remove('hidden');
-                    if(userGame) {
-                        userGame.classList.remove('hidden');
-                        userGame.classList.add('game-waiting-mode'); // Grayscale during countdown
-                    }
-                    if(userWaiting) userWaiting.classList.add('hidden');
-                    if(summaryContainer) summaryContainer.classList.add('hidden');
-                    if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.classList.remove('hidden'); }
-                    renderPumpCandidates();
-                } else {
-                    if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
-                        lastCountVal = diff; 
-                        playSfx('whistle'); sayWord(diff.toString());
-                    }
+
+                userGame.classList.add('game-waiting-mode'); // ยังเป็นสีเทาอยู่
+                if (timerDisplay) timerDisplay.innerText = "00:00";
+                
+                // ระบบเสียงและ Voice (เฉพาะหน้า TV)
+                if (isTV && diff <= 3 && lastCountVal !== diff) {
+                    lastCountVal = diff;
+                    playSfx('whistle');
+                    sayWord(diff.toString());
                 }
                 lastPlayedState = 'countdown';
             } 
-            // 4. STEP 4: Active Gameplay (Phase 4)
+            // Phase 4: เริ่มวินาทีที่ 0 "เริ่มเกม!"
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-                if (!isTV) {
-                    if(pumpView) pumpView.classList.remove('hidden');
-                    if(userGame) {
-                        userGame.classList.remove('hidden');
-                        userGame.classList.remove('game-waiting-mode'); // UNLOCK COLOR/CLICK
-                    }
-                    if(userWaiting) userWaiting.classList.add('hidden');
-                    if(summaryContainer) summaryContainer.classList.add('hidden');
-                    if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
-                }
+
+                userGame.classList.remove('game-waiting-mode'); // กลายเป็นสีปกติ + ปลดล็อคการกด
+                
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
-                if(document.getElementById('pump-game-timer')) document.getElementById('pump-game-timer').innerText = timeStr;
-                const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.add('tv-mode-active'); 
-                if(document.getElementById('tv-game-timer-val')) document.getElementById('tv-game-timer-val').innerText = timeStr;
-                if(lastPlayedState === 'countdown') { 
-                    lastPlayedState = 'active'; 
-                    if(isTV) { playSfx('whistle'); sayWord("Start!"); }
+                if (timerDisplay) timerDisplay.innerText = timeStr;
+
+                if (statusBadge) {
+                    statusBadge.innerText = "กดรัวๆ เลย!";
+                    statusBadge.className = "inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce";
+                }
+
+                if (lastPlayedState === 'countdown' || lastPlayedState === 'waiting') {
+                    lastPlayedState = 'active';
+                    if (isTV) { playSfx('whistle'); sayWord("Start!"); }
                 }
             } 
-            // 5. STEP 5: Finished
+            // เกมจบ
             else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-                if (!isTV) {
-                    if(userGame) userGame.classList.add('hidden');
-                    if(summaryContainer) summaryContainer.classList.remove('hidden');
-                    if(lastPlayedState === 'active') { lastPlayedState = 'finished'; renderPumpSummary(); }
-                } else {
-                    const tvPanel = document.getElementById('view-tv-result');
-                    if(tvPanel) tvPanel.classList.remove('tv-mode-active');
-                    if(lastPlayedState === 'active') { 
-                        lastPlayedState = 'finished'; 
-                        playSfx('end'); sayWord("Time's up!");
-                    }
+                userGame.classList.add('hidden');
+                document.getElementById('pump-summary-container').classList.remove('hidden');
+                if (lastPlayedState === 'active') {
+                    lastPlayedState = 'finished';
+                    if (isTV) { playSfx('end'); sayWord("Time's up!"); }
+                    renderPumpSummary();
                 }
             }
         }
@@ -1804,9 +1782,10 @@
             if (!pumpVoterId) return;
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
-            grid.classList.remove('hidden');
             if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
-            grid.innerHTML = candidates.sort((a,b) => (a.studentId||'').localeCompare(b.studentId||'')).map(c => {
+            
+            // Only update innerHTML if it's different to avoid layout flickering
+            const content = candidates.sort((a,b) => (a.studentId||'').localeCompare(b.studentId||'')).map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
                 return `
                 <div class="pump-btn-wrapper bg-white/10 backdrop-blur-md p-4 rounded-3xl flex flex-col shadow-lg relative overflow-hidden transform transition active:scale-95 border-2 border-white/20 h-52 items-center justify-center text-center cursor-pointer select-none" onclick="handlePumpClick(event, '${c.id}')">
@@ -1815,6 +1794,10 @@
                     <div id="pump-score-${c.id}" class="absolute top-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
                 </div>
             `}).join('');
+            
+            if (grid.innerHTML !== content) {
+                grid.innerHTML = content;
+            }
         }
 
         async function enterPumpMode() {
@@ -1826,9 +1809,7 @@
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
                 if(!doc.exists) {
                     showToast('ไม่พบรหัสลงทะเบียน', 'error');
-                    setTimeout(() => {
-                        window.location.hash = '#register-attend';
-                    }, 1500);
+                    setTimeout(() => { window.location.hash = '#register-attend'; }, 1500);
                     return;
                 }
                 const currentAward = systemConfig.awardName || 'Popular Vote';
@@ -1842,7 +1823,7 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 updateUIBasedOnConfig(); 
-                showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณจาก Admin', 'success');
+                showToast('เข้าสู่โหมดกดรัวๆ สำเร็จ!', 'success');
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
@@ -1873,7 +1854,6 @@
         }
         
         function renderPumpSummary() {
-            // v4: Receipt UI Updated (No animation, new text)
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             let topPickName = "ไม่ระบุ";
@@ -1923,10 +1903,11 @@
             const isPump = systemConfig.activePhase === 'pump';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             cat.innerText = isPump ? `CHALLENGE: ${currentAward}` : `AWARD: ${currentAward}`;
-            if(isPump) syncPumpGame();
+            
             const field = isPump ? `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}` : getScoreField(currentAward);
             const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); 
             if(sorted.length === 0) { container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; return; }
+            
             sorted.forEach(c => {
                 const score = c[field] || 0;
                 const prevScore = lastScores[c.id] || 0;
@@ -1936,6 +1917,7 @@
                 }
                 lastScores[c.id] = score;
             });
+            
             container.innerHTML = sorted.map((c, i) => {
                 let rowClass = 'tv-row'; let rankClass = 'tv-rank-box tv-rank-other'; let icon = '';
                 if (i === 0) { rowClass += ' tv-row-1'; rankClass = 'tv-rank-box tv-rank-1'; icon = '<i class="fa-solid fa-crown text-yellow-600 ml-3"></i>'; }
