@@ -478,7 +478,7 @@
                                 <div onclick="openCandidateListModal()" class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group cursor-pointer hover:bg-red-100 transition shadow-sm">
                                     <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
                                     <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
-                                    <p class="text-[9px] text-blue-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
+                                    <p class="text-[9px] text-red-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
                                 </div>
                             </div>
                             
@@ -1691,7 +1691,7 @@
             const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
             const tvPanel = document.getElementById('view-tv-result');
 
-            // 2. ตรวจสอบสถานะเบื้องต้น (ถ้าไม่ได้อยู่หน้า TV และสถานะระบบไม่ใช่ pump ให้หยุดทำงาน)
+            // 2. ตรวจสอบสถานะเบื้องต้น
             if (!isTV && systemConfig.activePhase !== 'pump') return;
 
             // 3. หน้า User: จัดการหน้า Login Gate
@@ -1701,11 +1701,9 @@
                 return;
             } 
 
-            // 4. แสดงหน้าจอเกม (เตรียมพร้อม) - เฉพาะฝั่ง User
-            if (!isTV) {
-                if (gateContainer) gateContainer.classList.add('hidden');
-                if (userGame) userGame.classList.remove('hidden');
-            }
+            // 4. แสดงหน้าจอเกม (เตรียมพร้อม)
+            if (gateContainer) gateContainer.classList.add('hidden');
+            if (userGame && !isTV) userGame.classList.remove('hidden');
 
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
@@ -1723,7 +1721,8 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                renderPumpCandidates(); // วาดรายชื่อผู้เข้าแข่งขันทันที
+                // สำคัญมาก: ต้องมีบรรทัดนี้เพื่อให้รายชื่อสีเทาปรากฏขึ้นมา
+                renderPumpCandidates(); 
                 return;
             }
 
@@ -1793,20 +1792,25 @@
         }
 
         function renderPumpCandidates() {
-            // หน้า TV ไม่ต้องวาดการ์ดปุ่มกด (มี Leaderboard อยู่แล้ว)
-            const hash = window.location.hash.substring(1);
-            if (hash === 'tv-result') return;
+            // 1. ตรวจสอบว่าล็อกอินหรือยัง
+            if (!pumpVoterId) return; 
 
-            if (!pumpVoterId) return; // ต้องล็อกอินก่อนถึงจะเห็นรายชื่อ
             const grid = document.getElementById('pump-candidates-grid');
             if (!grid) return;
-            
-            const sorted = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
-            if (sorted.length === 0) {
-                grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>';
+
+            // 2. ตรวจสอบว่ามีข้อมูลผู้สมัครหรือไม่
+            if (!candidates || candidates.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-2 text-center py-20 text-white/50">
+                        <i class="fa-solid fa-user-slash text-4xl mb-4"></i>
+                        <p>ไม่พบข้อมูลผู้เข้าประกวดในระบบ</p>
+                    </div>`;
                 return;
             }
 
+            // 3. เรียงลำดับและวาดรายชื่อ
+            const sorted = [...candidates].sort((a, b) => (a.studentId || '').localeCompare(b.studentId || ''));
+            
             const content = sorted.map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
                 return `
