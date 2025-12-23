@@ -1967,9 +1967,54 @@
             grid.innerHTML = content;
         }
 
+        // ฟังก์ชันใหม่สำหรับเช็กพิกัดแบบหยุดรอผลลัพธ์จริง
+        async function enforceLocationCheckAsync() {
+            if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) return true;
+    
+            showToast("กำลังยืนยันพิกัด GPS...", "info");
+    
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    showToast("เบราว์เซอร์ไม่รองรับ GPS", "error");
+                    resolve(false);
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLng = position.coords.longitude;
+                        const dist = getDistanceFromLatLonInMeters(
+                            userLat, userLng, 
+                            parseFloat(systemConfig.targetLat), 
+                            parseFloat(systemConfig.targetLng)
+                   );
+                        const allowedRad = parseFloat(systemConfig.allowedRadius || 100);
+
+                        if (dist > allowedRad) {
+                            // ถ้าอยู่นอกพื้นที่ ให้เปิดหน้าต่างแจ้งเตือนสีแดงขึ้นมา
+                            document.getElementById('loc-dist').innerText = Math.round(dist) + " เมตร";
+                            document.getElementById('loc-allowed').innerText = allowedRad + " เมตร";
+                            document.getElementById('view-location-block').classList.remove('hidden');
+                            resolve(false);
+                        } else {
+                            resolve(true); // อยู่ในพื้นที่
+                        }
+                    },
+                    (error) => {
+                        // ถ้าปิด GPS หรือหาไม่เจอ ให้ขึ้นแจ้งเตือนนอกพื้นที่ไว้ก่อนเพื่อความปลอดภัย
+                        document.getElementById('view-location-block').classList.remove('hidden');
+                        resolve(false);
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            });
+        }
+    
         async function enterPumpMode() {
-            // 1. ตรวจสอบพื้นที่ก่อนเป็นอันดับแรก
-            if (!enforceLocationCheck()) return;
+            // แก้ไขจุดนี้: ใช้ await และเรียกฟังก์ชัน Async ที่สร้างใหม่
+            const isInside = await enforceLocationCheckAsync();
+            if (!isInside) return; // ถ้าอยู่นอกพื้นที่ ระบบจะหยุดทำงานตรงนี้ทันที
 
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
