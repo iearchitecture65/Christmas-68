@@ -1734,11 +1734,9 @@
             showToast("ส่งสัญญาณเริ่มเกมแล้ว!", "success");
         }
 
-        // 1. REPLACED FUNCTION: syncPumpGame
+        // --- UPDATED: syncPumpGame ---
         function syncPumpGame() {
-            // ใช้ systemConfig แทนการ fetch DB โดยตรงเพื่อความถูกต้องของ Rule 1 และ Performance
             const config = systemConfig.pumpConfig;
-            // ถ้าไม่มี config ให้หยุดทำงาน (หรืออาจจะเซ็ตเป็น waiting)
             if (!config) return;
 
             const now = Date.now();
@@ -1748,16 +1746,11 @@
             const timerDisplay = document.getElementById('pump-game-timer');
             const badge = document.getElementById('pump-status-badge');
             
-            // ตรวจสอบว่าอยู่หน้า TV หรือไม่ เพื่อจัดการ UI พิเศษ
             const hash = window.location.hash.substring(1);
             const isTV = hash === 'tv-result';
             const tvTimer = document.getElementById('tv-game-timer-val');
 
-            /* =========================
-               STATE 1: WAITING (!isStarted)
-               - แสดงหน้า Game (สีเทา)
-               - ซ่อน Summary
-            ========================= */
+            // STATE 1: WAITING (!isStarted)
             if (!config.isStarted) {
                 lastPlayedState = 'waiting';
 
@@ -1772,18 +1765,14 @@
                 if(timerDisplay) timerDisplay.innerText = '--:--';
                 if(isTV && tvTimer) tvTimer.innerText = "00:00";
                 
-                renderPumpCandidates(); // อัปเดตรายชื่อ (แบบกดไม่ได้)
+                renderPumpCandidates(); 
                 return;
             }
 
             const startTime = config.startTime;
             const endTime = startTime + (config.durationMinutes * 60 * 1000);
 
-            /* =========================
-               STATE 2: COUNTDOWN (now < startTime)
-               - แสดงหน้า Game (สีเทา)
-               - แสดง Countdown Overlay
-            ========================= */
+            // STATE 2: COUNTDOWN (now < startTime)
             if (now < startTime) {
                 lastPlayedState = 'countdown';
                 
@@ -1795,14 +1784,12 @@
 
                 const diff = Math.ceil((startTime - now) / 1000);
                 
-                // Show Global Countdown Overlay
                 if(tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     const valEl = document.getElementById('tv-countdown-val');
                     if (valEl) valEl.innerText = diff;
                 }
                 
-                // Sound Effect Logic for TV
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
                     lastCountVal = diff;
                     playSfx('whistle'); sayWord(diff.toString());
@@ -1815,14 +1802,9 @@
                 return;
             }
 
-            // ซ่อน Countdown เมื่อเริ่มเกม
             if(tvCountdown) tvCountdown.classList.add('hidden');
 
-            /* =========================
-               STATE 3: PLAYING (now < endTime)
-               - แสดงหน้า Game (สีปกติ + กดได้)
-               - ซ่อน Summary
-            ========================= */
+            // STATE 3: PLAYING (now < endTime)
             if (now < endTime) {
                 if (lastPlayedState !== 'playing') {
                      lastPlayedState = 'playing';
@@ -1849,11 +1831,7 @@
                 return;
             }
 
-            /* =========================
-               STATE 4: FINISHED (now >= endTime)
-               - ซ่อนหน้า Game
-               - แสดง Summary
-            ========================= */
+            // STATE 4: FINISHED (now >= endTime)
             if (lastPlayedState !== 'finished') {
                 lastPlayedState = 'finished';
                 
@@ -1906,8 +1884,7 @@
             grid.innerHTML = content;
         }
 
-        // 2. REPLACED FUNCTION: enterPumpMode
-        // รักษาการตรวจสอบ DB เดิมไว้ แต่เปลี่ยน Logic UI ในส่วน Success ให้ตรงตาม Requirement
+        // --- UPDATED: enterPumpMode ---
         async function enterPumpMode() {
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
@@ -1924,7 +1901,7 @@
                     return;
                 }
                 
-                // Session Check (To maintain system integrity)
+                // Session Check
                 const currentAward = systemConfig.awardName || 'Popular Vote';
                 const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; 
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
@@ -1939,7 +1916,7 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // Reset local points for new session
+                // Reset local points
                 pumpSessionPoints = {};
                 safeRemoveStorage("pump_session_points_" + appId);
                 
@@ -1963,7 +1940,6 @@
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") {
-                    // กรณีเคยเข้าแล้ว ให้เข้าได้เลย (Logic เดิม)
                     pumpVoterId = id; safeSetStorage("pump_id", id);
                     
                     document.getElementById('pump-gate-container').classList.add('hidden');
@@ -1971,7 +1947,6 @@
                     
                     const game = document.getElementById('pump-game-container');
                     game.classList.remove('hidden');
-                    // ปล่อยให้ syncPumpGame จัดการ state ต่อ
                     
                     syncPumpGame();
                     showToast("ยินดีต้อนรับกลับเข้าสู่ระบบ", "success");
