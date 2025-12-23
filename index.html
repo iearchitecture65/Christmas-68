@@ -240,7 +240,10 @@
                 <p class="text-xs text-slate-400">ระยะห่างของคุณ: <span id="loc-dist" class="text-white font-bold text-lg block">...</span></p>
                 <p class="text-xs text-slate-400 mt-2">ระยะที่อนุญาต: <span id="loc-allowed" class="text-white">...</span></p>
             </div>
-            <button onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3"><i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่</button>
+            <!-- แก้ไข: เพิ่ม id เพื่อควบคุมปุ่มตรวจสอบพิกัดใหม่ -->
+            <button id="btn-recheck-loc" onclick="checkLocationAccess(true)" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition flex items-center justify-center gap-2 mb-3">
+                <i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่
+            </button>
             <button onclick="closeLocationBlock()" class="w-full text-slate-400 text-sm hover:text-white underline">ย้อนกลับ</button>
             <div class="mt-6 pt-4 border-t border-white/10">
                  <button onclick="goToAdmin(); closeLocationBlock()" class="text-[10px] text-slate-500 hover:text-slate-300"><i class="fa-solid fa-user-secret"></i> ผู้ดูแลระบบเข้าสู่ระบบ</button>
@@ -1089,12 +1092,26 @@
         function deg2rad(deg) { return deg * (Math.PI/180); }
 
         function checkLocationAccess(forceShowModal = false) {
+            // แก้ไข: เพิ่มการแสดงสถานะ Loading บนปุ่มเมื่อมีการกดจาก Modal
+            const btn = document.getElementById('btn-recheck-loc');
+            if (forceShowModal && btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> กำลังตรวจสอบพิกัด...';
+            }
+
             if (isAdminAuthenticated || systemConfig.locationCheckEnabled === false) {
                 document.getElementById('view-location-block').classList.add('hidden');
                 document.getElementById('location-warning-banner').style.display = 'none';
-                isLocationValid = true; return;
+                isLocationValid = true; 
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                return;
             }
-            if (!navigator.geolocation) { isLocationValid = false; return; }
+            if (!navigator.geolocation) { 
+                isLocationValid = false; 
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                return; 
+            }
+            
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const userLat = position.coords.latitude; const userLng = position.coords.longitude;
@@ -1112,9 +1129,19 @@
                         isLocationValid = true;
                         document.getElementById('view-location-block').classList.add('hidden');
                         document.getElementById('location-warning-banner').style.display = 'none';
+                        showToast("ยืนยันพิกัดสำเร็จ!", "success");
                     }
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
                 },
-                (error) => { isLocationValid = false; if (forceShowModal) document.getElementById('view-location-block').classList.remove('hidden'); }
+                (error) => { 
+                    isLocationValid = false; 
+                    if (forceShowModal) {
+                        document.getElementById('view-location-block').classList.remove('hidden');
+                        showToast("ไม่สามารถเข้าถึงพิกัดได้ กรุณาเปิด GPS", "error");
+                    }
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> ตรวจสอบพิกัดใหม่'; }
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
             );
         }
 
