@@ -1273,10 +1273,9 @@
             if (!db) return;
             try {
                 let updateData = { activePhase: newPhase };
-                // ถ้าเปลี่ยนมาเป็นโหมด pump ให้สั่ง "รีเซ็ตสถานะเกม" ทันที
-                // เพื่อให้มั่นใจว่าระบบจะไม่ไปดึงเวลาเริ่มเกมของรางวัลรอบก่อนหน้ามาใช้
                 if (newPhase === 'pump') {
-                    updateData.pumpConfig = { isStarted: false, targetAward: '' };
+                    // ล้างสถานะเกมเก่าออกให้หมด เพื่อให้เด้งกลับไปหน้า Ready เสมอ
+                    updateData.pumpConfig = { isStarted: false, targetAward: '', startTime: 0 };
                 }
                 await getConfigRef().set(updateData, { merge: true });
                 showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
