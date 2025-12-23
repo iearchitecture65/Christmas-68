@@ -918,6 +918,7 @@
                     const serverResetVersion = newData.voteResetVersion || 0;
                     const localResetVersion = parseInt(safeGetStorage(`last_reset_v_${appId}`) || 0);
 
+                    // --- RESET TRIGGER ---
                     if (serverResetVersion > localResetVersion) {
                         Object.keys(localStorage).forEach(key => {
                             if (key.includes(appId)) localStorage.removeItem(key);
@@ -926,6 +927,13 @@
                         pumpVoterId = '';
                         pumpSessionPoints = {};
                         sessionStorage.clear();
+                        
+                        // Force hide overlays
+                        const receiptVote = document.getElementById('voted-card-container');
+                        const summaryPump = document.getElementById('pump-summary-container');
+                        if(receiptVote) receiptVote.classList.add('hidden');
+                        if(summaryPump) summaryPump.classList.add('hidden');
+                        
                         showToast("ระบบได้รับการรีเซ็ตข้อมูลใหม่", "info");
                     }
 
@@ -945,6 +953,7 @@
 
                     systemConfig = newData;
                     
+                    // --- AWARD NAME CHANGE TRIGGER ---
                     const newAward = systemConfig.awardName || 'Popular Vote';
                     if (currentSessionAward && currentSessionAward !== newAward) {
                         showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
@@ -953,6 +962,12 @@
                         const inputEl = document.getElementById('pump-id-input');
                         if(inputEl) inputEl.value = '';
                         if(sessionStorage.getItem('pump_id')) sessionStorage.removeItem('pump_id');
+                        
+                        // Force exit from Summary/Receipt pages to the "mode-appropriate" page
+                        const receiptVote = document.getElementById('voted-card-container');
+                        const summaryPump = document.getElementById('pump-summary-container');
+                        if(receiptVote) receiptVote.classList.add('hidden');
+                        if(summaryPump) summaryPump.classList.add('hidden');
                     }
                     currentSessionAward = newAward;
                     
@@ -1683,6 +1698,7 @@
             const hash = window.location.hash.substring(1);
             const isTV = hash === 'tv-result';
 
+            // 1. ดึง Elements ที่จำเป็น
             const gateContainer = document.getElementById('pump-gate-container');
             const userGame = document.getElementById('pump-game-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
@@ -1690,25 +1706,24 @@
             const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
             const tvPanel = document.getElementById('view-tv-result');
 
+            // 2. ตรวจสอบสถานะเบื้องต้น
             if (!isTV && systemConfig.activePhase !== 'pump') return;
 
-            // หน้า User: ถ้ายังไม่ระบุรหัส ให้โชว์ Gate
+            // 3. หน้า User: จัดการหน้า Login Gate
             if (!isTV && !pumpVoterId) {
                 if (gateContainer) gateContainer.classList.remove('hidden');
                 if (userGame) userGame.classList.add('hidden');
                 return;
             } 
 
-            // ถ้าล็อกอินแล้ว ให้ซ่อน Gate และโชว์หน้าเกมเสมอ
-            if (!isTV) {
-                if (gateContainer) gateContainer.classList.add('hidden');
-                if (userGame) userGame.classList.remove('hidden');
-            }
+            // 4. แสดงหน้าจอเกม (เตรียมพร้อม)
+            if (gateContainer) gateContainer.classList.add('hidden');
+            if (userGame && !isTV) userGame.classList.remove('hidden');
 
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
 
-            // 1. สถานะเตรียมพร้อม (ขาวดำ)
+            // --- สถานะที่ 1: รอ Admin สั่งเริ่ม (ให้แสดงรายชื่อสีเทา) ---
             if (!config.isStarted) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
