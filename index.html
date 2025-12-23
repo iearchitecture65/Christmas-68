@@ -561,7 +561,7 @@
                         </div>
                     </div>
                     
-                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER (v4: Fixed for all screens) -->
+                    <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER -->
                     <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[1000] flex flex-col items-center justify-center hidden">
                         <div class="text-slate-400 text-4xl md:text-7xl mb-12 font-bold uppercase tracking-[0.5rem] md:tracking-[1rem]">GAME STARTING IN</div>
                         <div id="tv-countdown-val" class="countdown-text text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
@@ -1675,12 +1675,16 @@
         }
 
         function syncPumpGame() {
-            // v4: Stop UI logic if in admin to prevent overlap
+            // v4: Main logic for Pump Mode Display
             const hash = window.location.hash.substring(1);
-            if (hash === 'admin') return; 
+            if (hash === 'admin') {
+                // If on Admin page, strictly stop all Pump UI manipulation to prevent overlap
+                document.getElementById('view-pump')?.classList.add('hidden');
+                return;
+            }
 
             if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
-                if (pumpVoterId && window.location.hash !== '#tv-result') {
+                if (pumpVoterId && hash !== 'tv-result') {
                     // v4: If Logged in but game not started, show gate or wait msg
                     document.getElementById('pump-gate-container').classList.add('hidden');
                     document.getElementById('pump-waiting-container').classList.remove('hidden');
@@ -1695,7 +1699,7 @@
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            const isTV = window.location.hash === '#tv-result';
+            const isTV = hash === 'tv-result';
             const pumpView = document.getElementById('view-pump');
             const gateContainer = document.getElementById('pump-gate-container');
             const userGame = document.getElementById('pump-game-container');
@@ -1716,18 +1720,18 @@
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 
-                // v4: Show Countdown Overlay for both TV and User screen
+                // Show Countdown Overlay for both TV and User screen
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
                 }
 
                 if (!isTV) {
-                    // User: Prepare game container in grayscale
+                    // User: Prepare game container in waiting (gray) mode
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.add('game-waiting-mode'); // Grayscale logic
+                        userGame.classList.add('game-waiting-mode'); // Applied Gray color
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
@@ -1755,7 +1759,7 @@
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.remove('game-waiting-mode'); // Unlock grayscale
+                        userGame.classList.remove('game-waiting-mode'); // Unlock grayscale for gameplay
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
@@ -1850,7 +1854,7 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // v4: Refresh UI to jump to waiting screen immediately after login
+                // v4: Force update UI to jump to waiting screen immediately after login
                 updateUIBasedOnConfig(); 
                 showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณเริ่มเกม', 'success');
             } catch(e) { 
@@ -1887,7 +1891,7 @@
         }
         
         function renderPumpSummary() {
-            // v4: Final Summary - Receipt Style as requested
+            // v4: Detailed Receipt-style summary as requested
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             
@@ -1931,7 +1935,7 @@
                                     <span class="text-sm font-black text-pink-600">${totalClicks.toLocaleString()} ครั้ง</span>
                                 </div>
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">วันที่</span>
+                                    <span class="text-xs text-slate-500">วันที่บันทึก</span>
                                     <span class="text-xs font-bold text-slate-700 text-right">${dateStr}</span>
                                 </div>
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
