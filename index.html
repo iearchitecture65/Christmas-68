@@ -1259,7 +1259,13 @@
         async function changePhase(newPhase) {
             if (!db) return;
             try {
-                await getConfigRef().set({ activePhase: newPhase }, { merge: true });
+                let updateData = { activePhase: newPhase };
+                // ถ้าเปลี่ยนมาเป็นโหมด pump ให้สั่ง "รีเซ็ตสถานะเกม" ทันที
+                // เพื่อให้มั่นใจว่าระบบจะไม่ไปดึงเวลาเริ่มเกมของรางวัลรอบก่อนหน้ามาใช้
+                if (newPhase === 'pump') {
+                    updateData.pumpConfig = { isStarted: false, targetAward: '' };
+                }
+                await getConfigRef().set(updateData, { merge: true });
                 showToast(`เปลี่ยนสถานะเป็น: ${newPhase}`, 'success');
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาดในการบันทึก', 'error'); }
         }
@@ -1724,7 +1730,17 @@
             if(!db) return;
             const duration = parseInt(document.getElementById('pump-duration').value) || 1;
             const startTime = Date.now() + 5000;
-            await getConfigRef().set({ pumpConfig: { startTime, durationMinutes: duration, isStarted: true } }, { merge: true });
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+
+            // บันทึกชื่อรางวัล (targetAward) ลงไปใน Config ด้วยเพื่อใช้เช็ก Session
+            await getConfigRef().set({ 
+                pumpConfig: { 
+                    startTime, 
+                    durationMinutes: duration, 
+                    isStarted: true,
+                    targetAward: currentAward 
+                } 
+            }, { merge: true });
             showToast("ส่งสัญญาณเริ่มเกมแล้ว!", "success");
         }
 
@@ -1763,11 +1779,20 @@
                 summaryContainer.classList.add('hidden');
             }
 
-            // --- สถานะที่ 1: เตรียมตัว (ยังไม่กดเริ่ม) ---
-            if (!config.isStarted) {
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+            const gameEndTime = config.startTime + (config.durationMinutes * 60 * 1000);
+            
+            // เช็กจาก "ชื่อรางวัล": ถ้าชื่อในรอบนี้ ไม่ตรงกับชื่อที่บันทึกไว้ใน config 
+            // แปลว่าเป็นข้อมูลเก่าของรอบก่อน ให้ถือว่า stale (ใช้ไม่ได้)
+            const isDifferentAward = config.targetAward && config.targetAward !== currentAward;
+            const isStale = config.isStarted && (now > gameEndTime + 300000 || isDifferentAward);
+
+            // --- สถานะที่ 1: เตรียมตัว (ยังไม่กดเริ่ม / ชื่อรางวัลไม่ตรง / ข้อมูลเก่าค้าง) ---
+            if (!config.isStarted || isStale) {
+                if (summaryContainer) summaryContainer.classList.add('hidden'); // ล้างหน้าสรุปผลของรอบเก่าทิ้ง
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // สีเทา + บล็อกคลิก
+                    userGame.classList.add('game-waiting-mode'); // แสดงหน้าการ์ดสีเทา (Ready)
                     userGame.classList.remove('hidden');
                 }
                 if (statusBadge) {
@@ -1777,7 +1802,6 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                // --- [Rule 2] ดึงรายชื่อมาใช้ในหน้า Ready ---
                 renderPumpCandidates(); 
                 return;
             }
