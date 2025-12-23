@@ -1230,7 +1230,7 @@
 
         async function handleAttendSubmit() {
             if (!db) return;
-            if (systemConfig.activePhase !== 'register' && !sessionStorage.getItem('pendingVoteId')) return showToast('ปิดรับลงทะเบียนแล้ว', 'error');
+            // FIXED: Removed Phase Check for Attendee Registration to ensure it's always open
             if (!enforceLocationCheck()) return;
             const id = document.getElementById('attend-id').value.trim();
             const name = document.getElementById('attend-name').value.trim();
@@ -1266,7 +1266,7 @@
 
         async function handleContestSubmit() {
             if (!db) return;
-            if (systemConfig.activePhase !== 'register') return showToast('ปิดรับสมัครแล้ว', 'error');
+            // FIXED: Removed Phase Check for Contest Registration to ensure it's always open
             if (!enforceLocationCheck()) return;
             const id = document.getElementById('contest-id').value.trim();
             const name = document.getElementById('contest-name').value.trim();
