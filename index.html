@@ -506,9 +506,11 @@
                     </div>
 
                     <div id="pump-waiting-container" class="text-center text-white/50 py-20 hidden">
-                        <i class="fa-solid fa-hourglass-start text-6xl mb-4 animate-spin-slow"></i>
-                        <h3 class="text-2xl font-bold text-white">รอสัญญาณจากทีมงาน</h3>
-                        <p class="text-sm text-slate-300">เตรียมตัวกดรัวๆ เมื่อสัญญาณเริ่ม!</p>
+                        <div class="bg-white/10 backdrop-blur-md p-10 rounded-3xl border border-white/20 inline-block shadow-2xl">
+                            <i class="fa-solid fa-hourglass-start text-6xl mb-6 animate-spin-slow text-yellow-400"></i>
+                            <h3 class="text-3xl font-bold text-white mb-2">รอสัญญาณเริ่มเกม</h3>
+                            <p class="text-slate-300">รหัสนักศึกษาของคุณผ่านแล้ว<br>เตรียมตัวกดรัวๆ เร็วๆ นี้!</p>
+                        </div>
                     </div>
 
                     <div id="pump-game-container" class="w-full text-center space-y-6 hidden relative px-2">
@@ -718,6 +720,7 @@
 
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
+            // v4: Main Sync Interval
             setInterval(() => { syncPumpGame(); }, 1000);
         });
 
@@ -916,11 +919,10 @@
                 if (doc.exists) {
                     const newData = doc.data();
                     
-                    // --- RESET SYNC LOGIC (v4 Updated for Selective Clear) ---
+                    // --- RESET SYNC LOGIC ---
                     const serverResetVersion = newData.voteResetVersion || 0;
                     const localResetVersion = parseInt(safeGetStorage(`last_reset_v_${appId}`) || 0);
 
-                    // 1. Factory Reset (All)
                     if (serverResetVersion > localResetVersion) {
                         Object.keys(localStorage).forEach(key => {
                             if (key.includes(appId)) localStorage.removeItem(key);
@@ -932,7 +934,6 @@
                         showToast("ระบบได้รับการรีเซ็ตข้อมูลใหม่", "info");
                     }
 
-                    // 2. Selective Attendees Reset
                     const serverAttV = newData.attendeesResetVersion || 0;
                     const localAttV = parseInt(safeGetStorage(`last_att_reset_${appId}`) || 0);
                     if (serverAttV > localAttV) {
@@ -940,7 +941,6 @@
                         safeSetStorage(`last_att_reset_${appId}`, serverAttV.toString());
                     }
 
-                    // 3. Selective Candidates Reset
                     const serverCandV = newData.candidatesResetVersion || 0;
                     const localCandV = parseInt(safeGetStorage(`last_cand_reset_${appId}`) || 0);
                     if (serverCandV > localCandV) {
@@ -984,7 +984,7 @@
                              if(adminCircle) { adminCircle.setLatLng(newLatLng); adminCircle.setRadius(rad); }
                          }
                     }
-                    updateRegisterMenuState(); // v4: Ensure UI refresh after potential reset
+                    updateRegisterMenuState();
                 } else {
                     systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
                     getConfigRef().set(systemConfig).catch(e=>console.error(e));
@@ -1550,7 +1550,6 @@
                 const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName).get();
                 snap.forEach(doc => batch.delete(doc.ref));
                 
-                // v4: Selective version update for Attendees/Candidates
                 const versionKey = collectionName === 'attendees' ? 'attendeesResetVersion' : 'candidatesResetVersion';
                 batch.set(getConfigRef(), { [versionKey]: Date.now() }, { merge: true });
                 
@@ -1589,6 +1588,7 @@
                 const batch = db.batch();
                 const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                
                 const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
                 candSnap.forEach(doc => {
                     batch.update(doc.ref, { [voteField]: 0, [pumpField]: 0 });
@@ -1688,29 +1688,16 @@
         }
 
         function syncPumpGame() {
+            // v4: Centralized Sync logic
             const hash = window.location.hash.substring(1);
             const isTV = hash === 'tv-result';
             const isPumpPhase = systemConfig.activePhase === 'pump';
 
+            // Guard: Close Pump UI if not in pump phase or in admin
             if (hash === 'admin' || hash === '' || (hash !== 'tv-result' && !isPumpPhase)) {
                 document.getElementById('view-pump')?.classList.add('hidden');
                 return;
             }
-
-            if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
-                if (pumpVoterId && !isTV) {
-                    document.getElementById('pump-gate-container').classList.add('hidden');
-                    document.getElementById('pump-waiting-container').classList.remove('hidden');
-                    document.getElementById('pump-game-container').classList.add('hidden');
-                    document.getElementById('pump-summary-container').classList.add('hidden');
-                }
-                return;
-            }
-            
-            const config = systemConfig.pumpConfig;
-            const now = Date.now();
-            const startAt = config.startTime;
-            const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
             const pumpView = document.getElementById('view-pump');
             const gateContainer = document.getElementById('pump-gate-container');
@@ -1720,13 +1707,31 @@
             const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
 
+            // 1. LOGIN GATE
             if (!pumpVoterId && !isTV) {
                 if(pumpView) pumpView.classList.remove('hidden');
                 if(gateContainer) gateContainer.classList.remove('hidden');
                 [userGame, userWaiting, summaryContainer].forEach(el => el && el.classList.add('hidden'));
                 return;
-            } else { if(gateContainer) gateContainer.classList.add('hidden'); }
+            } else if (!isTV) { gateContainer.classList.add('hidden'); }
 
+            // 2. WAITING FOR START SIGNAL (Admin hasn't clicked start yet)
+            if (!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
+                if (!isTV) {
+                    pumpView.classList.remove('hidden');
+                    userWaiting.classList.remove('hidden'); // SHOW "WAITING FOR SIGNAL"
+                    userGame.classList.add('hidden');
+                    summaryContainer.classList.add('hidden');
+                }
+                return;
+            }
+
+            const config = systemConfig.pumpConfig;
+            const now = Date.now();
+            const startAt = config.startTime;
+            const endAt = startAt + (config.durationMinutes * 60 * 1000);
+
+            // 3. COUNTDOWN PHASE (3-2-1)
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 if (tvCountdown) {
@@ -1734,13 +1739,11 @@
                     document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
                 }
                 if (!isTV) {
-                    if(pumpView) pumpView.classList.remove('hidden');
-                    if(userGame) {
-                        userGame.classList.remove('hidden');
-                        userGame.classList.add('game-waiting-mode'); 
-                    }
-                    if(userWaiting) userWaiting.classList.add('hidden');
-                    if(summaryContainer) summaryContainer.classList.add('hidden');
+                    pumpView.classList.remove('hidden');
+                    userWaiting.classList.add('hidden');
+                    userGame.classList.remove('hidden');
+                    userGame.classList.add('game-waiting-mode'); // Applied Grayscale
+                    summaryContainer.classList.add('hidden');
                     if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.classList.remove('hidden'); }
                     renderPumpCandidates();
                 } else {
@@ -1750,19 +1753,17 @@
                         sayWord(diff.toString());
                     }
                 }
-                const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.remove('tv-mode-active');
                 lastPlayedState = 'countdown';
-            } else if (now < endAt) {
+            } 
+            // 4. ACTIVE GAMEPLAY
+            else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (!isTV) {
-                    if(pumpView) pumpView.classList.remove('hidden');
-                    if(userGame) {
-                        userGame.classList.remove('hidden');
-                        userGame.classList.remove('game-waiting-mode'); 
-                    }
-                    if(userWaiting) userWaiting.classList.add('hidden');
-                    if(summaryContainer) summaryContainer.classList.add('hidden');
+                    pumpView.classList.remove('hidden');
+                    userGame.classList.remove('hidden');
+                    userGame.classList.remove('game-waiting-mode'); // Unlock Colors and Clicking
+                    userWaiting.classList.add('hidden');
+                    summaryContainer.classList.add('hidden');
                     if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
                 }
                 const remaining = Math.ceil((endAt - now) / 1000);
@@ -1775,20 +1776,18 @@
                     lastPlayedState = 'active'; 
                     if(isTV) { playSfx('whistle'); sayWord("Start!"); }
                 }
-            } else {
+            } 
+            // 5. GAME END
+            else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (!isTV) {
-                    if(userGame) userGame.classList.add('hidden');
-                    if(summaryContainer) summaryContainer.classList.remove('hidden');
+                    userGame.classList.add('hidden');
+                    summaryContainer.classList.remove('hidden');
                     if(lastPlayedState === 'active') { lastPlayedState = 'finished'; renderPumpSummary(); }
                 } else {
                     const tvPanel = document.getElementById('view-tv-result');
                     if(tvPanel) tvPanel.classList.remove('tv-mode-active');
-                    if(lastPlayedState === 'active') { 
-                        lastPlayedState = 'finished'; 
-                        playSfx('end'); 
-                        sayWord("Time's up!");
-                    }
+                    if(lastPlayedState === 'active') { lastPlayedState = 'finished'; playSfx('end'); sayWord("Time's up!"); }
                 }
             }
         }
@@ -1832,8 +1831,8 @@
                 });
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
-                updateUIBasedOnConfig(); 
-                showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณเริ่มเกม', 'success');
+                updateUIBasedOnConfig(); // Force immediate UI refresh to show "Waiting for signal"
+                showToast('เข้าสู่ระบบสำเร็จ! กรุณารอสัญญาณจาก Admin', 'success');
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
