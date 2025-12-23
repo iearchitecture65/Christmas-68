@@ -1681,9 +1681,9 @@
 
         function syncPumpGame() {
             const hash = window.location.hash.substring(1);
-            if (hash === 'admin' || (hash !== 'tv-result' && systemConfig.activePhase !== 'pump')) return;
-
             const isTV = hash === 'tv-result';
+
+            // 1. ดึง Elements ที่จำเป็น
             const gateContainer = document.getElementById('pump-gate-container');
             const userGame = document.getElementById('pump-game-container');
             const tvCountdown = document.getElementById('tv-pump-countdown');
@@ -1691,13 +1691,17 @@
             const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
             const tvPanel = document.getElementById('view-tv-result');
 
-            // Phase 1: Login Gate (User only)
-            if (!pumpVoterId && !isTV) {
+            // 2. ตรวจสอบสถานะเบื้องต้น (ถ้าไม่ได้อยู่หน้า TV และสถานะระบบไม่ใช่ pump ให้หยุดทำงาน)
+            if (!isTV && systemConfig.activePhase !== 'pump') return;
+
+            // 3. หน้า User: จัดการหน้า Login Gate
+            if (!isTV && !pumpVoterId) {
                 if (gateContainer) gateContainer.classList.remove('hidden');
                 if (userGame) userGame.classList.add('hidden');
                 return;
             } 
-            
+
+            // 4. แสดงหน้าจอเกม (เตรียมพร้อม) - เฉพาะฝั่ง User
             if (!isTV) {
                 if (gateContainer) gateContainer.classList.add('hidden');
                 if (userGame) userGame.classList.remove('hidden');
@@ -1706,12 +1710,11 @@
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
 
-            // Phase 2: Logged in but Admin NOT YET started the game (Waiting Page)
+            // --- สถานะที่ 1: รอ Admin สั่งเริ่ม (ให้แสดงรายชื่อสีเทา) ---
             if (!config.isStarted) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // Grayscale & Unclickable
-                    userGame.classList.remove('hidden');
+                    userGame.classList.add('game-waiting-mode'); // ทำให้เป็นสีเทาและกดไม่ได้
                 }
                 if (statusBadge) {
                     statusBadge.innerText = "เตรียมตัวให้พร้อม...";
@@ -1720,32 +1723,27 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                renderPumpCandidates(); // Render even in waiting state
+                renderPumpCandidates(); // วาดรายชื่อผู้เข้าแข่งขันทันที
                 return;
             }
 
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            // Admin started the game, show timer panel on TV
+            // แสดงหน้าจอ TV timer panel
             if (isTV && tvPanel) {
                 tvPanel.classList.add('tv-mode-active');
             }
 
-            // Phase 3: Counting down 3, 2, 1
+            // --- สถานะที่ 2: ช่วงนับถอยหลัง 5..4..3..2..1 (ยังคงเป็นสีเทา) ---
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
-                
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     const valEl = document.getElementById('tv-countdown-val');
                     if (valEl) valEl.innerText = diff;
                 }
-
-                if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // Still unclickable
-                    userGame.classList.remove('hidden');
-                }
+                if (userGame) userGame.classList.add('game-waiting-mode'); // ล็อกสถานะสีเทา
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
@@ -1756,13 +1754,11 @@
                 renderPumpCandidates();
                 lastPlayedState = 'countdown';
             } 
-            // Phase 4: Game is ACTIVE
+            // --- สถานะที่ 3: เริ่มเกม (เปลี่ยนเป็นสีปกติและกดได้) ---
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-
                 if (userGame) {
-                    userGame.classList.remove('game-waiting-mode'); // Colorize & Unlock clicks
-                    userGame.classList.remove('hidden');
+                    userGame.classList.remove('game-waiting-mode'); // ปลดล็อกสีและให้กดได้
                 }
                 
                 const remaining = Math.ceil((endAt - now) / 1000);
@@ -1780,7 +1776,7 @@
                 }
                 renderPumpCandidates();
             } 
-            // Phase 5: FINISHED
+            // --- สถานะที่ 4: จบเกม ---
             else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) userGame.classList.add('hidden');
@@ -1797,25 +1793,31 @@
         }
 
         function renderPumpCandidates() {
-            if (!pumpVoterId) return;
+            // หน้า TV ไม่ต้องวาดการ์ดปุ่มกด (มี Leaderboard อยู่แล้ว)
+            const hash = window.location.hash.substring(1);
+            if (hash === 'tv-result') return;
+
+            if (!pumpVoterId) return; // ต้องล็อกอินก่อนถึงจะเห็นรายชื่อ
             const grid = document.getElementById('pump-candidates-grid');
-            if(!grid) return;
+            if (!grid) return;
             
-            if(candidates.length === 0) { 
-                grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; 
-                return; 
+            const sorted = [...candidates].sort((a,b) => (a.studentId||'').localeCompare(b.studentId||''));
+            if (sorted.length === 0) {
+                grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>';
+                return;
             }
-            
-            const content = candidates.sort((a,b) => (a.studentId||'').localeCompare(b.studentId||'')).map(c => {
+
+            const content = sorted.map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
                 return `
-                <div class="pump-btn-wrapper bg-white/10 backdrop-blur-md p-4 rounded-3xl flex flex-col shadow-lg relative overflow-hidden transform transition active:scale-95 border-2 border-white/20 h-52 items-center justify-center text-center cursor-pointer select-none" onclick="handlePumpClick(event, '${c.id}')">
-                    <div class="text-pink-500 text-6xl mb-2 drop-shadow-lg"><i class="fa-solid fa-heart text-7xl animate-pulse"></i></div>
-                    <h3 class="text-xl font-bold text-white leading-tight line-clamp-1 drop-shadow-md mb-1">${escapeHtml(c.name)}</h3>
-                    <div id="pump-score-${c.id}" class="absolute top-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
-                </div>
-            `}).join('');
-            
+                    <div class="pump-btn-wrapper bg-white/10 backdrop-blur-md p-4 rounded-3xl flex flex-col shadow-lg relative overflow-hidden transform transition active:scale-95 border-2 border-white/20 h-52 items-center justify-center text-center cursor-pointer select-none" onclick="handlePumpClick(event, '${c.id}')">
+                        <div class="text-pink-500 text-6xl mb-2 drop-shadow-lg"><i class="fa-solid fa-heart text-7xl animate-pulse"></i></div>
+                        <h3 class="text-xl font-bold text-white leading-tight line-clamp-1 drop-shadow-md mb-1">${escapeHtml(c.name)}</h3>
+                        <div id="pump-score-${c.id}" class="absolute top-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
+                    </div>
+                `;
+            }).join('');
+
             if (grid.innerHTML !== content) {
                 grid.innerHTML = content;
             }
@@ -1848,7 +1850,7 @@
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 
                 updateUIBasedOnConfig(); 
-                showToast('เข้าสู่โหมดเตรียมความพร้อมสำเร็จ!', 'success');
+                showToast('เข้าสู่หน้าเตรียมความพร้อม!', 'success');
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
