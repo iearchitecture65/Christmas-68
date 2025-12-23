@@ -927,13 +927,31 @@
             getConfigRef().onSnapshot(doc => {
                 if (doc.exists) {
                     const newData = doc.data();
+                    
+                    // --- RESET SYNC LOGIC ---
+                    const serverResetVersion = newData.voteResetVersion || 0;
+                    const localResetVersion = parseInt(safeGetStorage(`last_reset_v_${appId}`) || 0);
+
+                    if (serverResetVersion > localResetVersion) {
+                        // v4: Force clear local device state when Admin triggers Factory Reset
+                        Object.keys(localStorage).forEach(key => {
+                            if (key.includes(appId)) localStorage.removeItem(key);
+                        });
+                        safeSetStorage(`last_reset_v_${appId}`, serverResetVersion.toString());
+                        // Reset local session variables
+                        pumpVoterId = '';
+                        pumpSessionPoints = {};
+                        sessionStorage.clear();
+                        showToast("ระบบได้รับการรีเซ็ตข้อมูลใหม่", "info");
+                        updateRegisterMenuState(); // Refresh UI state immediately
+                    }
+                    
                     systemConfig = newData;
                     
                     // --- AWARD CHANGE RESET LOGIC ---
                     const newAward = systemConfig.awardName || 'Popular Vote';
                     if (currentSessionAward && currentSessionAward !== newAward) {
                         showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
-                        // Local reset only, DB logic handled by ID keying
                         pumpVoterId = ''; 
                         pumpSessionPoints = {};
                         document.getElementById('pump-id-input').value = '';
@@ -1103,7 +1121,6 @@
                 document.getElementById('view-result').classList.remove('hidden'); 
                 updateResultDropdown();
             } else if (phase === 'pump') {
-                // v4: Only show pump view if in pump phase
                 document.getElementById('view-pump').classList.remove('hidden');
                 syncPumpGame(); 
             }
@@ -1127,6 +1144,8 @@
                     btnAttend.classList.remove('disabled-link');
                     btnAttend.href = "#register-attend";
                     btnAttend.querySelector('.title-text').innerText = "ลงทะเบียนเข้างาน";
+                    btnAttend.querySelector('.icon-container').classList.replace('bg-gray-200', 'bg-blue-100');
+                    btnAttend.querySelector('.icon-container').classList.replace('text-gray-500', 'text-blue-600');
                 }
             }
             if (btnContest) {
@@ -1140,6 +1159,8 @@
                     btnContest.classList.remove('disabled-link');
                     btnContest.href = "#register-contest";
                     btnContest.querySelector('.title-text').innerText = "ลงทะเบียนประกวด";
+                    btnContest.querySelector('.icon-container').classList.replace('bg-gray-200', 'bg-red-100');
+                    btnContest.querySelector('.icon-container').classList.replace('text-gray-500', 'text-red-600');
                 }
             }
         }
@@ -1225,12 +1246,10 @@
                 showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
                 document.getElementById('attend-id').value = ''; document.getElementById('attend-name').value = '';
                 
-                // Redirect back logic
                 const pendingId = sessionStorage.getItem('pendingVoteId');
                 const pendingCandidate = sessionStorage.getItem('pendingVoteCandidate');
                 if (pendingId) {
                     sessionStorage.removeItem('pendingVoteId');
-                    // Go back to vote
                     window.location.hash = ''; 
                     setTimeout(() => {
                         window.location.hash = 'vote';
@@ -1335,7 +1354,6 @@
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
-            const originalDisplay = el.parentElement.querySelector('button')?.style.display;
             const btnContainer = el.parentElement.querySelector('.mt-4'); 
             if(btnContainer) btnContainer.style.display = 'none';
             try {
@@ -1548,7 +1566,7 @@
             const toast = document.getElementById('toast');
             if(!toast) return;
             document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+            document.getElementById('toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-400"></i>' : (type === 'error' ? '<i class="fa-solid fa-circle-exclamation text-red-400"></i>' : '<i class="fa-solid fa-info-circle text-blue-400"></i>');
             toast.classList.remove('opacity-0', '-translate-y-10');
             setTimeout(() => toast.classList.add('opacity-0', '-translate-y-10'), 3000);
         }
@@ -1623,6 +1641,7 @@
                     const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
                     snap.forEach(doc => batch.delete(doc.ref));
                 }
+                // v4: Increment voteResetVersion to sync with all clients
                 await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
                 await batch.commit();
                 showToast('ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว', 'success'); 
@@ -1681,15 +1700,14 @@
             const isTV = hash === 'tv-result';
             const isPumpPhase = systemConfig.activePhase === 'pump';
 
-            // v4: Prevent showing pump UI if not in pump phase or in admin screen
-            if (hash === 'admin' || (!isPumpPhase && !isTV)) {
+            // v4: Prevent showing pump UI if not in pump phase OR in admin screen OR in main views
+            if (hash === 'admin' || hash === '' || (!isPumpPhase && !isTV)) {
                 document.getElementById('view-pump')?.classList.add('hidden');
                 return;
             }
 
             if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
                 if (pumpVoterId && !isTV) {
-                    // v4: Logged in but game not started by admin yet
                     document.getElementById('pump-gate-container').classList.add('hidden');
                     document.getElementById('pump-waiting-container').classList.remove('hidden');
                     document.getElementById('pump-game-container').classList.add('hidden');
@@ -1711,7 +1729,6 @@
             const summaryContainer = document.getElementById('pump-summary-container');
             const statusBadge = document.getElementById('pump-status-badge');
 
-            // 1. Initial State Check (Player needs to Login)
             if (!pumpVoterId && !isTV) {
                 if(pumpView) pumpView.classList.remove('hidden');
                 if(gateContainer) gateContainer.classList.remove('hidden');
@@ -1719,65 +1736,50 @@
                 return;
             } else { if(gateContainer) gateContainer.classList.add('hidden'); }
 
-            // 2. Countdown Phase
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
-                
-                // Show Countdown Overlay for both TV and User screen
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
                 }
-
                 if (!isTV) {
-                    // User screen waiting logic
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.add('game-waiting-mode'); // Applied Gray color
+                        userGame.classList.add('game-waiting-mode'); 
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
                     if(statusBadge) { statusBadge.innerText = "เตรียมตัว..."; statusBadge.classList.remove('hidden'); }
                     renderPumpCandidates();
                 } else {
-                    // TV: Sound logic
                     if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
                         lastCountVal = diff; 
                         playSfx('whistle'); 
                         sayWord(diff.toString());
                     }
                 }
-                
                 const tvPanel = document.getElementById('view-tv-result');
                 if(tvPanel) tvPanel.classList.remove('tv-mode-active');
                 lastPlayedState = 'countdown';
-                
-            } 
-            // 3. Active Phase
-            else if (now < endAt) {
+            } else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-                
                 if (!isTV) {
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.remove('game-waiting-mode'); // Unlock grayscale
+                        userGame.classList.remove('game-waiting-mode'); 
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
                     if(statusBadge) { statusBadge.innerText = "กดรัวๆ เลย!"; statusBadge.classList.remove('hidden'); statusBadge.className="inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce"; }
                 }
-
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
-                
                 if(document.getElementById('pump-game-timer')) document.getElementById('pump-game-timer').innerText = timeStr;
-                
                 const tvPanel = document.getElementById('view-tv-result');
                 if(tvPanel) tvPanel.classList.add('tv-mode-active'); 
                 if(document.getElementById('tv-game-timer-val')) document.getElementById('tv-game-timer-val').innerText = timeStr;
-
                 if(lastPlayedState === 'countdown') { 
                     lastPlayedState = 'active'; 
                     if(isTV) {
@@ -1785,11 +1787,8 @@
                         sayWord("Start!");
                     }
                 }
-            } 
-            // 4. Finished Phase
-            else {
+            } else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
-                
                 if (!isTV) {
                     if(userGame) userGame.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.remove('hidden');
@@ -1812,7 +1811,6 @@
         function showPumpWaiting() {}
 
         function renderPumpCandidates() {
-            // v4: Render only if voter logged in
             if (!pumpVoterId) return;
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
@@ -1832,10 +1830,8 @@
         async function enterPumpMode() {
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
-            
             const btn = document.querySelector('#pump-gate-container button');
             if(btn) { btn.disabled = true; btn.innerText = "กำลังตรวจสอบ..."; }
-
             try {
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
                 if(!doc.exists) {
@@ -1843,21 +1839,16 @@
                     setTimeout(() => window.location.hash = '#register-attend', 1500);
                     return;
                 }
-                
                 const currentAward = systemConfig.awardName || 'Popular Vote';
                 const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; 
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
-                
                 await db.runTransaction(async (transaction) => {
                     const sessionDoc = await transaction.get(sessionRef);
                     if (sessionDoc.exists) throw "SESSION_EXISTS";
                     transaction.set(sessionRef, { used: true, ts: firebase.firestore.FieldValue.serverTimestamp() });
                 });
-
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
-                
-                // v4: Force update UI state to show waiting containers correctly
                 updateUIBasedOnConfig(); 
                 showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณเริ่มเกม', 'success');
             } catch(e) { 
@@ -1870,23 +1861,19 @@
 
         function handlePumpClick(e, cid) {
             if(!pumpVoterId || lastPlayedState !== 'active') return; 
-            
             const heart = document.createElement('div');
             heart.className = 'pump-heart text-pink-400 text-5xl font-bold drop-shadow-md';
             heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
             heart.style.left = (e.clientX - 20) + 'px'; heart.style.top = (e.clientY - 20) + 'px';
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
-
             pumpSessionPoints[cid] = (pumpSessionPoints[cid] || 0) + 1;
             const badge = document.getElementById(`pump-score-${cid}`);
             if(badge) badge.innerText = `+${pumpSessionPoints[cid]}`;
-            
             const currentAward = systemConfig.awardName || 'Popular Vote';
             const field = `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`;
             const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid);
             candidateRef.update({ [field]: firebase.firestore.FieldValue.increment(1) }).catch(err => console.error(err));
-            
             const logId = `${pumpVoterId}_${cid}_${field}`;
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').doc(logId).set({
                 voterId: pumpVoterId, candidateId: cid, awardCategory: currentAward, count: firebase.firestore.FieldValue.increment(1)
@@ -1894,70 +1881,40 @@
         }
         
         function renderPumpSummary() {
-            // v4: Redesigned summary as a receipt card
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
-            
             let topPickName = "ไม่ระบุ";
             const sortedEntries = Object.entries(pumpSessionPoints).sort((a,b) => b[1] - a[1]);
             if (sortedEntries.length > 0) {
                 const topCandidate = candidates.find(c => c.id === sortedEntries[0][0]);
                 if (topCandidate) topPickName = topCandidate.name;
             }
-
             const now = new Date();
             const dateStr = now.toLocaleDateString('th-TH');
             const timeStr = now.toLocaleTimeString('th-TH');
             const currentAward = systemConfig.awardName || 'Popular Vote';
-
             container.innerHTML = `
                 <div class="px-4 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
                     <div id="pump-receipt-card" class="receipt-card p-6 bg-white border-t-8 border-pink-500 rounded-b-lg">
-                        <div class="mb-4">
-                            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm animate-bounce">
-                                <i class="fa-solid fa-flag-checkered"></i>
-                            </div>
-                        </div>
+                        <div class="mb-4"><div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm animate-bounce"><i class="fa-solid fa-flag-checkered"></i></div></div>
                         <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">บันทึกคะแนนรัว</h2>
                         <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL CHALLENGE RECORD</p>
-                        
                         <div class="space-y-4 mb-6">
                             <div class="bg-pink-50 p-4 rounded-xl border border-pink-100 text-center">
                                 <div class="text-[10px] text-pink-400 mb-1 uppercase font-bold tracking-wider">Top Cheer For</div>
                                 <div class="font-bold text-lg text-slate-800">${escapeHtml(topPickName)}</div>
                                 <div class="text-xs text-pink-600 font-medium">คะแนนจากคุณ ${pumpSessionPoints[sortedEntries[0]?.[0]] || 0} แต้ม</div>
                             </div>
-                            
                             <div class="space-y-2">
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">หัวข้อรายการ</span>
-                                    <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span>
-                                </div>
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">ยอดรวมทั้งหมด</span>
-                                    <span class="text-sm font-black text-pink-600">${totalClicks.toLocaleString()} ครั้ง</span>
-                                </div>
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">วันที่บันทึก</span>
-                                    <span class="text-xs font-bold text-slate-700 text-right">${dateStr}</span>
-                                </div>
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
-                                    <span class="text-xs text-slate-500">เวลาบันทึก</span>
-                                    <span class="text-xs font-bold text-slate-700 text-right">${timeStr} น.</span>
-                                </div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">หัวข้อรายการ</span><span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span></div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">ยอดรวมทั้งหมด</span><span class="text-sm font-black text-pink-600">${totalClicks.toLocaleString()} ครั้ง</span></div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">วันที่บันทึก</span><span class="text-xs font-bold text-slate-700 text-right">${dateStr}</span></div>
+                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">เวลาบันทึก</span><span class="text-xs font-bold text-slate-700 text-right">${timeStr} น.</span></div>
                             </div>
                         </div>
-
-                        <div class="text-[10px] text-slate-400 text-center leading-relaxed">
-                            ขอบคุณที่ร่วมสนุกและส่งกำลังใจให้ผู้เข้าประกวด<br>
-                            <span class="font-bold text-slate-500">CHRISTMAS 2025</span>
-                        </div>
+                        <div class="text-[10px] text-slate-400 text-center leading-relaxed">ขอบคุณที่ร่วมสนุกและส่งกำลังใจให้ผู้เข้าประกวด<br><span class="font-bold text-slate-500">CHRISTMAS 2025</span></div>
                     </div>
-                    <div class="mt-4 text-center">
-                        <button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto active:scale-95 shadow-lg">
-                            <i class="fa-solid fa-download"></i> บันทึกบัตรคะแนน
-                        </button>
-                    </div>
+                    <div class="mt-4 text-center"><button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto active:scale-95 shadow-lg"><i class="fa-solid fa-download"></i> บันทึกบัตรคะแนน</button></div>
                 </div>`;
             container.classList.remove('hidden');
         }
@@ -1966,36 +1923,27 @@
             const container = document.getElementById('tv-leaderboard-list');
             const cat = document.getElementById('tv-current-category');
             if(!container) return;
-
             const isPump = systemConfig.activePhase === 'pump';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             cat.innerText = isPump ? `CHALLENGE: ${currentAward}` : `AWARD: ${currentAward}`;
             if(isPump) syncPumpGame();
-
             const field = isPump ? `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}` : getScoreField(currentAward);
             const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); 
-
             if(sorted.length === 0) { container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; return; }
-
             sorted.forEach(c => {
                 const score = c[field] || 0;
                 const prevScore = lastScores[c.id] || 0;
                 const diff = score - prevScore;
-                
                 if (diff > 0) {
-                    for(let i=0; i<Math.min(diff, 10); i++) { 
-                        setTimeout(() => playSfx('pop'), i * 50);
-                    }
+                    for(let i=0; i<Math.min(diff, 10); i++) { setTimeout(() => playSfx('pop'), i * 50); }
                 }
                 lastScores[c.id] = score;
             });
-
             container.innerHTML = sorted.map((c, i) => {
                 let rowClass = 'tv-row'; let rankClass = 'tv-rank-box tv-rank-other'; let icon = '';
                 if (i === 0) { rowClass += ' tv-row-1'; rankClass = 'tv-rank-box tv-rank-1'; icon = '<i class="fa-solid fa-crown text-yellow-600 ml-3"></i>'; }
                 else if (i === 1) { rowClass += ' tv-row-2'; rankClass = 'tv-rank-box tv-rank-2'; }
                 else if (i === 2) { rowClass += ' tv-row-3'; rankClass = 'tv-rank-box tv-rank-3'; }
-
                 return `
                 <div class="${rowClass}">
                     <div class="flex items-center" style="flex: 1; min-width: 0;">
