@@ -518,14 +518,14 @@
 
                     <!-- GAME CONTAINER (Waiting & Playing Page) -->
                     <div id="pump-game-container" class="w-full text-center hidden relative px-2">
-                        <!-- FLOATING GAME TIMER -->
+                        <!-- FLOATING GAME TIMER (Sticky at top) -->
                         <div id="pump-user-timer-wrapper" class="sticky top-0 z-[60] bg-slate-900/80 backdrop-blur-lg p-3 rounded-b-3xl border-b border-white/10 mb-6 shadow-2xl -mx-4 flex flex-col items-center justify-center transition-all duration-300">
                             <div id="pump-status-badge" class="inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1">เตรียมตัวให้พร้อม...</div>
                             <div id="pump-game-timer" class="text-white text-5xl font-black font-mono leading-none tracking-tight">00:00</div>
                             <div class="text-pink-400 text-[9px] font-bold uppercase tracking-widest mt-1">Time Remaining</div>
                         </div>
 
-                        <!-- PUMP GRID (Grayed out in Waiting state) -->
+                        <!-- PUMP GRID (Grayed out in Waiting state via game-waiting-mode) -->
                         <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24">
                             <!-- Candidates for Pumping injected here -->
                         </div>
@@ -1691,14 +1691,13 @@
             const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
             const tvPanel = document.getElementById('view-tv-result');
 
-            // Phase 1: ล็อกอิน (เฉพาะ User)
+            // Phase 1: Login Gate (User only)
             if (!pumpVoterId && !isTV) {
                 if (gateContainer) gateContainer.classList.remove('hidden');
                 if (userGame) userGame.classList.add('hidden');
                 return;
             } 
             
-            // เมื่อ Login แล้ว ให้โชว์หน้าจอเกมทันที (แต่จะล็อกใน Phase 2)
             if (!isTV) {
                 if (gateContainer) gateContainer.classList.add('hidden');
                 if (userGame) userGame.classList.remove('hidden');
@@ -1707,11 +1706,11 @@
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
 
-            // Phase 2: หลัง Login แต่ Admin "ยังไม่กดเริ่ม" (หน้าเตรียมพร้อม)
+            // Phase 2: Logged in but Admin NOT YET started the game (Waiting Page)
             if (!config.isStarted) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // ล็อคปุ่มเป็นสีเทา
+                    userGame.classList.add('game-waiting-mode'); // Grayscale & Unclickable
                     userGame.classList.remove('hidden');
                 }
                 if (statusBadge) {
@@ -1721,19 +1720,19 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                renderPumpCandidates(); // วาดรายชื่อผู้สมัคร (ในสถานะล็อค)
+                renderPumpCandidates(); // Render even in waiting state
                 return;
             }
 
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            // เมื่อ Admin กดเริ่มกิจกรรมแล้ว แสดงตัวจับเวลาหน้า TV
+            // Admin started the game, show timer panel on TV
             if (isTV && tvPanel) {
                 tvPanel.classList.add('tv-mode-active');
             }
 
-            // Phase 3: Admin กดเริ่มแล้ว "กำลังนับ 3 2 1"
+            // Phase 3: Counting down 3, 2, 1
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 
@@ -1744,7 +1743,7 @@
                 }
 
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // ยังคงล็อคอยู่
+                    userGame.classList.add('game-waiting-mode'); // Still unclickable
                     userGame.classList.remove('hidden');
                 }
                 if (timerDisplay) timerDisplay.innerText = "00:00";
@@ -1757,12 +1756,12 @@
                 renderPumpCandidates();
                 lastPlayedState = 'countdown';
             } 
-            // Phase 4: เริ่มวินาทีที่ 0 "เริ่มเกม!"
+            // Phase 4: Game is ACTIVE
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
 
                 if (userGame) {
-                    userGame.classList.remove('game-waiting-mode'); // ปลดล็อคสีปกติ
+                    userGame.classList.remove('game-waiting-mode'); // Colorize & Unlock clicks
                     userGame.classList.remove('hidden');
                 }
                 
@@ -1781,7 +1780,7 @@
                 }
                 renderPumpCandidates();
             } 
-            // เกมจบ
+            // Phase 5: FINISHED
             else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) userGame.classList.add('hidden');
@@ -1801,6 +1800,7 @@
             if (!pumpVoterId) return;
             const grid = document.getElementById('pump-candidates-grid');
             if(!grid) return;
+            
             if(candidates.length === 0) { 
                 grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; 
                 return; 
@@ -1848,7 +1848,7 @@
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 
                 updateUIBasedOnConfig(); 
-                showToast('เข้าสู่โหมดเตรียมพร้อม!', 'success');
+                showToast('เข้าสู่โหมดเตรียมความพร้อมสำเร็จ!', 'success');
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้", "error");
