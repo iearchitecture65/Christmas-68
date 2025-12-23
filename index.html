@@ -57,8 +57,7 @@
         @keyframes snow { 100% { background-position: 550px 1000px, 400px 400px, 300px 300px; } }
 
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
-        .receipt-card { background: #fff; background-image: radial-gradient(#e5e7eb 1px, transparent 1px); background-size: 20px 20px; border-top: 8px solid #ef4444; position: relative; }
-        .receipt-card::before { content: ''; position: absolute; top: -15px; left: 0; right: 0; height: 15px; background: radial-gradient(circle, transparent 70%, #fff 70%); background-size: 20px 20px; background-position: bottom center; transform: rotate(180deg); display: none; }
+        .receipt-card { background: #fff; background-image: radial-gradient(#e5e7eb 1px, transparent 1px); background-size: 20px 20px; position: relative; overflow: hidden; }
         .receipt-card::after { content: ''; position: absolute; bottom: -10px; left: 0; right: 0; height: 10px; background: linear-gradient(45deg, transparent 33.333%, #fff 33.333%, #fff 66.667%, transparent 66.667%), linear-gradient(-45deg, transparent 33.333%, #fff 33.333%, #fff 66.667%, transparent 66.667%); background-size: 20px 20px; background-position: 0 0; }
         
         .modal-enter { animation: modalIn 0.2s ease-out forwards; }
@@ -146,6 +145,9 @@
         .pump-btn-wrapper { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
         .pump-disabled { filter: grayscale(100%); opacity: 0.6; pointer-events: none; cursor: not-allowed; }
         
+        /* Pump Waiting Mode (Grayed Out) */
+        .game-waiting-mode { filter: grayscale(100%) opacity(0.6); pointer-events: none; }
+        
         /* TV Layout Grid */
         #tv-main-container { display: flex; height: 100%; width: 100%; position: relative; }
         #tv-list-col { flex: 1; overflow-y: auto; padding: 3rem; transition: all 0.5s ease; }
@@ -156,8 +158,11 @@
             top: 2rem;
             right: 3rem;
             width: auto;
-            background: transparent;
-            border: none;
+            background: rgba(0,0,0,0.3); /* Slight backdrop for visibility */
+            backdrop-filter: blur(4px);
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255,255,255,0.1);
             display: none; 
             flex-direction: column; 
             justify-content: center; 
@@ -583,12 +588,23 @@
                         <button id="btn-clear-category-in-modal" class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-indigo-200 transition" title="ล้างคะแนนหัวข้อนี้"><i class="fa-solid fa-broom"></i></button>
                     </div>
                     <button onclick="closeAdminSummaryModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    <p class="text-xs text-slate-500 mb-2">คลิกที่รายชื่อเพื่อดูผู้โหวต</p>
                     <div class="overflow-y-auto flex-1 rounded-xl border border-slate-200">
                         <table class="w-full data-table">
                             <thead><tr><th class="w-12">#</th><th>ชื่อผู้เข้าประกวด</th><th class="text-right">คะแนน</th></tr></thead>
                             <tbody id="admin-summary-body" class="bg-white"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- VOTE DETAILS MODAL (ADMIN - SUB) -->
+            <div id="admin-vote-modal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm hidden">
+                <div class="bg-white rounded-2xl p-6 w-[80%] max-w-sm relative max-h-[60vh] flex flex-col shadow-2xl border border-slate-200">
+                    <button onclick="closeAdminVoteModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+                    <h4 class="text-md font-bold text-slate-800 mb-2">รายชื่อผู้โหวต</h4>
+                    <p class="text-[10px] text-slate-500 mb-3" id="admin-vote-modal-title">...</p>
+                    <div class="overflow-y-auto flex-1 space-y-1" id="admin-vote-list"></div>
                 </div>
             </div>
 
@@ -668,6 +684,8 @@
         let pumpSessionPoints = {}; 
         let lastPlayedState = 'waiting'; 
         let lastCountVal = null;
+        let lastScores = {};
+        let currentSessionAward = null;
         
         // --- AUDIO CONTEXT (FIXED) ---
         let audioUnlocked = false;
@@ -814,23 +832,18 @@
             // 1. Setup Listener
             auth.onAuthStateChanged(user => {
                 if (user) { 
-                    console.log("Authenticated as:", user.uid);
                     listenToConfig(); 
                     listenToCandidates(); 
                     listenToAttendees(); 
-                } else {
-                    console.log("No user, waiting for sign-in...");
-                }
+                } 
             });
 
             // 2. Perform Auth
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    console.log("Signing in with custom token...");
                     await auth.signInWithCustomToken(__initial_auth_token);
                 } else {
                     if (!auth.currentUser) {
-                        console.log("Signing in anonymously...");
                         await auth.signInAnonymously();
                     }
                 }
@@ -849,8 +862,24 @@
                 if (doc.exists) {
                     const newData = doc.data();
                     systemConfig = newData;
+                    
+                    // --- AWARD CHANGE RESET LOGIC ---
+                    const newAward = systemConfig.awardName || 'Popular Vote';
+                    if (currentSessionAward && currentSessionAward !== newAward) {
+                        // Reset local state if award name changed
+                        showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
+                        // Clear pump session specifically for new award logic if needed, 
+                        // but here we just reset local UI state to ensure clean slate
+                        pumpVoterId = ''; 
+                        pumpSessionPoints = {};
+                        document.getElementById('pump-id-input').value = '';
+                        // Also clear session storage for pump
+                        if(sessionStorage.getItem('pump_id')) sessionStorage.removeItem('pump_id');
+                    }
+                    currentSessionAward = newAward;
+                    
                     if (!systemConfig.activePhase) systemConfig.activePhase = 'vote';
-                    if (!systemConfig.awardName) systemConfig.awardName = 'Popular Vote';
+                    systemConfig.awardName = newAward;
                     
                     const awardInput = document.getElementById('input-award-name');
                     if(awardInput && document.activeElement !== awardInput && systemConfig.awardName) {
@@ -1227,7 +1256,7 @@
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
-            const btnContainer = el.parentElement.querySelector('.text-center.pb-4'); 
+            const btnContainer = el.parentElement.querySelector('.no-print'); 
             if(btnContainer) btnContainer.style.display = 'none';
             try {
                 const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
@@ -1238,19 +1267,8 @@
             finally { if(btnContainer) btnContainer.style.display = 'block'; }
         }
 
-        async function shareReceipt(elementId) {
-            const el = document.getElementById(elementId);
-            if (!el) return;
-            if (!navigator.share) return showToast("เบราว์เซอร์ไม่รองรับการแชร์", "error");
-            try {
-                const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-                canvas.toBlob(async (blob) => {
-                    if (!blob) return;
-                    await navigator.share({ files: [new File([blob], "vote-receipt.png", { type: "image/png" })], title: 'My Christmas Vote', text: 'มาร่วมโหวตงาน Christmas 2025 กัน!' });
-                    showToast("แชร์สำเร็จ", "success");
-                }, 'image/png');
-            } catch (e) { }
-        }
+        // Keep function but remove UI usage as requested
+        async function shareReceipt(elementId) {}
 
         function renderCandidates() {
             const listContainer = document.getElementById('candidates-list');
@@ -1267,13 +1285,13 @@
                 listContainer.classList.add('hidden');
                 votedContainer.classList.remove('hidden');
                 votedContainer.innerHTML = `
-                    <div id="voted-card-content" class="px-4 py-4 animate-fade-in bg-white rounded-xl">
-                        <div class="receipt-card p-6 rounded-lg shadow-xl mx-auto max-w-xs text-center border border-gray-100">
+                    <div id="voted-card-content" class="px-4 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
+                        <div class="receipt-card p-6 bg-white border-t-8 border-red-500 rounded-b-lg">
                             <div class="mb-4"><div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-check"></i></div></div>
-                            <h2 class="text-xl font-bold text-slate-800 tracking-tight">บัตรบันทึกคะแนน</h2>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6">OFFICIAL VOTE RECORD</p>
-                            <div class="space-y-4 mb-6">
-                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">บันทึกคะแนน</h2>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL VOTE RECORD</p>
+                            <div class="space-y-4 mb-4">
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
                                     <div class="text-[10px] text-slate-400 mb-1">ผู้ที่ได้รับคะแนน</div>
                                     <div class="font-bold text-lg text-slate-800">${cName}</div>
                                     <div class="text-xs text-indigo-600 font-medium">${cCostume}</div>
@@ -1281,11 +1299,7 @@
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">หัวข้อรางวัล</span><span class="text-xs font-bold text-slate-700 text-right">${currentAward}</span></div>
                                 <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">วันที่ / เวลา</span><span class="text-xs font-bold text-slate-700 text-right">${votedTime}</span></div>
                             </div>
-                            <div class="text-[10px] text-slate-400 mb-2">ขอบคุณที่ร่วมกิจกรรม<br>Christmas 2025</div>
-                        </div>
-                        <div class="text-center pt-6 pb-4 space-x-2">
-                            <button onclick="captureReceipt('voted-card-content')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 inline-flex items-center"><i class="fa-solid fa-download mr-1"></i> บันทึกรูป</button>
-                            <button onclick="shareReceipt('voted-card-content')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 inline-flex items-center"><i class="fa-solid fa-share-nodes mr-1"></i> แชร์</button>
+                            <div class="text-[10px] text-slate-400 text-center">ขอบคุณที่ร่วมกิจกรรม<br>Christmas 2025</div>
                         </div>
                     </div>`;
             } else {
@@ -1352,6 +1366,7 @@
                                 </div>
                                 <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
                             </div>
+                            <button onclick="deleteCategory('${awardName}')" class="bg-red-100 text-red-500 hover:bg-red-200 w-10 h-full rounded-lg flex items-center justify-center shadow-sm ml-1" title="ลบรายการหัวข้อนี้"><i class="fa-solid fa-trash-can"></i></button>
                         </div>`;
                     }).join('');
                 }
@@ -1367,9 +1382,54 @@
             const sorted = [...candidates].sort((a, b) => (b[categoryField] || 0) - (a[categoryField] || 0));
             const tbody = document.getElementById('admin-summary-body');
             tbody.innerHTML = sorted.length === 0 ? '<tr><td colspan="3" class="text-center p-4 text-gray-400">ไม่มีข้อมูล</td></tr>' : 
-            sorted.map((c, i) => `<tr class="clickable-row"><td class="text-center font-bold text-slate-500">${i+1}</td><td><div class="font-bold text-sm text-slate-800">${escapeHtml(c.name)}</div></td><td class="text-right font-bold text-red-600">${c[categoryField] || 0}</td></tr>`).join('');
+            sorted.map((c, i) => `
+                <tr class="clickable-row hover:bg-slate-50 cursor-pointer" onclick="openAdminVoteDetail('${c.id}', '${escapeHtml(c.name)}', '${categoryName}')">
+                    <td class="text-center font-bold text-slate-500">${i+1}</td>
+                    <td><div class="font-bold text-sm text-slate-800">${escapeHtml(c.name)}</div></td>
+                    <td class="text-right font-bold text-red-600">${c[categoryField] || 0}</td>
+                </tr>`).join('');
         }
         function closeAdminSummaryModal() { document.getElementById('admin-summary-modal').classList.add('hidden'); }
+        
+        async function openAdminVoteDetail(candidateId, candidateName, awardName) {
+            const modal = document.getElementById('admin-vote-modal');
+            const list = document.getElementById('admin-vote-list');
+            const title = document.getElementById('admin-vote-modal-title');
+            
+            modal.classList.remove('hidden');
+            title.innerHTML = `ผู้โหวตให้: <b>${candidateName}</b><br>รางวัล: ${awardName}`;
+            list.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลด...</div>';
+            
+            // Determine collection based on award name/prefix or try both
+            // Simplified: If categoryName starts with "votes_" logic usually applies, but here we pass human readable awardName
+            // We check prefixes in keys:
+            const isPump = Object.keys(candidates[0] || {}).some(k => k === `cheer_points_${awardName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            const collectionName = isPump ? 'pump_logs' : 'votes';
+
+            try {
+                const snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName)
+                        .where('candidateId', '==', candidateId)
+                        .where('awardCategory', '==', awardName).get();
+
+                const votes = [];
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    votes.push({ voterId: d.voterId, count: d.count || 1, voterName: d.voterName || '-' });
+                });
+
+                if (votes.length === 0) list.innerHTML = '<div class="text-center py-4 text-gray-400">ไม่มีข้อมูลผู้โหวต</div>';
+                else {
+                    list.innerHTML = votes.map(v => `
+                        <div class="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100 text-xs">
+                            <span class="font-mono text-blue-600 font-bold">${v.voterId}</span>
+                            <span class="text-gray-600">${isPump ? 'กด '+v.count+' ครั้ง' : v.voterName}</span>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) { console.error(e); list.innerHTML = '<div class="text-center text-red-500">เกิดข้อผิดพลาด</div>'; }
+        }
+        function closeAdminVoteModal() { document.getElementById('admin-vote-modal').classList.add('hidden'); }
+
         function openAttendeeListModal() { renderGenericListModal("ผู้เข้าร่วมงาน", attendees, (a) => `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td></tr>`); }
         function openCandidateListModal() { renderGenericListModal("ผู้เข้าประกวด", candidates, (c) => `<tr><td class="font-mono text-red-600 font-bold">${c.studentId || '?'}</td><td class="font-bold">${escapeHtml(c.name)}</td></tr>`); }
         function renderGenericListModal(titleText, data, rowMapper) {
@@ -1404,13 +1464,60 @@
             showToast(`เปลี่ยนหัวข้อเป็น: ${name}`, 'success');
         }
 
+        async function resetVotesForCategory(categoryName) {
+            if(!confirm(`ต้องการล้างคะแนน "${categoryName}" ใช่หรือไม่?`)) return;
+            const batch = db.batch();
+            const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            
+            // Clear candidates fields
+            const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
+            candSnap.forEach(doc => {
+                batch.update(doc.ref, { [voteField]: 0, [pumpField]: 0 });
+            });
+            // Delete logs
+            const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+            const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
+            pumpSnap.forEach(doc => batch.delete(doc.ref));
+            
+            await batch.commit();
+            showToast('ล้างคะแนนเรียบร้อย', 'success');
+            closeAdminSummaryModal();
+        }
+
+        async function deleteCategory(categoryName) {
+            if(!confirm(`⚠️ ยืนยันลบหัวข้อ "${categoryName}" ถาวร?`)) return;
+            const batch = db.batch();
+            const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            
+            // Remove fields
+            const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
+            candSnap.forEach(doc => {
+                batch.update(doc.ref, { [voteField]: firebase.firestore.FieldValue.delete(), [pumpField]: firebase.firestore.FieldValue.delete() });
+            });
+            // Delete logs
+            const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
+            votesSnap.forEach(doc => batch.delete(doc.ref));
+            const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
+            pumpSnap.forEach(doc => batch.delete(doc.ref));
+            
+            await batch.commit();
+            showToast('ลบหัวข้อเรียบร้อย', 'success');
+        }
+
         async function resetAllSystem() {
-            if(!confirm('⚠️ ยืนยัน Factory Reset? ข้อมูลทั้งหมดจะหายถาวร!')) return;
+            const promptVal = prompt('⚠️ ยืนยัน Factory Reset? พิมพ์ "CONFIRM" เพื่อยืนยัน (ข้อมูลทั้งหมดจะหายถาวร)');
+            if(promptVal !== 'CONFIRM') return;
+            
             const batch = db.batch();
             ['attendees','candidates','votes','pump_logs','pump_sessions'].forEach(async col => {
                 const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
                 snap.forEach(doc => batch.delete(doc.ref));
             });
+            await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
+            
             await batch.commit();
             showToast('ล้างข้อมูลทั้งระบบเรียบร้อย', 'success');
         }
@@ -1418,11 +1525,12 @@
         /* --- PUMP GAME & SOUND --- */
         function playSfx(type) {
             if(window.location.hash !== '#tv-result') return;
-            if (audioCtx.state === 'suspended') audioCtx.resume(); // Auto resume attempt
+            if (audioCtx.state === 'suspended') audioCtx.resume(); 
             try {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain); gain.connect(audioCtx.destination);
+                
                 if (type === 'whistle') {
                     osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
                     osc.frequency.exponentialRampToValueAtTime(1600, audioCtx.currentTime + 0.1);
@@ -1432,8 +1540,24 @@
                 } else if (type === 'end') {
                     osc.type = 'square'; osc.frequency.setValueAtTime(220, audioCtx.currentTime);
                     gain.gain.setValueAtTime(0.5, audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+                } else if (type === 'pop') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
                 }
             } catch(e) { }
+        }
+        
+        function sayWord(text) {
+            if(window.location.hash !== '#tv-result') return;
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US'; utterance.rate = 1.2;
+                window.speechSynthesis.speak(utterance);
+            }
         }
 
         async function startPumpGame() {
@@ -1459,15 +1583,25 @@
             const statusBadge = document.getElementById('pump-status-badge');
 
             if (!pumpVoterId) {
+                // If not logged in, show login, hide everything else
                 if(gateContainer) gateContainer.classList.remove('hidden');
                 [userGame, userWaiting, summaryContainer].forEach(el => el && el.classList.add('hidden'));
                 return;
             } else { if(gateContainer) gateContainer.classList.add('hidden'); }
 
             if (now < startAt) {
-                // WAITING
-                showPumpWaiting(); // Use new waiting logic
+                // WAITING (Shows Grayed Out Game)
+                if(userWaiting) userWaiting.classList.add('hidden');
+                if(userGame) userGame.classList.remove('hidden');
+                if(statusBadge) { statusBadge.innerText = "รอสัญญาณ..."; statusBadge.className="inline-block bg-gray-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-pulse"; statusBadge.classList.remove('hidden'); }
                 
+                // Gray out grid
+                const grid = document.getElementById('pump-candidates-grid');
+                if(grid) { 
+                    grid.classList.remove('hidden'); 
+                    grid.classList.add('game-waiting-mode'); // Apply Gray Filter
+                }
+
                 // TV Countdown
                 const diff = Math.ceil((startAt - now) / 1000);
                 if(tvCountdown) {
@@ -1477,8 +1611,13 @@
                 const tvPanel = document.getElementById('view-tv-result');
                 if(tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                if(diff <= 3 && diff > 0 && lastCountVal !== diff) { lastCountVal = diff; playSfx('whistle'); }
+                if(diff <= 3 && diff > 0 && lastCountVal !== diff) { 
+                    lastCountVal = diff; 
+                    playSfx('whistle'); 
+                    sayWord(diff.toString());
+                }
                 lastPlayedState = 'countdown';
+                
             } else if (now < endAt) {
                 // GAME ACTIVE
                 if(userWaiting) userWaiting.classList.add('hidden');
@@ -1488,7 +1627,11 @@
                 
                 // Enable Buttons
                 const grid = document.getElementById('pump-candidates-grid');
-                if(grid) { grid.classList.remove('hidden'); grid.querySelectorAll('.pump-btn-wrapper').forEach(btn => btn.classList.remove('pump-disabled')); }
+                if(grid) { 
+                    grid.classList.remove('hidden'); 
+                    grid.classList.remove('game-waiting-mode'); // Remove Gray Filter
+                    grid.querySelectorAll('.pump-btn-wrapper').forEach(btn => btn.classList.remove('pump-disabled')); 
+                }
 
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
@@ -1497,10 +1640,14 @@
                 if(tvCountdown) tvCountdown.classList.add('hidden');
                 
                 const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.add('tv-mode-active');
+                if(tvPanel) tvPanel.classList.add('tv-mode-active'); // Shows TV Timer
                 document.getElementById('tv-game-timer-val').innerText = timeStr;
 
-                if(lastPlayedState === 'countdown') { lastPlayedState = 'active'; playSfx('whistle'); }
+                if(lastPlayedState === 'countdown') { 
+                    lastPlayedState = 'active'; 
+                    playSfx('whistle'); 
+                    sayWord("Start!");
+                }
             } else {
                 // END
                 if(userGame) userGame.classList.add('hidden');
@@ -1509,22 +1656,24 @@
                 if(tvPanel) tvPanel.classList.remove('tv-mode-active');
                 if(tvCountdown) tvCountdown.classList.add('hidden');
 
-                if(lastPlayedState === 'active') { lastPlayedState = 'finished'; playSfx('end'); renderPumpSummary(); }
+                if(lastPlayedState === 'active') { 
+                    lastPlayedState = 'finished'; 
+                    playSfx('end'); 
+                    sayWord("Time's up!");
+                    renderPumpSummary(); 
+                }
                 if(summaryContainer) summaryContainer.classList.remove('hidden');
             }
         }
         
         function showPumpWaiting() {
-            document.getElementById('pump-game-container').classList.add('hidden');
-            document.getElementById('pump-summary-container').classList.add('hidden');
-            document.getElementById('pump-waiting-container').classList.remove('hidden');
+            // Deprecated by game-waiting-mode logic
         }
 
         function renderPumpCandidates() {
             if (!pumpVoterId) {
                 const grid = document.getElementById('pump-candidates-grid');
                 if(!grid) return;
-                // Just keep empty or default state, input gate handles view
                 return;
             }
             const grid = document.getElementById('pump-candidates-grid');
@@ -1558,22 +1707,31 @@
                     return;
                 }
                 
-                // 2. LOCK 1 ID = 1 DEVICE
+                // 2. STRICT DEVICE LOCK (TRANSACTION)
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(id);
-                const sessionSnap = await sessionRef.get();
-                if (sessionSnap.exists) {
-                    showToast("รหัสนี้ถูกใช้งานไปแล้ว (1 เครื่อง/1 รหัส)", "error");
-                    return;
-                }
-                await sessionRef.set({ used: true, ts: firebase.firestore.FieldValue.serverTimestamp() });
+                
+                await db.runTransaction(async (transaction) => {
+                    const sessionDoc = await transaction.get(sessionRef);
+                    if (sessionDoc.exists) {
+                        throw "SESSION_EXISTS";
+                    }
+                    transaction.set(sessionRef, { used: true, ts: firebase.firestore.FieldValue.serverTimestamp() });
+                });
 
                 // Success
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 renderPumpCandidates();
-                showPumpWaiting(); // Go straight to waiting
+                syncPumpGame(); 
                 showToast('เข้าสู่ระบบสำเร็จ', 'success');
-            } catch(e) { console.error(e); showToast('เกิดข้อผิดพลาด', 'error'); } 
+            } catch(e) { 
+                console.error(e); 
+                if (e === "SESSION_EXISTS") {
+                    showToast("รหัสนี้ถูกใช้งานไปแล้ว (ล็อก 1 เครื่อง)", "error");
+                } else {
+                    showToast('เกิดข้อผิดพลาด', 'error'); 
+                }
+            } 
             finally { if(btn) { btn.disabled = false; btn.innerText = "พร้อมลุย!"; } }
         }
 
@@ -1596,23 +1754,28 @@
             const field = `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`;
             const candidateRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').doc(cid);
             candidateRef.update({ [field]: firebase.firestore.FieldValue.increment(1) }).catch(err => console.error(err));
+            
+            // Log for admin detail view
+            const logId = `${pumpVoterId}_${cid}_${field}`;
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').doc(logId).set({
+                voterId: pumpVoterId, candidateId: cid, awardCategory: currentAward, count: firebase.firestore.FieldValue.increment(1)
+            }, { merge: true });
         }
         
         function renderPumpSummary() {
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             container.innerHTML = `
-                <div class="px-6 py-4 animate-fade-in bg-white rounded-xl">
-                    <div class="receipt-card p-6 rounded-lg shadow-xl mx-auto max-w-xs text-center border border-gray-100">
+                <div class="px-6 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
+                    <div class="receipt-card p-6 border-t-8 border-pink-500 rounded-b-lg">
                         <div class="mb-4"><div class="w-16 h-16 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm"><i class="fa-solid fa-flag-checkered"></i></div></div>
-                        <h2 class="text-xl font-bold text-slate-800 tracking-tight">จบเกมแล้ว!</h2>
-                        <div class="bg-pink-50 p-3 rounded-lg border border-pink-100 mt-4">
+                        <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">จบเกมแล้ว!</h2>
+                        <div class="bg-pink-50 p-3 rounded-lg border border-pink-100 mt-4 text-center">
                             <div class="text-[10px] text-slate-400 mb-1">ยอดกดทั้งหมดของคุณ</div>
                             <div class="font-black text-4xl text-pink-600">${totalClicks}</div>
                             <div class="text-xs text-pink-400 font-medium">ครั้ง</div>
                         </div>
                     </div>
-                    <!-- REMOVED SHARE/SAVE BUTTONS -->
                 </div>`;
             container.classList.remove('hidden');
         }
@@ -1631,6 +1794,15 @@
             const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); // Show Top 5 for cleaner TV
 
             if(sorted.length === 0) { container.innerHTML = '<div class="text-white/20 text-5xl text-center py-40 font-bold uppercase tracking-widest">--- WAITING ---</div>'; return; }
+
+            // Sound Logic Check
+            let hasChange = false;
+            sorted.forEach(c => {
+                const score = c[field] || 0;
+                if (lastScores[c.id] !== undefined && score > lastScores[c.id]) hasChange = true;
+                lastScores[c.id] = score;
+            });
+            if (hasChange) playSfx('pop');
 
             container.innerHTML = sorted.map((c, i) => {
                 let rowClass = 'tv-row'; let rankClass = 'tv-rank-box tv-rank-other'; let icon = '';
