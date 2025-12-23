@@ -128,11 +128,11 @@
             font-size: 2.5rem; 
             font-weight: 700; 
             color: #1e293b; 
-            line-height: 1.1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 60vw; /* Prevent overflow */
+            line-height: 1.1; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            max-width: 60vw;
         }
         .tv-sub { font-size: 1.5rem; color: #64748b; margin-top: 0.25rem; }
         .tv-score { font-size: 3.5rem; font-weight: 900; color: #dc2626; text-align: right; }
@@ -300,7 +300,7 @@
                         <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="fa-solid fa-ticket text-blue-500"></i> ลงทะเบียนเข้างาน</h2>
                         <div id="attend-redirect-alert" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 mb-4 rounded text-xs">
                             <p class="font-bold">⚠️ ยังไม่ได้ลงทะเบียน</p>
-                            <p>กรุณาลงทะเบียนก่อน แล้วระบบจะพาคุณกลับไปโหวตอัตโนมัติ</p>
+                            <p>กรุณาลงทะเบียนก่อน ระบบจะพาคุณกลับไปโหวตอัตโนมัติ</p>
                         </div>
                         <div id="form-attend" class="space-y-4">
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">รหัสนักศึกษา</label><input type="tel" id="attend-id" class="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-lg font-mono tracking-widest" placeholder="XXXXXXXX"></div>
@@ -624,8 +624,8 @@
                 </div>
             </div>
 
-            <!-- TOAST -->
-            <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[100] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
+            <!-- TOAST (High Z-Index) -->
+            <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800/95 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 -translate-y-10 z-[9999999] pointer-events-none w-max max-w-[90%] backdrop-blur border border-white/10">
                 <div id="toast-icon"></div><span id="toast-msg" class="font-medium text-sm"></span>
             </div>
         </div>
@@ -708,6 +708,15 @@
         window.addEventListener('load', () => {
             if (auth) initAuth();
             handleRouting();
+            
+            // Check redirect logic after registration
+            const pendingId = sessionStorage.getItem('pendingVoteId');
+            if (pendingId && window.location.hash === '#register-attend') {
+               const el = document.getElementById('attend-id');
+               if(el) el.value = pendingId;
+               document.getElementById('attend-redirect-alert').classList.remove('hidden');
+            }
+
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
             setInterval(() => { if(systemConfig.activePhase === 'pump') syncPumpGame(); }, 500);
@@ -748,6 +757,62 @@
             document.getElementById('site-footer').classList.add('hidden');
             updateAdminUIState();
             setTimeout(initAdminMap, 300);
+        }
+
+        // --- CUSTOM CONFIRM MODAL ---
+        function showCustomConfirm(title, message, onConfirmCallback) {
+            const modal = document.getElementById('custom-confirm-modal');
+            const titleEl = document.getElementById('confirm-title');
+            const msgEl = document.getElementById('confirm-message');
+            const inputContainer = document.getElementById('confirm-input-container');
+            const btnOk = document.getElementById('btn-confirm-ok');
+            const btnCancel = document.getElementById('btn-confirm-cancel');
+            
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+            
+            // Reset state
+            inputContainer.classList.add('hidden');
+            btnOk.disabled = false;
+            btnOk.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            // Special handling for factory reset
+            if (message.includes('Factory Reset')) {
+                inputContainer.classList.remove('hidden');
+                const input = document.getElementById('confirm-input-text');
+                input.value = '';
+                btnOk.disabled = true;
+                btnOk.classList.add('opacity-50', 'cursor-not-allowed');
+                input.onkeyup = () => {
+                    if(input.value === 'CONFIRM') {
+                        btnOk.disabled = false;
+                        btnOk.classList.remove('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        btnOk.disabled = true;
+                        btnOk.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                };
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+
+            // Clean up old listeners
+            const newBtnOk = btnOk.cloneNode(true);
+            btnOk.parentNode.replaceChild(newBtnOk, btnOk);
+            const newBtnCancel = btnCancel.cloneNode(true);
+            btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+
+            newBtnOk.addEventListener('click', () => {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+                onConfirmCallback();
+            });
+
+            newBtnCancel.addEventListener('click', () => {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            });
         }
 
         // --- MAP FUNCTIONS ---
@@ -866,14 +931,11 @@
                     // --- AWARD CHANGE RESET LOGIC ---
                     const newAward = systemConfig.awardName || 'Popular Vote';
                     if (currentSessionAward && currentSessionAward !== newAward) {
-                        // Reset local state if award name changed
                         showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
-                        // Clear pump session specifically for new award logic if needed, 
-                        // but here we just reset local UI state to ensure clean slate
+                        // Local reset only, DB logic handled by ID keying
                         pumpVoterId = ''; 
                         pumpSessionPoints = {};
                         document.getElementById('pump-id-input').value = '';
-                        // Also clear session storage for pump
                         if(sessionStorage.getItem('pump_id')) sessionStorage.removeItem('pump_id');
                     }
                     currentSessionAward = newAward;
@@ -1161,8 +1223,23 @@
                 safeSetStorage(`reg_attend_${appId}`, 'true');
                 showToast('ลงทะเบียนเข้างานสำเร็จ!', 'success');
                 document.getElementById('attend-id').value = ''; document.getElementById('attend-name').value = '';
-                if (sessionStorage.getItem('pendingVoteId')) {
-                    sessionStorage.removeItem('pendingVoteId'); window.location.hash = ''; 
+                
+                // Redirect back logic
+                const pendingId = sessionStorage.getItem('pendingVoteId');
+                const pendingCandidate = sessionStorage.getItem('pendingVoteCandidate');
+                if (pendingId) {
+                    sessionStorage.removeItem('pendingVoteId');
+                    // Go back to vote
+                    window.location.hash = ''; 
+                    setTimeout(() => {
+                        window.location.hash = 'vote';
+                        // Ideally trigger modal again if we knew the candidate, 
+                        // but redirecting to vote list is good enough UX
+                        if (pendingCandidate) {
+                            setTimeout(() => openVoteModal(pendingCandidate), 500);
+                            sessionStorage.removeItem('pendingVoteCandidate');
+                        }
+                    }, 500);
                 } else { navigateBackFromRegister(); }
             } catch (error) { console.error(error); showToast('เกิดข้อผิดพลาด', 'error'); } 
             finally { btn.disabled = false; btn.innerHTML = 'ยืนยันการลงชื่อ'; }
@@ -1223,10 +1300,14 @@
             try {
                 const attendeeRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(voterId);
                 const attendeeDoc = await attendeeRef.get();
+                
+                // AUTO-REDIRECT Logic
                 if (!attendeeDoc.exists) {
-                    showToast('คุณยังไม่ได้ลงทะเบียนเข้างาน', 'error');
+                    showToast('ไม่พบข้อมูลลงทะเบียน กำลังพาไปลงทะเบียน...', 'error');
                     sessionStorage.setItem('pendingVoteId', voterId);
-                    setTimeout(() => { closeVoteModal(); window.location.hash = 'register-attend'; }, 1000);
+                    sessionStorage.setItem('pendingVoteCandidate', candidateId);
+                    closeVoteModal();
+                    setTimeout(() => { window.location.hash = 'register-attend'; }, 1500);
                     return; 
                 }
                 const voteDocId = `${voterId}_${scoreField}`; 
@@ -1256,7 +1337,7 @@
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
-            const btnContainer = el.parentElement.querySelector('.no-print'); 
+            const btnContainer = el.parentElement.querySelector('.text-center.pb-4'); 
             if(btnContainer) btnContainer.style.display = 'none';
             try {
                 const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
@@ -1267,7 +1348,6 @@
             finally { if(btnContainer) btnContainer.style.display = 'block'; }
         }
 
-        // Keep function but remove UI usage as requested
         async function shareReceipt(elementId) {}
 
         function renderCandidates() {
@@ -1400,13 +1480,12 @@
             title.innerHTML = `ผู้โหวตให้: <b>${candidateName}</b><br>รางวัล: ${awardName}`;
             list.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-circle-notch fa-spin"></i> กำลังโหลด...</div>';
             
-            // Determine collection based on award name/prefix or try both
-            // Simplified: If categoryName starts with "votes_" logic usually applies, but here we pass human readable awardName
-            // We check prefixes in keys:
+            // Check prefix to determine collection
             const isPump = Object.keys(candidates[0] || {}).some(k => k === `cheer_points_${awardName.replace(/[^a-zA-Z0-9]/g, '_')}`);
             const collectionName = isPump ? 'pump_logs' : 'votes';
 
             try {
+                // IMPORTANT: For Pump Logs, we keyed by specific logic, verify field names in FS
                 const snapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName)
                         .where('candidateId', '==', candidateId)
                         .where('awardCategory', '==', awardName).get();
@@ -1417,7 +1496,7 @@
                     votes.push({ voterId: d.voterId, count: d.count || 1, voterName: d.voterName || '-' });
                 });
 
-                if (votes.length === 0) list.innerHTML = '<div class="text-center py-4 text-gray-400">ไม่มีข้อมูลผู้โหวต</div>';
+                if (votes.length === 0) list.innerHTML = '<div class="text-center py-4 text-gray-400">ไม่มีข้อมูล</div>';
                 else {
                     list.innerHTML = votes.map(v => `
                         <div class="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100 text-xs">
@@ -1430,8 +1509,17 @@
         }
         function closeAdminVoteModal() { document.getElementById('admin-vote-modal').classList.add('hidden'); }
 
-        function openAttendeeListModal() { renderGenericListModal("ผู้เข้าร่วมงาน", attendees, (a) => `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td></tr>`); }
-        function openCandidateListModal() { renderGenericListModal("ผู้เข้าประกวด", candidates, (c) => `<tr><td class="font-mono text-red-600 font-bold">${c.studentId || '?'}</td><td class="font-bold">${escapeHtml(c.name)}</td></tr>`); }
+        function openAttendeeListModal() { 
+            const clearBtn = document.getElementById('btn-clear-data-list-in-modal');
+            clearBtn.onclick = () => clearDataList('attendees');
+            renderGenericListModal("ผู้เข้าร่วมงาน", attendees, (a) => `<tr><td class="font-mono text-indigo-600 font-bold">${a.studentId}</td><td>${escapeHtml(a.name)}</td></tr>`); 
+        }
+        function openCandidateListModal() { 
+            const clearBtn = document.getElementById('btn-clear-data-list-in-modal');
+            clearBtn.onclick = () => clearDataList('candidates');
+            renderGenericListModal("ผู้เข้าประกวด", candidates, (c) => `<tr><td class="font-mono text-red-600 font-bold">${c.studentId || '?'}</td><td class="font-bold">${escapeHtml(c.name)}</td></tr>`); 
+        }
+        
         function renderGenericListModal(titleText, data, rowMapper) {
             const modal = document.getElementById('admin-data-list-modal');
             document.getElementById('admin-data-list-title').innerText = titleText;
@@ -1440,6 +1528,18 @@
             modal.classList.remove('hidden');
         }
         function closeAdminDataListModal() { document.getElementById('admin-data-list-modal').classList.add('hidden'); }
+        
+        function clearDataList(collectionName) {
+            showCustomConfirm('ล้างข้อมูล', `ยืนยันลบข้อมูล ${collectionName} ทั้งหมด?`, async () => {
+                const batch = db.batch();
+                const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName).get();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                showToast('ล้างข้อมูลเรียบร้อย', 'success');
+                closeAdminDataListModal();
+            });
+        }
+
         function checkAdminPass() {
             const input = document.getElementById('admin-pass');
             if (input.value === 'Admin123') { isAdminAuthenticated = true; input.value = ''; showToast('เข้าสู่ระบบ Admin สำเร็จ', 'success'); window.location.hash = '#admin'; handleRouting(); checkLocationAccess(); } 
@@ -1465,61 +1565,64 @@
         }
 
         async function resetVotesForCategory(categoryName) {
-            if(!confirm(`ต้องการล้างคะแนน "${categoryName}" ใช่หรือไม่?`)) return;
-            const batch = db.batch();
-            const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            
-            // Clear candidates fields
-            const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
-            candSnap.forEach(doc => {
-                batch.update(doc.ref, { [voteField]: 0, [pumpField]: 0 });
+            showCustomConfirm('ล้างคะแนน', `ต้องการล้างคะแนน "${categoryName}" ใช่หรือไม่?`, async () => {
+                const batch = db.batch();
+                const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                
+                const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
+                candSnap.forEach(doc => {
+                    batch.update(doc.ref, { [voteField]: 0, [pumpField]: 0 });
+                });
+                
+                const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
+                votesSnap.forEach(doc => batch.delete(doc.ref));
+                const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
+                pumpSnap.forEach(doc => batch.delete(doc.ref));
+                
+                await batch.commit();
+                showToast('ล้างคะแนนเรียบร้อย', 'success');
+                closeAdminSummaryModal();
             });
-            // Delete logs
-            const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
-            votesSnap.forEach(doc => batch.delete(doc.ref));
-            const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
-            pumpSnap.forEach(doc => batch.delete(doc.ref));
-            
-            await batch.commit();
-            showToast('ล้างคะแนนเรียบร้อย', 'success');
-            closeAdminSummaryModal();
         }
 
         async function deleteCategory(categoryName) {
-            if(!confirm(`⚠️ ยืนยันลบหัวข้อ "${categoryName}" ถาวร?`)) return;
-            const batch = db.batch();
-            const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-            
-            // Remove fields
-            const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
-            candSnap.forEach(doc => {
-                batch.update(doc.ref, { [voteField]: firebase.firestore.FieldValue.delete(), [pumpField]: firebase.firestore.FieldValue.delete() });
+            showCustomConfirm('ลบหัวข้อ', `⚠️ ยืนยันลบหัวข้อ "${categoryName}" ถาวร?`, async () => {
+                const batch = db.batch();
+                const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                
+                // Remove fields STRICTLY BOTH
+                const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
+                candSnap.forEach(doc => {
+                    batch.update(doc.ref, { 
+                        [voteField]: firebase.firestore.FieldValue.delete(), 
+                        [pumpField]: firebase.firestore.FieldValue.delete() 
+                    });
+                });
+                
+                // Delete logs
+                const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
+                votesSnap.forEach(doc => batch.delete(doc.ref));
+                const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
+                pumpSnap.forEach(doc => batch.delete(doc.ref));
+                
+                await batch.commit();
+                showToast('ลบหัวข้อเรียบร้อย', 'success');
             });
-            // Delete logs
-            const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
-            votesSnap.forEach(doc => batch.delete(doc.ref));
-            const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
-            pumpSnap.forEach(doc => batch.delete(doc.ref));
-            
-            await batch.commit();
-            showToast('ลบหัวข้อเรียบร้อย', 'success');
         }
 
         async function resetAllSystem() {
-            const promptVal = prompt('⚠️ ยืนยัน Factory Reset? พิมพ์ "CONFIRM" เพื่อยืนยัน (ข้อมูลทั้งหมดจะหายถาวร)');
-            if(promptVal !== 'CONFIRM') return;
-            
-            const batch = db.batch();
-            ['attendees','candidates','votes','pump_logs','pump_sessions'].forEach(async col => {
-                const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
-                snap.forEach(doc => batch.delete(doc.ref));
+            showCustomConfirm('Factory Reset', '⚠️ ยืนยันล้างข้อมูลทั้งระบบ? (พิมพ์ CONFIRM)', async () => {
+                const batch = db.batch();
+                ['attendees','candidates','votes','pump_logs','pump_sessions'].forEach(async col => {
+                    const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
+                    snap.forEach(doc => batch.delete(doc.ref));
+                });
+                await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
+                await batch.commit();
+                showToast('ล้างข้อมูลทั้งระบบเรียบร้อย', 'success');
             });
-            await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
-            
-            await batch.commit();
-            showToast('ล้างข้อมูลทั้งระบบเรียบร้อย', 'success');
         }
 
         /* --- PUMP GAME & SOUND --- */
@@ -1583,7 +1686,6 @@
             const statusBadge = document.getElementById('pump-status-badge');
 
             if (!pumpVoterId) {
-                // If not logged in, show login, hide everything else
                 if(gateContainer) gateContainer.classList.remove('hidden');
                 [userGame, userWaiting, summaryContainer].forEach(el => el && el.classList.add('hidden'));
                 return;
@@ -1599,7 +1701,7 @@
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) { 
                     grid.classList.remove('hidden'); 
-                    grid.classList.add('game-waiting-mode'); // Apply Gray Filter
+                    grid.classList.add('game-waiting-mode'); 
                 }
 
                 // TV Countdown
@@ -1629,7 +1731,7 @@
                 const grid = document.getElementById('pump-candidates-grid');
                 if(grid) { 
                     grid.classList.remove('hidden'); 
-                    grid.classList.remove('game-waiting-mode'); // Remove Gray Filter
+                    grid.classList.remove('game-waiting-mode'); 
                     grid.querySelectorAll('.pump-btn-wrapper').forEach(btn => btn.classList.remove('pump-disabled')); 
                 }
 
@@ -1640,7 +1742,7 @@
                 if(tvCountdown) tvCountdown.classList.add('hidden');
                 
                 const tvPanel = document.getElementById('view-tv-result');
-                if(tvPanel) tvPanel.classList.add('tv-mode-active'); // Shows TV Timer
+                if(tvPanel) tvPanel.classList.add('tv-mode-active'); 
                 document.getElementById('tv-game-timer-val').innerText = timeStr;
 
                 if(lastPlayedState === 'countdown') { 
@@ -1666,9 +1768,7 @@
             }
         }
         
-        function showPumpWaiting() {
-            // Deprecated by game-waiting-mode logic
-        }
+        function showPumpWaiting() {}
 
         function renderPumpCandidates() {
             if (!pumpVoterId) {
@@ -1681,7 +1781,6 @@
             if(candidates.length === 0) { grid.innerHTML = '<div class="col-span-2 text-white/30 py-10">ไม่พบรายชื่อผู้สมัคร</div>'; return; }
             grid.innerHTML = candidates.sort((a,b) => (a.studentId||'').localeCompare(b.studentId||'')).map(c => {
                 const currentPoints = pumpSessionPoints[c.id] || 0;
-                // Heart Button UI
                 return `
                 <div class="pump-btn-wrapper bg-white/10 backdrop-blur-md p-4 rounded-3xl flex flex-col shadow-lg relative overflow-hidden transform transition active:scale-95 border-2 border-white/20 h-52 items-center justify-center text-center cursor-pointer select-none" onclick="handlePumpClick(event, '${c.id}')">
                     <div class="text-pink-500 text-6xl mb-2 drop-shadow-lg"><i class="fa-solid fa-heart text-7xl animate-pulse"></i></div>
@@ -1708,7 +1807,9 @@
                 }
                 
                 // 2. STRICT DEVICE LOCK (TRANSACTION)
-                const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(id);
+                const currentAward = systemConfig.awardName || 'Popular Vote';
+                const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; // BIND SESSION TO AWARD
+                const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
                 
                 await db.runTransaction(async (transaction) => {
                     const sessionDoc = await transaction.get(sessionRef);
@@ -1727,7 +1828,7 @@
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") {
-                    showToast("รหัสนี้ถูกใช้งานไปแล้ว (ล็อก 1 เครื่อง)", "error");
+                    showToast("รหัสนี้ถูกใช้งานไปแล้วในรอบนี้ (ล็อก 1 เครื่อง)", "error");
                 } else {
                     showToast('เกิดข้อผิดพลาด', 'error'); 
                 }
@@ -1738,7 +1839,6 @@
         function handlePumpClick(e, cid) {
             if(!pumpVoterId) return; 
             
-            // Visual
             const heart = document.createElement('div');
             heart.className = 'pump-heart text-pink-400 text-5xl font-bold drop-shadow-md';
             heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
