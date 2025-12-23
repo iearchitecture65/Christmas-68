@@ -389,7 +389,7 @@
                             <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
                                 <h3 class="font-bold text-slate-700 text-sm mb-3 flex justify-between items-center">
                                     <span><i class="fa-solid fa-map-location-dot"></i> การจำกัดพื้นที่ (GPS)</span>
-                                    <button onclick="toggleLocationCheck()" id="btn-loc-toggle" class="px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500 transition-colors">ปิดอยู่</button>
+                                    <button onclick="toggleLocationCheck()" id="btn-loc-toggle" class="px-3 py-1 rounded text-xs font-bold bg-green-500 text-white transition-colors">ปิดอยู่</button>
                                 </h3>
                                 <!-- Map Container with Lock Button -->
                                 <div class="relative w-full h-64 mb-3">
@@ -564,7 +564,7 @@
                     <!-- BIG OVERLAY COUNTDOWN WITH VOICE TRIGGER (v4: Fixed for all screens) -->
                     <div id="tv-pump-countdown" class="fixed inset-0 bg-slate-900/95 z-[1000] flex flex-col items-center justify-center hidden">
                         <div class="text-slate-400 text-4xl md:text-7xl mb-12 font-bold uppercase tracking-[0.5rem] md:tracking-[1rem]">GAME STARTING IN</div>
-                        <div id="tv-countdown-val" class="countdown-text text-white drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
+                        <div id="tv-countdown-val" class="countdown-text text-white e drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]">3</div>
                     </div>
                     
                     <!-- DECORATIVE BG FOR TV -->
@@ -709,7 +709,6 @@
             if (auth) initAuth();
             handleRouting();
             
-            // Check redirect logic after registration
             const pendingId = sessionStorage.getItem('pendingVoteId');
             if (pendingId && window.location.hash === '#register-attend') {
                const el = document.getElementById('attend-id');
@@ -719,7 +718,6 @@
 
             setInterval(() => checkLocationAccess(false), 10000); 
             checkLocationAccess(false); 
-            // v4: Global Sync Timer
             setInterval(() => { syncPumpGame(); }, 1000);
         });
 
@@ -760,7 +758,6 @@
             setTimeout(initAdminMap, 300);
         }
 
-        // --- CUSTOM CONFIRM MODAL ---
         function showCustomConfirm(title, message, onConfirmCallback) {
             const modal = document.getElementById('custom-confirm-modal');
             const titleEl = document.getElementById('confirm-title');
@@ -772,12 +769,10 @@
             titleEl.innerText = title;
             msgEl.innerText = message;
             
-            // Reset state
             inputContainer.classList.add('hidden');
             btnOk.disabled = false;
             btnOk.classList.remove('opacity-50', 'cursor-not-allowed');
             
-            // Special handling for factory reset
             if (message.includes('Factory Reset')) {
                 inputContainer.classList.remove('hidden');
                 const input = document.getElementById('confirm-input-text');
@@ -798,7 +793,6 @@
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
 
-            // Clean up old listeners
             const newBtnOk = btnOk.cloneNode(true);
             btnOk.parentNode.replaceChild(newBtnOk, btnOk);
             const newBtnCancel = btnCancel.cloneNode(true);
@@ -816,7 +810,6 @@
             });
         }
 
-        // --- MAP FUNCTIONS ---
         function initAdminMap() {
             if (adminMap) { adminMap.invalidateSize(); return; }
             const lat = systemConfig.targetLat || 13.7563;
@@ -891,11 +884,8 @@
 
         function hideAllViews() { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); }
 
-        // --- AUTH & DATA LISTENERS ---
         async function initAuth() {
             if (!auth) return;
-            
-            // 1. Setup Listener
             auth.onAuthStateChanged(user => {
                 if (user) { 
                     listenToConfig(); 
@@ -903,8 +893,6 @@
                     listenToAttendees(); 
                 } 
             });
-
-            // 2. Perform Auth
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await auth.signInWithCustomToken(__initial_auth_token);
@@ -928,27 +916,40 @@
                 if (doc.exists) {
                     const newData = doc.data();
                     
-                    // --- RESET SYNC LOGIC ---
+                    // --- RESET SYNC LOGIC (v4 Updated for Selective Clear) ---
                     const serverResetVersion = newData.voteResetVersion || 0;
                     const localResetVersion = parseInt(safeGetStorage(`last_reset_v_${appId}`) || 0);
 
+                    // 1. Factory Reset (All)
                     if (serverResetVersion > localResetVersion) {
-                        // v4: Force clear local device state when Admin triggers Factory Reset
                         Object.keys(localStorage).forEach(key => {
                             if (key.includes(appId)) localStorage.removeItem(key);
                         });
                         safeSetStorage(`last_reset_v_${appId}`, serverResetVersion.toString());
-                        // Reset local session variables
                         pumpVoterId = '';
                         pumpSessionPoints = {};
                         sessionStorage.clear();
                         showToast("ระบบได้รับการรีเซ็ตข้อมูลใหม่", "info");
-                        updateRegisterMenuState(); // Refresh UI state immediately
                     }
-                    
+
+                    // 2. Selective Attendees Reset
+                    const serverAttV = newData.attendeesResetVersion || 0;
+                    const localAttV = parseInt(safeGetStorage(`last_att_reset_${appId}`) || 0);
+                    if (serverAttV > localAttV) {
+                        localStorage.removeItem(`reg_attend_${appId}`);
+                        safeSetStorage(`last_att_reset_${appId}`, serverAttV.toString());
+                    }
+
+                    // 3. Selective Candidates Reset
+                    const serverCandV = newData.candidatesResetVersion || 0;
+                    const localCandV = parseInt(safeGetStorage(`last_cand_reset_${appId}`) || 0);
+                    if (serverCandV > localCandV) {
+                        localStorage.removeItem(`reg_contest_${appId}`);
+                        safeSetStorage(`last_cand_reset_${appId}`, serverCandV.toString());
+                    }
+
                     systemConfig = newData;
                     
-                    // --- AWARD CHANGE RESET LOGIC ---
                     const newAward = systemConfig.awardName || 'Popular Vote';
                     if (currentSessionAward && currentSessionAward !== newAward) {
                         showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
@@ -983,6 +984,7 @@
                              if(adminCircle) { adminCircle.setLatLng(newLatLng); adminCircle.setRadius(rad); }
                          }
                     }
+                    updateRegisterMenuState(); // v4: Ensure UI refresh after potential reset
                 } else {
                     systemConfig = { activePhase: 'vote', awardName: 'Popular Vote' };
                     getConfigRef().set(systemConfig).catch(e=>console.error(e));
@@ -1028,7 +1030,6 @@
             });
         }
 
-        // --- LOCATION LOGIC ---
         function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
             var R = 6371; var dLat = deg2rad(lat2-lat1); var dLon = deg2rad(lon2-lon1); 
             var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
@@ -1088,7 +1089,6 @@
             showToast("บันทึกพิกัดแล้ว", "success");
         }
 
-        // --- MAIN UI CONTROLLER ---
         function updateUIBasedOnConfig() {
             const hash = window.location.hash.substring(1);
             if (hash === 'tv-result' || hash === 'admin') return; 
@@ -1549,6 +1549,11 @@
                 const batch = db.batch();
                 const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName).get();
                 snap.forEach(doc => batch.delete(doc.ref));
+                
+                // v4: Selective version update for Attendees/Candidates
+                const versionKey = collectionName === 'attendees' ? 'attendeesResetVersion' : 'candidatesResetVersion';
+                batch.set(getConfigRef(), { [versionKey]: Date.now() }, { merge: true });
+                
                 await batch.commit();
                 showToast('ล้างข้อมูลเรียบร้อย', 'success');
                 closeAdminDataListModal();
@@ -1584,17 +1589,14 @@
                 const batch = db.batch();
                 const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                
                 const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
                 candSnap.forEach(doc => {
                     batch.update(doc.ref, { [voteField]: 0, [pumpField]: 0 });
                 });
-                
                 const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
                 votesSnap.forEach(doc => batch.delete(doc.ref));
                 const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
                 pumpSnap.forEach(doc => batch.delete(doc.ref));
-                
                 await batch.commit();
                 showToast('ล้างคะแนนเรียบร้อย', 'success');
                 closeAdminSummaryModal();
@@ -1607,7 +1609,6 @@
                 const voteField = `votes_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const pumpField = `cheer_points_${categoryName.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const awardKey = categoryName.replace(/[^a-zA-Z0-9]/g, '_'); 
-
                 const candSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates').get();
                 candSnap.forEach(doc => {
                     batch.update(doc.ref, { 
@@ -1615,19 +1616,14 @@
                         [pumpField]: firebase.firestore.FieldValue.delete() 
                     });
                 });
-                
                 const votesSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('votes').where('awardCategory', '==', categoryName).get();
                 votesSnap.forEach(doc => batch.delete(doc.ref));
                 const pumpSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs').where('awardCategory', '==', categoryName).get();
                 pumpSnap.forEach(doc => batch.delete(doc.ref));
-
                 const sessionsSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').get();
                 sessionsSnap.forEach(doc => {
-                    if (doc.id.endsWith(`_${awardKey}`)) {
-                        batch.delete(doc.ref);
-                    }
+                    if (doc.id.endsWith(`_${awardKey}`)) { batch.delete(doc.ref); }
                 });
-                
                 await batch.commit();
                 showToast('ลบหัวข้อเรียบร้อย', 'success');
             });
@@ -1641,14 +1637,12 @@
                     const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(col).get();
                     snap.forEach(doc => batch.delete(doc.ref));
                 }
-                // v4: Increment voteResetVersion to sync with all clients
                 await getConfigRef().set({ voteResetVersion: Date.now(), awardName: 'Popular Vote' }, { merge: true });
                 await batch.commit();
                 showToast('ล้างข้อมูลทั้งระบบเรียบร้อยแล้ว', 'success'); 
             });
         }
 
-        /* --- PUMP GAME & SOUND --- */
         function playSfx(type) {
             if(window.location.hash !== '#tv-result') return; 
             if (audioCtx.state === 'suspended') audioCtx.resume(); 
@@ -1656,7 +1650,6 @@
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                
                 if (type === 'whistle') {
                     osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
                     osc.frequency.exponentialRampToValueAtTime(1600, audioCtx.currentTime + 0.1);
@@ -1695,13 +1688,11 @@
         }
 
         function syncPumpGame() {
-            // v4: Main logic for Pump Mode Display
             const hash = window.location.hash.substring(1);
             const isTV = hash === 'tv-result';
             const isPumpPhase = systemConfig.activePhase === 'pump';
 
-            // v4: Prevent showing pump UI if not in pump phase OR in admin screen OR in main views
-            if (hash === 'admin' || hash === '' || (!isPumpPhase && !isTV)) {
+            if (hash === 'admin' || hash === '' || (hash !== 'tv-result' && !isPumpPhase)) {
                 document.getElementById('view-pump')?.classList.add('hidden');
                 return;
             }
@@ -1782,20 +1773,14 @@
                 if(document.getElementById('tv-game-timer-val')) document.getElementById('tv-game-timer-val').innerText = timeStr;
                 if(lastPlayedState === 'countdown') { 
                     lastPlayedState = 'active'; 
-                    if(isTV) {
-                        playSfx('whistle'); 
-                        sayWord("Start!");
-                    }
+                    if(isTV) { playSfx('whistle'); sayWord("Start!"); }
                 }
             } else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (!isTV) {
                     if(userGame) userGame.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.remove('hidden');
-                    if(lastPlayedState === 'active') { 
-                        lastPlayedState = 'finished'; 
-                        renderPumpSummary(); 
-                    }
+                    if(lastPlayedState === 'active') { lastPlayedState = 'finished'; renderPumpSummary(); }
                 } else {
                     const tvPanel = document.getElementById('view-tv-result');
                     if(tvPanel) tvPanel.classList.remove('tv-mode-active');
@@ -1807,8 +1792,6 @@
                 }
             }
         }
-        
-        function showPumpWaiting() {}
 
         function renderPumpCandidates() {
             if (!pumpVoterId) return;
