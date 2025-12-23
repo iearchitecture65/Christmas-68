@@ -1903,7 +1903,8 @@
                     <div class="pump-candidate-card bg-white/10 backdrop-blur-md p-4 rounded-3xl flex flex-col shadow-lg relative overflow-hidden transform border-2 border-white/20 h-52 items-center justify-center text-center select-none active:scale-95 transition-all" 
                          onclick="handlePumpClick(event, '${c.id}')">
                         <div class="text-pink-500 text-6xl mb-2 drop-shadow-lg"><i class="fa-solid fa-heart text-7xl animate-pulse"></i></div>
-                        <h3 class="text-xl font-bold text-white leading-tight line-clamp-1 mb-1">${escapeHtml(c.name)}</h3>
+                        <h3 class="text-xl font-bold text-white leading-tight line-clamp-1 mb-0.5">${escapeHtml(c.name)}</h3>
+                        <p class="text-[11px] text-white/60 line-clamp-1 mb-1 font-light italic">${escapeHtml(c.costumeTitle || '-')}</p>
                         <div id="pump-score-${c.id}" class="absolute top-2 right-2 bg-white text-pink-600 text-xs px-2 py-1 rounded-full font-bold shadow-sm">+${currentPoints}</div>
                     </div>
                 `;
