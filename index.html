@@ -1971,16 +1971,21 @@
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
     
-            // 1. สร้างรหัสประจำเครื่องจำลอง (Session ID)
+            // 1. สร้าง ID ประจำเครื่องนี้ขึ้นมาใหม่
             const myDeviceId = crypto.randomUUID(); 
     
             const btn = document.querySelector('#pump-gate-container button');
             if(btn) { btn.disabled = true; btn.innerText = "กำลังตรวจสอบ..."; }
     
             try {
-                const attendeeDoc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
-                if(!attendeeDoc.exists) {
-                    showToast('ไม่พบข้อมูลลงทะเบียนเข้างาน', 'error');
+                const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
+        
+                // --- ส่วนที่ปรับปรุง: หากไม่พบข้อมูล ให้พาไปหน้าลงทะเบียน ---
+                if(!doc.exists) {
+                    showToast('ไม่พบข้อมูลลงทะเบียนเข้างาน กำลังพาไปหน้าลงทะเบียน...', 'error');
+                    setTimeout(() => { 
+                        window.location.hash = '#register-attend'; 
+                    }, 2000); // รอ 2 วินาทีเพื่อให้ผู้ใช้รอดู Toast แจ้งเตือนก่อน
                     return;
                 }
 
@@ -1988,14 +1993,14 @@
                 const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; 
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
 
-                // 2. บันทึก deviceId ลงไปในฐานข้อมูล (ใครมาทีหลังจะทับคนเก่า)
+                // 2. บันทึก ID เครื่องเราลง Server
                 await sessionRef.set({ 
                     used: true, 
                     deviceId: myDeviceId, 
-                    lastActive: firebase.firestore.FieldValue.serverTimestamp() 
+                    ts: firebase.firestore.FieldValue.serverTimestamp() 
                 }, { merge: true });
 
-                // 3. เก็บ deviceId ลงในเครื่องตัวเองด้วยเพื่อใช้ตรวจสอบ
+                // 3. บันทึก ID ลงในเครื่องเราเองด้วย
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 safeSetStorage("pump_device_id", myDeviceId); 
