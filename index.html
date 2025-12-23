@@ -138,7 +138,7 @@
         .tv-score { font-size: 3.5rem; font-weight: 900; color: #dc2626; text-align: right; }
         .tv-label { font-size: 1rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; }
         
-        /* 3. CSS for Game Waiting Mode */
+        /* Pump Waiting Mode (Grayed Out & Unclickable) */
         .game-waiting-mode .pump-candidate-card { 
             filter: grayscale(100%); 
             opacity: 0.6; 
@@ -592,9 +592,8 @@
                     <a href="javascript:void(0)" onclick="goToAdmin()" class="ml-2 px-2 py-1 bg-white/5 rounded hover:bg-white/20 hover:text-slate-200 transition-colors cursor-pointer text-[10px]" title="Admin Login"><i class="fa-solid fa-lock"></i> Admin Login</a>
                 </p>
             </footer>
-            
-            <!-- ... (Modals omitted for brevity, logic follows below) ... -->
-             <!-- MODALS -->
+
+            <!-- MODALS -->
             <div id="admin-summary-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
                 <div class="bg-white rounded-2xl p-6 w-[95%] max-w-md relative max-h-[85vh] flex flex-col">
                     <div class="flex justify-between items-start mb-1 pr-10">
@@ -739,7 +738,6 @@
             setInterval(() => { syncPumpGame(); }, 1000);
         });
 
-        // ... (Existing Functions kept same until enterPumpMode) ...
         function handleRouting() {
             let hash = window.location.hash.substring(1);
             if (hash === 'admin') {
@@ -1038,7 +1036,6 @@
             });
         }
 
-        // ... (Other Listeners) ...
         function listenToCandidates() {
             if (!db) return;
             db.collection('artifacts').doc(appId).collection('public').doc('data').collection('candidates')
@@ -1128,8 +1125,7 @@
             await getConfigRef().set({ targetLat: lat, targetLng: lng, allowedRadius: rad }, { merge: true });
             showToast("บันทึกพิกัดแล้ว", "success");
         }
-        
-        // ... (Helpers, UI Update, Admin Logic kept the same) ...
+
         function updateUIBasedOnConfig() {
             const hash = window.location.hash.substring(1);
             if (hash === 'tv-result' || hash === 'admin') return; 
@@ -1231,7 +1227,7 @@
                 locBtn.className = systemConfig.locationCheckEnabled ? "px-3 py-1 rounded text-xs font-bold bg-green-500 text-white transition-colors" : "px-3 py-1 rounded text-xs font-bold bg-gray-300 text-gray-500 transition-colors";
             }
         }
-        
+
         function getAvailableCategories() {
             const categories = new Set();
             candidates.forEach(c => {
@@ -1326,8 +1322,7 @@
             finally { btn.disabled = false; btn.innerHTML = 'สมัครประกวด'; }
         }
 
-        // ... Vote and SubmitVote ...
-         function openVoteModal(candidateId) {
+        function openVoteModal(candidateId) {
             if (systemConfig.activePhase !== 'vote') return showToast('ระบบปิดโหวตอยู่ครับ', 'error');
             if (!enforceLocationCheck()) return;
             const candidate = candidates.find(c => c.id === candidateId);
@@ -1390,7 +1385,7 @@
                 else { console.error(error); showToast('เกิดข้อผิดพลาดในการโหวต', 'error'); }
             } finally { if(btn) { btn.disabled = false; btn.innerHTML = 'ยืนยันคะแนน'; } }
         }
-
+        
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
@@ -1404,8 +1399,7 @@
             } catch (err) { showToast('บันทึกรูปไม่สำเร็จ', 'error'); } 
             finally { if(btnContainer) btnContainer.style.display = 'block'; }
         }
-        
-        // ... (Render Functions kept same) ...
+
         function renderCandidates() {
             const listContainer = document.getElementById('candidates-list');
             const votedContainer = document.getElementById('voted-card-container');
@@ -1482,8 +1476,7 @@
                 </div>`;
             }).join('');
         }
-        
-        // ... (Admin render tables logic same) ...
+
         function renderAdminDataTables() {
             const listContainer = document.getElementById('admin-category-list');
             if (listContainer) {
@@ -1509,6 +1502,7 @@
                 }
             }
         }
+
         function openAdminSummaryModal(categoryField, categoryName) {
             const modal = document.getElementById('admin-summary-modal');
             const clearBtn = document.getElementById('btn-clear-category-in-modal');
@@ -1734,113 +1728,123 @@
             showToast("ส่งสัญญาณเริ่มเกมแล้ว!", "success");
         }
 
-        // --- UPDATED: syncPumpGame ---
         function syncPumpGame() {
-            const config = systemConfig.pumpConfig;
-            if (!config) return;
-
-            const now = Date.now();
-            const game = document.getElementById('pump-game-container');
-            const summary = document.getElementById('pump-summary-container');
-            const tvCountdown = document.getElementById('tv-pump-countdown');
-            const timerDisplay = document.getElementById('pump-game-timer');
-            const badge = document.getElementById('pump-status-badge');
-            
             const hash = window.location.hash.substring(1);
             const isTV = hash === 'tv-result';
-            const tvTimer = document.getElementById('tv-game-timer-val');
 
-            // STATE 1: WAITING (!isStarted)
+            const gateContainer = document.getElementById('pump-gate-container');
+            const userGame = document.getElementById('pump-game-container');
+            const tvCountdown = document.getElementById('tv-pump-countdown');
+            const statusBadge = document.getElementById('pump-status-badge');
+            const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
+            const tvPanel = document.getElementById('view-tv-result');
+            const summaryContainer = document.getElementById('pump-summary-container');
+
+            if (!isTV && systemConfig.activePhase !== 'pump') return;
+
+            // 1. ถ้ายังไม่ Login ให้ค้างที่หน้า Gate
+            if (!isTV && !pumpVoterId) {
+                if (gateContainer) gateContainer.classList.remove('hidden');
+                if (userGame) userGame.classList.add('hidden');
+                return;
+            } 
+
+            // 2. ถ้า Login แล้ว ให้เข้าหน้า Game ทันที
+            if (!isTV) {
+                if (gateContainer) gateContainer.classList.add('hidden');
+                if (userGame) userGame.classList.remove('hidden');
+            }
+
+            const config = systemConfig.pumpConfig || { isStarted: false };
+            const now = Date.now();
+
+            // --- [Rule 1] บังคับซ่อน Summary ทันทีในขั้นตอนก่อนจบเกม ---
+            if (summaryContainer && (!config.isStarted || now < (config.startTime + config.durationMinutes * 60000))) {
+                summaryContainer.classList.add('hidden');
+            }
+
+            // --- สถานะที่ 1: เตรียมตัว (ยังไม่กดเริ่ม) ---
             if (!config.isStarted) {
-                lastPlayedState = 'waiting';
-
-                if(game) {
-                    game.classList.remove('hidden');
-                    game.classList.add('game-waiting-mode'); // สีเทา + กดไม่ได้
+                if (tvCountdown) tvCountdown.classList.add('hidden');
+                if (userGame) {
+                    userGame.classList.add('game-waiting-mode'); // สีเทา + บล็อกคลิก
+                    userGame.classList.remove('hidden');
                 }
-                if(summary) summary.classList.add('hidden'); // ❌ ห้ามขึ้น summary
-                if(tvCountdown) tvCountdown.classList.add('hidden');
-
-                if(badge) badge.innerText = 'รอผู้ดูแลเริ่มเกม';
-                if(timerDisplay) timerDisplay.innerText = '--:--';
-                if(isTV && tvTimer) tvTimer.innerText = "00:00";
+                if (statusBadge) {
+                    statusBadge.innerText = "เตรียมตัวให้พร้อม...";
+                    statusBadge.className = "inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1";
+                }
+                if (timerDisplay) timerDisplay.innerText = "00:00";
+                if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
+                // --- [Rule 2] ดึงรายชื่อมาใช้ในหน้า Ready ---
                 renderPumpCandidates(); 
                 return;
             }
 
-            const startTime = config.startTime;
-            const endTime = startTime + (config.durationMinutes * 60 * 1000);
+            const startAt = config.startTime;
+            const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            // STATE 2: COUNTDOWN (now < startTime)
-            if (now < startTime) {
-                lastPlayedState = 'countdown';
-                
-                if(game) {
-                    game.classList.remove('hidden');
-                    game.classList.add('game-waiting-mode'); // สีเทา
-                }
-                if(summary) summary.classList.add('hidden');
+            if (isTV && tvPanel) { tvPanel.classList.add('tv-mode-active'); }
 
-                const diff = Math.ceil((startTime - now) / 1000);
-                
-                if(tvCountdown) {
+            // --- สถานะที่ 2: ช่วงนับถอยหลัง 3..2..1 ---
+            if (now < startAt) {
+                const diff = Math.ceil((startAt - now) / 1000);
+                if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     const valEl = document.getElementById('tv-countdown-val');
                     if (valEl) valEl.innerText = diff;
                 }
+                if (userGame) {
+                    userGame.classList.add('game-waiting-mode');
+                    userGame.classList.remove('hidden');
+                }
+                if (timerDisplay) timerDisplay.innerText = "00:00";
                 
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
                     lastCountVal = diff;
                     playSfx('whistle'); sayWord(diff.toString());
                 }
-
-                if(badge) badge.innerText = 'เตรียมตัว... ' + diff;
-                if(timerDisplay) timerDisplay.innerText = '00:00';
-                
-                renderPumpCandidates();
-                return;
-            }
-
-            if(tvCountdown) tvCountdown.classList.add('hidden');
-
-            // STATE 3: PLAYING (now < endTime)
-            if (now < endTime) {
-                if (lastPlayedState !== 'playing') {
-                     lastPlayedState = 'playing';
-                     if(isTV) { playSfx('whistle'); sayWord("Start!"); }
+                renderPumpCandidates(); 
+                lastPlayedState = 'countdown';
+            } 
+            // --- สถานะที่ 3: เริ่มเกม ---
+            else if (now < endAt) {
+                if (tvCountdown) tvCountdown.classList.add('hidden');
+                if (userGame) {
+                    userGame.classList.remove('game-waiting-mode'); // ปลดล็อกให้กดได้
+                    userGame.classList.remove('hidden');
                 }
-
-                if(game) {
-                    game.classList.remove('hidden');
-                    game.classList.remove('game-waiting-mode'); // ✅ กดได้แล้ว
-                }
-                if(summary) summary.classList.add('hidden');
-
-                const remaining = Math.ceil((endTime - now) / 1000);
+                const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
+                if (timerDisplay) timerDisplay.innerText = timeStr;
 
-                if(badge) {
-                    badge.innerText = 'กดรัวๆได้เลย!';
-                    badge.className = "inline-block bg-green-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1 animate-bounce";
+                if (statusBadge) {
+                    statusBadge.innerText = "กดรัวๆ เลย!";
+                    statusBadge.className = "inline-block bg-green-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1 animate-bounce";
                 }
-                if(timerDisplay) timerDisplay.innerText = timeStr;
-                if(isTV && tvTimer) tvTimer.innerText = timeStr;
 
-                renderPumpCandidates();
-                return;
-            }
-
-            // STATE 4: FINISHED (now >= endTime)
-            if (lastPlayedState !== 'finished') {
-                lastPlayedState = 'finished';
+                if (lastPlayedState !== 'active') {
+                    if (isTV) { playSfx('whistle'); sayWord("Start!"); }
+                    lastPlayedState = 'active';
+                    renderPumpCandidates(); 
+                }
+            } 
+            // --- สถานะที่ 4: จบเกมจริงๆ ---
+            else {
+                if (tvCountdown) tvCountdown.classList.add('hidden');
+                if (userGame) userGame.classList.add('hidden');
                 
-                if(game) game.classList.add('hidden');
-                if(summary) summary.classList.remove('hidden'); // ✅ ขึ้นตอนหมดเวลาเท่านั้น
+                if (summaryContainer && summaryContainer.classList.contains('hidden')) {
+                     summaryContainer.classList.remove('hidden');
+                     renderPumpSummary(); 
+                }
                 
-                if (isTV) { playSfx('end'); sayWord("Time's up!"); }
-                
-                renderPumpSummary();
+                if (lastPlayedState === 'active') {
+                    lastPlayedState = 'finished';
+                    if (isTV) { playSfx('end'); sayWord("Time's up!"); }
+                }
+                if (tvPanel) tvPanel.classList.remove('tv-mode-active');
             }
         }
 
@@ -1884,55 +1888,43 @@
             grid.innerHTML = content;
         }
 
-        // --- UPDATED: enterPumpMode ---
         async function enterPumpMode() {
             const id = document.getElementById('pump-id-input').value.trim();
             if(!id) return showToast('กรุณากรอกรหัสนักศึกษา', 'error');
-            
             const btn = document.querySelector('#pump-gate-container button');
             if(btn) { btn.disabled = true; btn.innerText = "กำลังตรวจสอบ..."; }
-
             try {
-                // Check if user exists (Security check)
                 const doc = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('attendees').doc(id).get();
                 if(!doc.exists) {
                     showToast('ไม่พบข้อมูลลงทะเบียนเข้างาน', 'error');
                     setTimeout(() => { window.location.hash = '#register-attend'; }, 1500);
                     return;
                 }
-                
-                // Session Check
                 const currentAward = systemConfig.awardName || 'Popular Vote';
                 const sessionKey = `${id}_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}`; 
                 const sessionRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_sessions').doc(sessionKey);
-                
                 await db.runTransaction(async (transaction) => {
                     const sessionDoc = await transaction.get(sessionRef);
                     if (sessionDoc.exists) throw "SESSION_EXISTS";
                     transaction.set(sessionRef, { used: true, ts: firebase.firestore.FieldValue.serverTimestamp() });
                 });
                 
-                // === SUCCESS: APPLY UI LOGIC HERE ===
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
-                
-                // Reset local points
                 pumpSessionPoints = {};
                 safeRemoveStorage("pump_session_points_" + appId);
                 
-                // 👉 ซ่อนทุกอย่างที่ไม่ควรขึ้น
-                document.getElementById('pump-gate-container').classList.add('hidden');
-                document.getElementById('pump-summary-container').classList.add('hidden');
-
-                // 👉 แสดงหน้าเตรียมพร้อม
+                // --- [Rule 3] จัดการ Z-index และ Visibility ทันที ---
+                const gate = document.getElementById('pump-gate-container');
                 const game = document.getElementById('pump-game-container');
-                game.classList.remove('hidden');
-                game.classList.add('game-waiting-mode'); // สีเทา + กดไม่ได้
-
-                const badge = document.getElementById('pump-status-badge');
-                const timer = document.getElementById('pump-game-timer');
-                if(badge) badge.innerText = 'เตรียมตัวให้พร้อม...';
-                if(timer) timer.innerText = '--:--';
+                const summary = document.getElementById('pump-summary-container');
+                
+                if(gate) gate.classList.add('hidden');
+                if(game) {
+                    game.classList.remove('hidden');
+                    game.classList.add('game-waiting-mode'); // เริ่มต้นด้วยหน้า Ready สีเทา
+                }
+                if(summary) summary.classList.add('hidden');
                 
                 showToast('เข้าสู่โหมดเตรียมพร้อม!', 'success');
                 syncPumpGame(); 
@@ -1940,15 +1932,7 @@
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") {
-                    pumpVoterId = id; safeSetStorage("pump_id", id);
-                    
-                    document.getElementById('pump-gate-container').classList.add('hidden');
-                    document.getElementById('pump-summary-container').classList.add('hidden');
-                    
-                    const game = document.getElementById('pump-game-container');
-                    game.classList.remove('hidden');
-                    
-                    syncPumpGame();
+                    pumpVoterId = id; safeSetStorage("pump_id", id); syncPumpGame();
                     showToast("ยินดีต้อนรับกลับเข้าสู่ระบบ", "success");
                 }
                 else showToast('เกิดข้อผิดพลาด', 'error'); 
@@ -1957,7 +1941,7 @@
         }
 
         function handlePumpClick(e, cid) {
-            if(!pumpVoterId || lastPlayedState !== 'playing') return; // Changed 'active' to 'playing'
+            if(!pumpVoterId || lastPlayedState !== 'active') return; 
             const heart = document.createElement('div');
             heart.className = 'pump-heart text-pink-400 text-5xl font-bold drop-shadow-md';
             heart.innerHTML = '<i class="fa-solid fa-heart"></i>';
