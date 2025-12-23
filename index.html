@@ -1121,6 +1121,7 @@
                 document.getElementById('view-result').classList.remove('hidden'); 
                 updateResultDropdown();
             } else if (phase === 'pump') {
+                // v4: Force show view-pump but internal display handled by syncPumpGame
                 document.getElementById('view-pump').classList.remove('hidden');
                 syncPumpGame(); 
             }
@@ -1354,6 +1355,7 @@
         async function captureReceipt(elementId) {
             const el = document.getElementById(elementId);
             if (!el) return;
+            const originalDisplay = el.parentElement.querySelector('button')?.style.display;
             const btnContainer = el.parentElement.querySelector('.mt-4'); 
             if(btnContainer) btnContainer.style.display = 'none';
             try {
@@ -1550,6 +1552,7 @@
                 const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName).get();
                 snap.forEach(doc => batch.delete(doc.ref));
                 
+                // v4: Selective version update for Attendees/Candidates
                 const versionKey = collectionName === 'attendees' ? 'attendeesResetVersion' : 'candidatesResetVersion';
                 batch.set(getConfigRef(), { [versionKey]: Date.now() }, { merge: true });
                 
@@ -1693,8 +1696,8 @@
             const isTV = hash === 'tv-result';
             const isPumpPhase = systemConfig.activePhase === 'pump';
 
-            // Guard: Close Pump UI if not in pump phase or in admin
-            if (hash === 'admin' || hash === '' || (hash !== 'tv-result' && !isPumpPhase)) {
+            // Guard: Close Pump UI if not in pump phase or in admin screen
+            if (hash === 'admin' || (hash !== 'tv-result' && !isPumpPhase)) {
                 document.getElementById('view-pump')?.classList.add('hidden');
                 return;
             }
