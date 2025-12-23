@@ -1675,7 +1675,10 @@
         }
 
         function syncPumpGame() {
-            // v4: Main logic for Pump Mode Display
+            // v4: Stop UI logic if in admin to prevent overlap
+            const hash = window.location.hash.substring(1);
+            if (hash === 'admin') return; 
+
             if(!systemConfig.pumpConfig || !systemConfig.pumpConfig.isStarted) {
                 if (pumpVoterId && window.location.hash !== '#tv-result') {
                     // v4: If Logged in but game not started, show gate or wait msg
@@ -1713,7 +1716,7 @@
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 
-                // Show Countdown Overlay for both TV and User
+                // v4: Show Countdown Overlay for both TV and User screen
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     document.getElementById('tv-countdown-val').innerText = diff > 3 ? "READY" : diff;
@@ -1724,7 +1727,7 @@
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.add('game-waiting-mode'); // Color gray
+                        userGame.classList.add('game-waiting-mode'); // Grayscale logic
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
@@ -1752,7 +1755,7 @@
                     if(pumpView) pumpView.classList.remove('hidden');
                     if(userGame) {
                         userGame.classList.remove('hidden');
-                        userGame.classList.remove('game-waiting-mode'); // Remove gray
+                        userGame.classList.remove('game-waiting-mode'); // Unlock grayscale
                     }
                     if(userWaiting) userWaiting.classList.add('hidden');
                     if(summaryContainer) summaryContainer.classList.add('hidden');
@@ -1847,7 +1850,7 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // v4: Force update UI to jump to waiting screen
+                // v4: Refresh UI to jump to waiting screen immediately after login
                 updateUIBasedOnConfig(); 
                 showToast('ลงทะเบียนสำเร็จ! กรุณารอสัญญาณเริ่มเกม', 'success');
             } catch(e) { 
@@ -1884,7 +1887,7 @@
         }
         
         function renderPumpSummary() {
-            // v4: Final Summary - Receipt Style
+            // v4: Final Summary - Receipt Style as requested
             const container = document.getElementById('pump-summary-container');
             const totalClicks = Object.values(pumpSessionPoints).reduce((a, b) => a + b, 0);
             
