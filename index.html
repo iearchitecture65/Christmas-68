@@ -172,7 +172,7 @@
             flex-direction: column; 
             justify-content: center; 
             align-items: center; 
-            z-index: 50;
+            z-index: 100;
             pointer-events: none;
         }
         #tv-game-timer-val {
@@ -499,7 +499,7 @@
 
                 <!-- NEW VIEW: PUMP GAME -->
                 <div id="view-pump" class="view-section hidden space-y-4 animate-fade-in">
-                    <div class="text-center mb-4">
+                    <div class="text-center mb-4" id="pump-award-badge-container">
                         <div class="bg-pink-500/20 text-pink-100 px-4 py-2 rounded-xl text-sm font-bold border border-pink-500/50 inline-block shadow-lg backdrop-blur-md">
                             <i class="fa-solid fa-bolt text-yellow-400"></i> โหมดกดรัวๆ: <span id="pump-header-award" class="text-white font-bold">...</span>
                         </div>
@@ -517,15 +517,13 @@
                     </div>
 
                     <!-- GAME CONTAINER (Used for both waiting and playing) -->
-                    <div id="pump-game-container" class="w-full text-center space-y-6 hidden relative px-2">
-                        <!-- GAME TIMER ON USER SCREEN -->
-                        <div class="bg-white/10 backdrop-blur p-4 rounded-2xl border border-white/20 inline-block mb-4 shadow-xl">
-                            <div class="text-pink-400 text-[10px] font-bold uppercase tracking-widest">Time Remaining</div>
-                            <div id="pump-game-timer" class="text-white text-5xl font-black">00:00</div>
+                    <div id="pump-game-container" class="w-full text-center hidden relative px-2">
+                        <!-- FLOATING GAME TIMER ON USER SCREEN (UPDATED) -->
+                        <div id="pump-user-timer-wrapper" class="sticky top-0 z-[60] bg-slate-900/80 backdrop-blur-lg p-3 rounded-b-3xl border-b border-white/10 mb-6 shadow-2xl -mx-4 flex flex-col items-center justify-center transition-all duration-300">
+                            <div id="pump-status-badge" class="inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1">เตรียมตัวให้พร้อม...</div>
+                            <div id="pump-game-timer" class="text-white text-5xl font-black font-mono leading-none tracking-tight">00:00</div>
+                            <div class="text-pink-400 text-[9px] font-bold uppercase tracking-widest mt-1">Time Remaining</div>
                         </div>
-                        
-                        <!-- STATUS BADGE -->
-                        <div id="pump-status-badge" class="inline-block bg-slate-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2">เตรียมตัวให้พร้อม...</div>
 
                         <!-- PUMP GRID -->
                         <div id="pump-candidates-grid" class="grid grid-cols-2 gap-3 pb-24">
@@ -536,7 +534,7 @@
                     <div id="pump-summary-container" class="hidden pb-20"></div>
                 </div>
 
-                <!-- VIEW: TV DISPLAY -->
+                <!-- VIEW: TV DISPLAY (CORRECTED) -->
                 <div id="view-tv-result" class="tv-layout hidden overflow-hidden">
                     
                     <!-- AUDIO UNLOCK BUTTON -->
@@ -560,7 +558,7 @@
                             </div>
                         </div>
 
-                        <!-- Right Panel (Timer) -->
+                        <!-- Right Panel (Timer) - Repositioned to Top Right -->
                         <div id="tv-time-col">
                             <div class="text-pink-400 text-4xl font-bold uppercase tracking-widest mb-4 text-center">TIME</div>
                             <div id="tv-game-timer-val" class="font-black text-white font-mono leading-none drop-shadow-2xl text-center">00:00</div>
@@ -1691,6 +1689,7 @@
             const tvCountdown = document.getElementById('tv-pump-countdown');
             const statusBadge = document.getElementById('pump-status-badge');
             const timerDisplay = isTV ? document.getElementById('tv-game-timer-val') : document.getElementById('pump-game-timer');
+            const tvPanel = document.getElementById('view-tv-result');
 
             // Phase 1: ต้องกรอกรหัสก่อน (เฉพาะ User)
             if (!pumpVoterId && !isTV) {
@@ -1699,7 +1698,6 @@
                 return;
             } 
             
-            // เมื่อผ่านด่านกรอกรหัสมาแล้ว ให้โชว์หน้าจอเกมทันที
             if (!isTV) {
                 if (gateContainer) gateContainer.classList.add('hidden');
                 if (userGame) userGame.classList.remove('hidden');
@@ -1710,48 +1708,52 @@
 
             // Phase 2: หลัง Login แต่ Admin "ยังไม่กดเริ่ม"
             if (!config.isStarted) {
-                if (tvCountdown) tvCountdown.classList.add('hidden'); // Ensure hidden
-                if (userGame) userGame.classList.add('game-waiting-mode'); // หน้าจอสีเทา
+                if (tvCountdown) tvCountdown.classList.add('hidden');
+                if (userGame) userGame.classList.add('game-waiting-mode');
                 if (statusBadge) {
                     statusBadge.innerText = "เตรียมตัวให้พร้อม...";
-                    statusBadge.className = "inline-block bg-slate-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2";
+                    statusBadge.className = "inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1";
                 }
                 if (timerDisplay) timerDisplay.innerText = "00:00";
-                renderPumpCandidates(); // FIX: Call render here
+                if (tvPanel) tvPanel.classList.remove('tv-mode-active');
+                renderPumpCandidates();
                 return;
             }
 
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
+            // เมื่อ Admin กดเริ่มกิจกรรมแล้ว ให้แสดง Panel เวลาที่หน้า TV
+            if (isTV && tvPanel) {
+                tvPanel.classList.add('tv-mode-active');
+            }
+
             // Phase 3: Admin กดเริ่มแล้ว "กำลังนับ 3 2 1"
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 
-                // แสดง Overlay นับถอยหลัง (ใช้ได้ทั้ง User และ TV)
                 if (tvCountdown) {
                     tvCountdown.classList.remove('hidden');
                     const valEl = document.getElementById('tv-countdown-val');
                     if (valEl) valEl.innerText = diff;
                 }
 
-                if (userGame) userGame.classList.add('game-waiting-mode'); // ยังเป็นสีเทาอยู่
+                if (userGame) userGame.classList.add('game-waiting-mode');
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
-                // ระบบเสียงและ Voice (เฉพาะหน้า TV)
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
                     lastCountVal = diff;
                     playSfx('whistle');
                     sayWord(diff.toString());
                 }
-                renderPumpCandidates(); // FIX: Call render here
+                renderPumpCandidates();
                 lastPlayedState = 'countdown';
             } 
             // Phase 4: เริ่มวินาทีที่ 0 "เริ่มเกม!"
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
 
-                if (userGame) userGame.classList.remove('game-waiting-mode'); // กลายเป็นสีปกติ + ปลดล็อคการกด
+                if (userGame) userGame.classList.remove('game-waiting-mode');
                 
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
@@ -1759,14 +1761,14 @@
 
                 if (statusBadge) {
                     statusBadge.innerText = "กดรัวๆ เลย!";
-                    statusBadge.className = "inline-block bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold mb-2 animate-bounce";
+                    statusBadge.className = "inline-block bg-green-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1 animate-bounce";
                 }
 
                 if (lastPlayedState === 'countdown' || lastPlayedState === 'waiting' || lastPlayedState === 'active') {
                     if (lastPlayedState !== 'active' && isTV) { playSfx('whistle'); sayWord("Start!"); }
                     lastPlayedState = 'active';
                 }
-                renderPumpCandidates(); // FIX: Call render here
+                renderPumpCandidates();
             } 
             // เกมจบ
             else {
@@ -1780,6 +1782,7 @@
                     if (isTV) { playSfx('end'); sayWord("Time's up!"); }
                     renderPumpSummary();
                 }
+                if (tvPanel) tvPanel.classList.remove('tv-mode-active');
             }
         }
 
@@ -1830,7 +1833,6 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // Clear any leftover summary from previous rounds
                 const summaryContainer = document.getElementById('pump-summary-container');
                 if(summaryContainer) summaryContainer.classList.add('hidden');
                 
@@ -1916,6 +1918,8 @@
             const isPump = systemConfig.activePhase === 'pump';
             const currentAward = systemConfig.awardName || 'Popular Vote';
             cat.innerText = isPump ? `CHALLENGE: ${currentAward}` : `AWARD: ${currentAward}`;
+            
+            if(isPump) syncPumpGame();
             
             const field = isPump ? `cheer_points_${currentAward.replace(/[^a-zA-Z0-9]/g, '_')}` : getScoreField(currentAward);
             const sorted = [...candidates].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5); 
