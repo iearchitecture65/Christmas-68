@@ -480,7 +480,7 @@
                                 <div onclick="openCandidateListModal()" class="bg-red-50 p-4 rounded-xl text-center border border-red-100 relative overflow-hidden group cursor-pointer hover:bg-red-100 transition shadow-sm">
                                     <h4 class="text-red-600 font-bold text-xs uppercase">ผู้เข้าประกวด</h4>
                                     <div id="stat-candidate-count" class="text-3xl font-bold text-red-800">0</div>
-                                    <p class="text-[9px] text-red-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
+                                    <p class="text-[9px] text-blue-400 mt-1"><i class="fa-solid fa-list-ul"></i> คลิกเพื่อดูรายชื่อ</p>
                                 </div>
                             </div>
                             
@@ -700,7 +700,6 @@
         function safeRemoveStorage(key) { try { localStorage.removeItem(key); } catch (e) { } }
 
         // --- PUMP STATE (Persistence-Aware) ---
-        // Load persisted points to ensure "real data" is kept across refreshes
         let pumpVoterId = safeGetStorage("pump_id") || ''; 
         let pumpSessionPoints = JSON.parse(safeGetStorage("pump_session_points_" + appId) || "{}"); 
         let lastPlayedState = 'waiting'; 
@@ -926,6 +925,7 @@
 
                     // --- RESET TRIGGER ---
                     if (serverResetVersion > localResetVersion) {
+                        // Clear storage to forget old states
                         Object.keys(localStorage).forEach(key => {
                             if (key.includes(appId)) localStorage.removeItem(key);
                         });
@@ -936,12 +936,15 @@
                         safeRemoveStorage("pump_id"); 
                         safeRemoveStorage("pump_session_points_" + appId); // Clear persisted points
                         
+                        // Force hide overlays and receipts
                         const receiptVote = document.getElementById('voted-card-container');
                         const summaryPump = document.getElementById('pump-summary-container');
                         if(receiptVote) receiptVote.classList.add('hidden');
                         if(summaryPump) summaryPump.classList.add('hidden');
                         
+                        // Check which view should be shown now
                         updateUIBasedOnConfig();
+                        
                         showToast("ระบบได้รับการรีเซ็ตข้อมูลใหม่", "info");
                     }
 
@@ -970,11 +973,13 @@
                         safeRemoveStorage("pump_id"); 
                         safeRemoveStorage("pump_session_points_" + appId); // Clear points for new award session
                         
+                        // Force exit from Summary/Receipt pages
                         const receiptVote = document.getElementById('voted-card-container');
                         const summaryPump = document.getElementById('pump-summary-container');
                         if(receiptVote) receiptVote.classList.add('hidden');
                         if(summaryPump) summaryPump.classList.add('hidden');
                         
+                        // Refresh UI to show the entry/vote list instead of the receipt
                         updateUIBasedOnConfig();
                     }
                     currentSessionAward = newAward;
@@ -1823,7 +1828,7 @@
                 
                 if (summaryContainer && summaryContainer.classList.contains('hidden')) {
                      summaryContainer.classList.remove('hidden');
-                     renderPumpSummary();
+                     renderPumpSummary(); // This is now an async call internally
                 }
                 
                 if (lastPlayedState === 'active') {
@@ -1948,53 +1953,101 @@
             }, { merge: true });
         }
         
-        function renderPumpSummary() {
+        async function renderPumpSummary() {
             const container = document.getElementById('pump-summary-container');
             if(!container) return;
-            
-            // ดึงข้อมูลการกดสะสมล่าสุดที่บันทึกไว้ในเครื่อง
-            const storedPoints = JSON.parse(safeGetStorage("pump_session_points_" + appId) || "{}");
-            const totalClicks = Object.values(storedPoints).reduce((a, b) => a + b, 0);
-            
-            let topPickName = "ไม่ระบุ";
-            const sortedEntries = Object.entries(storedPoints).sort((a,b) => b[1] - a[1]);
-            if (sortedEntries.length > 0) {
-                const topCandidate = candidates.find(c => c.id === sortedEntries[0][0]);
-                if (topCandidate) topPickName = topCandidate.name;
-            }
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('th-TH');
-            const timeStr = now.toLocaleTimeString('th-TH');
-            const currentAward = systemConfig.awardName || 'Popular Vote';
-            
+
             container.innerHTML = `
-                <div class="px-4 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
-                    <div id="pump-receipt-card" class="receipt-card p-6 bg-white border-t-8 border-pink-500 rounded-b-lg">
-                        <div class="mb-4">
-                            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm">
-                                <i class="fa-solid fa-flag-checkered"></i>
+                <div class="px-4 py-10 text-center text-white">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-4"></i>
+                    <p>กำลังสรุปผลคะแนนจริงจากระบบ...</p>
+                </div>
+            `;
+            
+            const currentAward = systemConfig.awardName || 'Popular Vote';
+
+            try {
+                // 1. ดึงข้อมูลจริงจาก Database (Source of Truth)
+                const logsSnapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs')
+                    .where('voterId', '==', pumpVoterId)
+                    .where('awardCategory', '==', currentAward)
+                    .get();
+
+                let realPoints = {};
+                let totalClicks = 0;
+
+                logsSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const cid = data.candidateId;
+                    const count = data.count || 0;
+                    realPoints[cid] = (realPoints[cid] || 0) + count;
+                    totalClicks += count;
+                });
+
+                // หากใน DB ไม่มีข้อมูล ให้ลองดึงจาก LocalStorage เป็นแผนสำรอง
+                if (totalClicks === 0) {
+                    realPoints = JSON.parse(safeGetStorage("pump_session_points_" + appId) || "{}");
+                    totalClicks = Object.values(realPoints).reduce((a, b) => a + b, 0);
+                }
+
+                let topPickName = "ไม่ระบุ";
+                const sortedEntries = Object.entries(realPoints).sort((a,b) => b[1] - a[1]);
+                if (sortedEntries.length > 0) {
+                    const topCandidate = candidates.find(c => c.id === sortedEntries[0][0]);
+                    if (topCandidate) topPickName = topCandidate.name;
+                }
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('th-TH');
+                const timeStr = now.toLocaleTimeString('th-TH');
+                
+                container.innerHTML = `
+                    <div class="px-4 py-4 animate-fade-in bg-white rounded-xl shadow-lg border border-gray-100 max-w-xs mx-auto">
+                        <div id="pump-receipt-card" class="receipt-card p-6 bg-white border-t-8 border-pink-500 rounded-b-lg">
+                            <div class="mb-4">
+                                <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto text-2xl border-4 border-white shadow-sm">
+                                    <i class="fa-solid fa-flag-checkered"></i>
+                                </div>
                             </div>
+                            <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">บันทึกคะแนน</h2>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL CHALLENGE RECORD</p>
+                            <div class="space-y-4 mb-6">
+                                <div class="bg-pink-50 p-4 rounded-xl border border-pink-100 text-center">
+                                    <div class="text-[10px] text-pink-400 mb-1 uppercase font-bold tracking-wider">Top Cheer For</div>
+                                    <div class="font-bold text-lg text-slate-800">${escapeHtml(topPickName)}</div>
+                                    <div class="text-xs text-pink-600 font-medium">คะแนนจากคุณ ${realPoints[sortedEntries[0]?.[0]]?.toLocaleString() || 0} แต้ม</div>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                        <span class="text-xs text-slate-500">หัวข้อรายการ</span>
+                                        <span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                        <span class="text-xs text-slate-500">ยอดรวมทั้งหมด</span>
+                                        <span class="text-sm font-black text-pink-600">${totalClicks.toLocaleString()} ครั้ง</span>
+                                    </div>
+                                    <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                        <span class="text-xs text-slate-500">วันที่บันทึก</span>
+                                        <span class="text-xs font-bold text-slate-700 text-right">${dateStr}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2">
+                                        <span class="text-xs text-slate-500">เวลาบันทึก</span>
+                                        <span class="text-xs font-bold text-slate-700 text-right">${timeStr} น.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-[10px] text-slate-400 text-center leading-relaxed">ข้อมูลยืนยันจากฐานข้อมูลระบบ<br>Christmas 2025</div>
                         </div>
-                        <h2 class="text-xl font-bold text-slate-800 tracking-tight text-center">บันทึกคะแนน</h2>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-6 text-center">OFFICIAL CHALLENGE RECORD</p>
-                        <div class="space-y-4 mb-6">
-                            <div class="bg-pink-50 p-4 rounded-xl border border-pink-100 text-center">
-                                <div class="text-[10px] text-pink-400 mb-1 uppercase font-bold tracking-wider">Top Cheer For</div>
-                                <div class="font-bold text-lg text-slate-800">${escapeHtml(topPickName)}</div>
-                                <div class="text-xs text-pink-600 font-medium">คะแนนจากคุณ ${storedPoints[sortedEntries[0]?.[0]] || 0} แต้ม</div>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">หัวข้อรายการ</span><span class="text-xs font-bold text-slate-700 text-right">${escapeHtml(currentAward)}</span></div>
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">ยอดรวมทั้งหมด</span><span class="text-sm font-black text-pink-600">${totalClicks.toLocaleString()} ครั้ง</span></div>
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">วันที่บันทึก</span><span class="text-xs font-bold text-slate-700 text-right">${dateStr}</span></div>
-                                <div class="flex justify-between items-center border-b border-dashed border-slate-200 pb-2"><span class="text-xs text-slate-500">เวลาบันทึก</span><span class="text-xs font-bold text-slate-700 text-right">${timeStr} น.</span></div>
-                            </div>
+                        <div class="mt-4 text-center">
+                            <button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto active:scale-95 shadow-lg">
+                                <i class="fa-solid fa-download"></i> บันทึกบัตรคะแนน
+                            </button>
                         </div>
-                        <div class="text-[10px] text-slate-400 text-center leading-relaxed">ขอบคุณที่ร่วมสนุกและส่งกำลังใจให้ผู้เข้าประกวด<br><span class="font-bold text-slate-500">CHRISTMAS 2025</span></div>
-                    </div>
-                    <div class="mt-4 text-center"><button onclick="captureReceipt('pump-receipt-card')" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-slate-700 transition flex items-center gap-2 mx-auto active:scale-95 shadow-lg"><i class="fa-solid fa-download"></i> บันทึกบัตรคะแนน</button></div>
-                </div>`;
-            container.classList.remove('hidden');
+                    </div>`;
+            } catch (error) {
+                console.error("Error fetching points:", error);
+                container.innerHTML = `<div class="p-10 text-center text-red-400">ขออภัย ไม่สามารถดึงข้อมูลจริงได้ กรุณาลองใหม่อีกครั้ง</div>`;
+            }
         }
 
         function updateTVDisplay() {
