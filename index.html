@@ -188,15 +188,16 @@
         /* Scrollbar hide for TV */
         #tv-list-col::-webkit-scrollbar { width: 0px; background: transparent; }
 
-        /* BIG COUNTDOWN OVERLAY */
+        /* --- BIG COUNTDOWN OVERLAY --- */
         #tv-countdown-val {
-            font-size: 15rem;
+            font-size: 20rem; /* ปรับให้ใหญ่ขึ้นเป็นพิเศษ */
             font-weight: 900;
             line-height: 1;
+            text-shadow: 0 0 100px rgba(255,255,255,0.5);
         }
-        @media (min-width: 768px) {
+        @media (min-width: 1024px) {
             #tv-countdown-val {
-                font-size: 25rem;
+                font-size: 40rem; /* ใหญ่ยักษ์สำหรับจอ TV */
             }
         }
     </style>
@@ -1741,14 +1742,14 @@
 
             if (!isTV && systemConfig.activePhase !== 'pump') return;
 
-            // 1. ถ้าเป็น User และยังไม่ได้ Login ให้ค้างที่หน้า Gate (กรอกรหัส)
+            // 1. ถ้ายังไม่ Login ให้ค้างที่หน้า Gate
             if (!isTV && !pumpVoterId) {
                 if (gateContainer) gateContainer.classList.remove('hidden');
                 if (userGame) userGame.classList.add('hidden');
                 return;
             } 
 
-            // 2. ถ้า Login แล้ว ให้เข้าหน้า Game
+            // 2. ถ้า Login แล้ว ให้เข้าหน้า Game ทันที
             if (!isTV) {
                 if (gateContainer) gateContainer.classList.add('hidden');
                 if (userGame) userGame.classList.remove('hidden');
@@ -1757,15 +1758,18 @@
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
 
-            // --- สถานะที่ 1: เตรียมตัว (ยังไม่กดเริ่ม หรือยังไม่ถึงเวลานับถอยหลัง) ---
+            // --- [Rule 1] บังคับซ่อน Summary ทันทีในขั้นตอนก่อนจบเกม ---
+            if (summaryContainer && (!config.isStarted || now < (config.startTime + config.durationMinutes * 60000))) {
+                summaryContainer.classList.add('hidden');
+            }
+
+            // --- สถานะที่ 1: เตรียมตัว (ยังไม่กดเริ่ม) ---
             if (!config.isStarted) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // บัตรสีเทา + บล็อกคลิก
+                    userGame.classList.add('game-waiting-mode'); // สีเทา + บล็อกคลิก
                     userGame.classList.remove('hidden');
                 }
-                if (summaryContainer) summaryContainer.classList.add('hidden'); // บังคับซ่อนหน้าสรุปทันที
-                
                 if (statusBadge) {
                     statusBadge.innerText = "เตรียมตัวให้พร้อม...";
                     statusBadge.className = "inline-block bg-slate-500 text-white px-3 py-0.5 rounded-full text-[10px] font-bold mb-1";
@@ -1773,19 +1777,17 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
-                renderPumpCandidates(); // ดึงรายชื่อมาใช้ในหน้า Ready ทันที
+                // --- [Rule 2] ดึงรายชื่อมาใช้ในหน้า Ready ---
+                renderPumpCandidates(); 
                 return;
             }
 
             const startAt = config.startTime;
             const endAt = startAt + (config.durationMinutes * 60 * 1000);
 
-            // แสดงหน้าจอ TV timer panel
-            if (isTV && tvPanel) {
-                tvPanel.classList.add('tv-mode-active');
-            }
+            if (isTV && tvPanel) { tvPanel.classList.add('tv-mode-active'); }
 
-            // --- สถานะที่ 2: ช่วงนับถอยหลัง 3..2..1 (READY) ---
+            // --- สถานะที่ 2: ช่วงนับถอยหลัง 3..2..1 ---
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 if (tvCountdown) {
@@ -1794,30 +1796,25 @@
                     if (valEl) valEl.innerText = diff;
                 }
                 if (userGame) {
-                    userGame.classList.add('game-waiting-mode'); // ยังกดไม่ได้
+                    userGame.classList.add('game-waiting-mode');
                     userGame.classList.remove('hidden');
                 }
-                if (summaryContainer) summaryContainer.classList.add('hidden'); // บังคับซ่อนหน้าสรุปทันที
-                
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
                     lastCountVal = diff;
-                    playSfx('whistle');
-                    sayWord(diff.toString());
+                    playSfx('whistle'); sayWord(diff.toString());
                 }
-                renderPumpCandidates(); // แสดงรายชื่อสีเทาในช่วงนับถอยหลัง
+                renderPumpCandidates(); 
                 lastPlayedState = 'countdown';
             } 
-            // --- สถานะที่ 3: เริ่มเกม (บัตรสีปกติ + กดได้!) ---
+            // --- สถานะที่ 3: เริ่มเกม ---
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
-                    userGame.classList.remove('game-waiting-mode'); // ปลดล็อกสีและให้กดได้
+                    userGame.classList.remove('game-waiting-mode'); // ปลดล็อกให้กดได้
                     userGame.classList.remove('hidden');
                 }
-                if (summaryContainer) summaryContainer.classList.add('hidden'); // บังคับซ่อนหน้าสรุปทันที
-                
                 const remaining = Math.ceil((endAt - now) / 1000);
                 const timeStr = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
                 if (timerDisplay) timerDisplay.innerText = timeStr;
@@ -1830,17 +1827,17 @@
                 if (lastPlayedState !== 'active') {
                     if (isTV) { playSfx('whistle'); sayWord("Start!"); }
                     lastPlayedState = 'active';
-                    renderPumpCandidates(); // วาดใหม่ครั้งเดียวเพื่อเปลี่ยนสถานะสี
+                    renderPumpCandidates(); 
                 }
             } 
-            // --- สถานะที่ 4: จบเกม ---
+            // --- สถานะที่ 4: จบเกมจริงๆ ---
             else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) userGame.classList.add('hidden');
                 
                 if (summaryContainer && summaryContainer.classList.contains('hidden')) {
                      summaryContainer.classList.remove('hidden');
-                     renderPumpSummary(); // เรียกสรุปคะแนนจริงเมื่อจบเกม
+                     renderPumpSummary(); 
                 }
                 
                 if (lastPlayedState === 'active') {
@@ -1857,9 +1854,16 @@
             const grid = document.getElementById('pump-candidates-grid');
             if (!grid) return;
 
-            // --- ระบบ Hash ป้องกันการวาดซ้ำเพื่อความลื่นไหล ---
+            // --- [Rule 4] ระบบ Hash ป้องกันหน้าจอกระพริบ ---
             const currentContentHash = (candidates ? candidates.length : 0) + "_" + lastPlayedState;
-            if (grid.dataset.lastHash === currentContentHash) return;
+            if (grid.dataset.lastHash === currentContentHash) {
+                // อัปเดตเฉพาะคะแนนเล็กน้อยเพื่อความนิ่ง
+                candidates.forEach(c => {
+                    const badge = document.getElementById(`pump-score-${c.id}`);
+                    if(badge) badge.innerText = `+${pumpSessionPoints[c.id] || 0}`;
+                });
+                return;
+            }
             grid.dataset.lastHash = currentContentHash;
 
             if (!candidates || candidates.length === 0) {
@@ -1905,32 +1909,30 @@
                     transaction.set(sessionRef, { used: true, ts: firebase.firestore.FieldValue.serverTimestamp() });
                 });
                 
-                // บันทึกสถานะการล็อกอิน
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
-                
-                // รีเซ็ตคะแนนสะสมสำหรับรอบใหม่ (เฉพาะโหมดรัวๆ)
                 pumpSessionPoints = {};
                 safeRemoveStorage("pump_session_points_" + appId);
                 
-                // --- สั่งเปลี่ยนหน้าอย่างเด็ดขาดและจัดการ Z-index ---
+                // --- [Rule 3] จัดการ Z-index และ Visibility ทันที ---
                 const gate = document.getElementById('pump-gate-container');
                 const game = document.getElementById('pump-game-container');
-                if(gate) gate.classList.add('hidden');
-                if(game) game.classList.remove('hidden');
-                
                 const summary = document.getElementById('pump-summary-container');
+                
+                if(gate) gate.classList.add('hidden');
+                if(game) {
+                    game.classList.remove('hidden');
+                    game.classList.add('game-waiting-mode'); // เริ่มต้นด้วยหน้า Ready สีเทา
+                }
                 if(summary) summary.classList.add('hidden');
                 
-                showToast('เตรียมตัวให้พร้อม!', 'success');
-                syncPumpGame(); // เรียกซิงค์ทันทีเพื่อให้รายชื่อปรากฏ
+                showToast('เข้าสู่โหมดเตรียมพร้อม!', 'success');
+                syncPumpGame(); 
                 
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") {
-                    pumpVoterId = id;
-                    safeSetStorage("pump_id", id);
-                    syncPumpGame();
+                    pumpVoterId = id; safeSetStorage("pump_id", id); syncPumpGame();
                     showToast("ยินดีต้อนรับกลับเข้าสู่ระบบ", "success");
                 }
                 else showToast('เกิดข้อผิดพลาด', 'error'); 
@@ -1947,7 +1949,6 @@
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
             
-            // Increment local state and persist immediately
             pumpSessionPoints[cid] = (pumpSessionPoints[cid] || 0) + 1;
             safeSetStorage("pump_session_points_" + appId, JSON.stringify(pumpSessionPoints));
 
@@ -1977,9 +1978,7 @@
             `;
             
             const currentAward = systemConfig.awardName || 'Popular Vote';
-
             try {
-                // 1. ดึงข้อมูลจริงจาก Database (Source of Truth)
                 const logsSnapshot = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('pump_logs')
                     .where('voterId', '==', pumpVoterId)
                     .where('awardCategory', '==', currentAward)
@@ -1987,7 +1986,6 @@
 
                 let realPoints = {};
                 let totalClicks = 0;
-
                 logsSnapshot.forEach(doc => {
                     const data = doc.data();
                     const cid = data.candidateId;
@@ -1996,7 +1994,6 @@
                     totalClicks += count;
                 });
 
-                // หากใน DB ไม่มีข้อมูล ให้ลองดึงจาก LocalStorage เป็นแผนสำรอง
                 if (totalClicks === 0) {
                     realPoints = JSON.parse(safeGetStorage("pump_session_points_" + appId) || "{}");
                     totalClicks = Object.values(realPoints).reduce((a, b) => a + b, 0);
@@ -2057,8 +2054,8 @@
                         </div>
                     </div>`;
             } catch (error) {
-                console.error("Error fetching points:", error);
-                container.innerHTML = `<div class="p-10 text-center text-red-400">ขออภัย ไม่สามารถดึงข้อมูลจริงได้ กรุณาลองใหม่อีกครั้ง</div>`;
+                console.error(error);
+                container.innerHTML = `<div class="p-10 text-center text-red-400">ขออภัย ไม่สามารถดึงข้อมูลจริงได้</div>`;
             }
         }
 
