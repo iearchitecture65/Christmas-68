@@ -527,7 +527,7 @@
                     <div id="pump-summary-container" class="hidden pb-20"></div>
                 </div>
 
-                <!-- VIEW: TV DISPLAY -->
+                <!-- VIEW: TV DISPLAY (CORRECTED) -->
                 <div id="view-tv-result" class="tv-layout hidden overflow-hidden">
                     
                     <!-- AUDIO UNLOCK BUTTON -->
@@ -551,7 +551,7 @@
                             </div>
                         </div>
 
-                        <!-- Right Panel (Timer) -->
+                        <!-- Right Panel (Timer) - Repositioned to Top Right -->
                         <div id="tv-time-col">
                             <div class="text-pink-400 text-4xl font-bold uppercase tracking-widest mb-4 text-center">TIME</div>
                             <div id="tv-game-timer-val" class="font-black text-white font-mono leading-none drop-shadow-2xl text-center">00:00</div>
@@ -932,7 +932,7 @@
                         if(receiptVote) receiptVote.classList.add('hidden');
                         if(summaryPump) summaryPump.classList.add('hidden');
                         
-                        // Check which view should be shown now
+                        // Refresh UI
                         updateUIBasedOnConfig();
                         
                         showToast("ระบบได้รับการรีเซ็ตข้อมูลใหม่", "info");
@@ -960,7 +960,7 @@
                         showToast(`เริ่มหัวข้อใหม่: ${newAward}`, 'info');
                         pumpVoterId = ''; 
                         pumpSessionPoints = {};
-                        safeRemoveStorage("pump_id"); // Clear ID for new award session
+                        safeRemoveStorage("pump_id"); // Clear persistence
                         
                         // Force exit from Summary/Receipt pages
                         const receiptVote = document.getElementById('voted-card-container');
@@ -968,7 +968,6 @@
                         if(receiptVote) receiptVote.classList.add('hidden');
                         if(summaryPump) summaryPump.classList.add('hidden');
                         
-                        // Refresh UI to show the entry/vote list instead of the receipt
                         updateUIBasedOnConfig();
                     }
                     currentSessionAward = newAward;
@@ -1733,7 +1732,7 @@
             const config = systemConfig.pumpConfig || { isStarted: false };
             const now = Date.now();
 
-            // 1. สถานะเตรียมพร้อม (ขาวดำ)
+            // --- สถานะที่ 1: รอ Admin สั่งเริ่ม (ให้แสดงรายชื่อสีเทา) ---
             if (!config.isStarted) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
@@ -1746,6 +1745,7 @@
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 if (tvPanel) tvPanel.classList.remove('tv-mode-active');
                 
+                // สั่งวาดรายชื่อทันทีเพื่อให้เห็นบัตรผู้แข่งขันสีเทา
                 renderPumpCandidates(); 
                 return;
             }
@@ -1758,7 +1758,7 @@
                 tvPanel.classList.add('tv-mode-active');
             }
 
-            // 2. ช่วงนับถอยหลัง
+            // --- สถานะที่ 2: ช่วงนับถอยหลัง 5..4..3..2..1 (ยังคงเป็นสีเทา) ---
             if (now < startAt) {
                 const diff = Math.ceil((startAt - now) / 1000);
                 if (tvCountdown) {
@@ -1766,7 +1766,7 @@
                     const valEl = document.getElementById('tv-countdown-val');
                     if (valEl) valEl.innerText = diff;
                 }
-                if (userGame) userGame.classList.add('game-waiting-mode');
+                if (userGame) userGame.classList.add('game-waiting-mode'); // ล็อกสถานะสีเทา
                 if (timerDisplay) timerDisplay.innerText = "00:00";
                 
                 if (isTV && diff <= 3 && lastCountVal !== diff) {
@@ -1777,7 +1777,7 @@
                 renderPumpCandidates();
                 lastPlayedState = 'countdown';
             } 
-            // 3. ช่วงเล่นเกม (มีสี)
+            // --- สถานะที่ 3: เริ่มเกม (เปลี่ยนเป็นสีปกติและกดได้) ---
             else if (now < endAt) {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) {
@@ -1799,7 +1799,7 @@
                 }
                 renderPumpCandidates();
             } 
-            // 4. จบเกม
+            // --- สถานะที่ 4: จบเกม ---
             else {
                 if (tvCountdown) tvCountdown.classList.add('hidden');
                 if (userGame) userGame.classList.add('hidden');
@@ -1832,7 +1832,7 @@
                 return;
             }
 
-            // 3. เรียงลำดับและวาดรายชื่อ
+            // 3. เรียงลำดับและวาดรายชื่อ (ใช้ bg-white/10 เพื่อให้เห็นพื้นหลังหิมะ)
             const sorted = [...candidates].sort((a, b) => (a.studentId || '').localeCompare(b.studentId || ''));
             
             const content = sorted.map(c => {
@@ -1876,19 +1876,18 @@
                 pumpVoterId = id;
                 safeSetStorage("pump_id", id);
                 
-                // --- สั่งวาดหน้าจอใหม่ทันที ---
+                // --- สั่งวาดหน้าจอใหม่ทันที (ซ่อน Gate และแสดงหน้า Game ที่ถูกล็อก) ---
                 const gate = document.getElementById('pump-gate-container');
                 const game = document.getElementById('pump-game-container');
                 if(gate) gate.classList.add('hidden');
                 if(game) game.classList.remove('hidden');
                 
                 showToast('เข้าสู่หน้าเตรียมความพร้อม!', 'success');
-                syncPumpGame(); 
+                syncPumpGame(); // บังคับให้ระบบวาดรายชื่อสีเทาทันที
                 
             } catch(e) { 
                 console.error(e); 
                 if (e === "SESSION_EXISTS") {
-                    // หากมีเซสชั่นอยู่แล้ว ให้ลองเช็คว่าเครื่องจำค่าได้ไหม หรือผู้ใช้กรอกตัวเดิม
                     pumpVoterId = id;
                     safeSetStorage("pump_id", id);
                     syncPumpGame();
